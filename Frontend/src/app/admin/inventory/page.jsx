@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, List } from 'lucide-react';
 import {
   useGetInventoryQuery,
-  useCreateInventoryItemMutation,
+  useUpdateInventoryInfoMutation,
+  useUpdateInventoryItemMutation,
+  useDeleteInventoryItemMutation,
 } from '@/features/inventoryApi';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
 
-/** ----------------- SAFE dynamic imports (no SSR, with fallbacks) ----------------- */
+/** ---- dynamic children ---- */
 const InventoryGrid = dynamic(
   () =>
     import('@/components/inventory/InventoryGrid').then(
@@ -41,8 +43,34 @@ const CreateInventoryModal = dynamic(
   { ssr: false, loading: () => null }
 );
 
-/* ------------------------------- helpers ------------------------------- */
+const EditInfoDialog = dynamic(
+  () =>
+    import('@/components/inventory/EditInfoDialog').then(
+      (m) => m.EditInfoDialog
+    ),
+  { ssr: false }
+);
 
+const EditHistoryDialog = dynamic(
+  () =>
+    import('@/components/inventory/EditInfoDialog').then(
+      (m) => m.EditHistoryDialog
+    ),
+  { ssr: false }
+);
+// at the top with the other dynamics:
+const AddStockPicker = dynamic(
+  () => import('@/components/inventory/AddStockPicker'),
+  { ssr: false }
+);
+const AddStockDialog = dynamic(
+  () =>
+    import('@/components/inventory/AddStockDialog').then(
+      (m) => m.AddStockDialog
+    ),
+  { ssr: false }
+);
+/* ---------------- helpers ---------------- */
 const toId = (x) => {
   try {
     return String(x);
@@ -97,7 +125,7 @@ function mapInventory(rec) {
     id: toId(rec._id || rec.id),
     companyId: rec.companyId || '',
     itemName: rec.itemName || '—',
-    itemType: rec.itemType || 'part',
+    itemType: rec.itemType || 'Part',
     description: rec.description || '',
     totalVariants:
       typeof rec.totalVariants === 'number'
@@ -155,16 +183,61 @@ const rangeFor = (preset) => {
   }
 };
 
-/* ---------------------------------- Page ---------------------------------- */
-
+/* ---------------- page ---------------- */
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('all'); // all|active|inactive
-  const [datePreset, setDatePreset] = useState('all'); // all|today|yesterday|last7|last30
+  const [status, setStatus] = useState('all');
+  const [datePreset, setDatePreset] = useState('all');
   const [page, setPage] = useState(1);
-  const [view, setView] = useState('grid');
+  const [view, setView] = useState('list');
   const [openCreate, setOpenCreate] = useState(false);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openStockPicker, setOpenStockPicker] = useState(false);
+  const [activeEditItem, setActiveEditItem] = useState(null);
+  const [pickedItem, setPickedItem] = useState(null);
+  const [pickedVariant, setPickedVariant] = useState(null);
+
+  const pickerItems = useMemo(
+    () =>
+      (items || []).map((it) => ({
+        id: it.id,
+        itemName: it.itemName,
+        itemType: it.itemType,
+        vendor:
+          typeof it.vendor === 'string' ? it.vendor : it.vendor?.name ?? '',
+        location: it.location,
+        variants: (it.variants || []).map((v) => ({
+          id: v.id,
+          variantName: v.variantName,
+          sku: v.sku,
+          quantity: v.quantity,
+          incomingQuantity: v.incomingQuantity,
+          price: v.price,
+          costPrice: v.costPrice,
+          returnUnder: v.returnUnder,
+          attributes: v.attributes,
+        })),
+      })),
+    [items]
+  );
+  const handlePickerPick = ({ item, variant }) => {
+    setPickedItem(item);
+    setPickedVariant(variant || null);
+    setOpenStockPicker(false);
+    setOpenAddDialog(true);
+  };
+
+  const handleAddDialogClose = async (res) => {
+    setOpenAddDialog(false);
+    setPickedItem(null);
+    setPickedVariant(null);
+    if (res?.refreshed) await refetch();
+  };
+  // NEW: history edit state
+  const [openHistory, setOpenHistory] = useState(false);
+  const [activeHistoryItem, setActiveHistoryItem] = useState(null);
+
   const pageSize = 10;
 
   const {
@@ -174,10 +247,8 @@ export default function InventoryPage() {
     error,
     refetch,
   } = useGetInventoryQuery();
-
-  const [addInventory] = useCreateInventoryItemMutation();
   const { data: vendors = [] } = useGetAllVendorsQuery();
-  // console.log('vendors in inventory', vendors);
+
   useEffect(() => {
     setItems(
       Array.isArray(data)
@@ -185,6 +256,28 @@ export default function InventoryPage() {
         : []
     );
   }, [data]);
+
+  const [updateInfo] = useUpdateInventoryInfoMutation();
+  const [updateItem] = useUpdateInventoryItemMutation();
+  const [deleteItem] = useDeleteInventoryItemMutation();
+
+  const onEditInfo = (record) => setActiveEditItem(record);
+
+  const onEditViaHistory = (record) => {
+    setActiveHistoryItem(record);
+    setOpenHistory(true);
+  };
+
+  const onDeleteItem = async (record) => {
+    try {
+      if (!window.confirm(`Delete "${record.itemName}"? (soft delete)`)) return;
+      await deleteItem(record.id).unwrap();
+      await refetch();
+      alert('Deleted.');
+    } catch (e) {
+      alert(e?.data?.message || e?.message || 'Failed to delete');
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -238,22 +331,24 @@ export default function InventoryPage() {
   const handleCreated = async () => {
     await refetch();
   };
+  const handleEditClose = async (res) => {
+    setActiveEditItem(null);
+    if (res?.refreshed) await refetch();
+  };
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="p-6 text-sm text-muted-foreground">
         Loading inventory…
       </div>
     );
-  }
-  if (isError) {
+  if (isError)
     return (
       <div className="p-6 text-sm text-destructive">
         Failed to load inventory
         {error?.data?.error ? `: ${error.data.error}` : ''}.
       </div>
     );
-  }
 
   return (
     <main className="mx-auto max-w-full p-6">
@@ -266,8 +361,9 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => setOpenStockPicker(true)}>Add Stock</Button>
           <Button onClick={() => setOpenCreate(true)}>New Item</Button>
-          <Button
+          {/* <Button
             variant={view === 'grid' ? 'default' : 'outline'}
             onClick={() => setView('grid')}
             aria-label="Grid view"
@@ -280,7 +376,7 @@ export default function InventoryPage() {
             aria-label="List view"
           >
             <List className="h-4 w-4" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -350,12 +446,23 @@ export default function InventoryPage() {
 
       {/* content */}
       <div>
-        {/* Guarded renders to avoid crash if a component failed to resolve */}
         {InventoryGrid && InventoryList ? (
           view === 'grid' ? (
-            <InventoryGrid items={current} />
+            <InventoryGrid
+              items={current}
+              onStockAdded={handleCreated}
+              onEditInfo={onEditInfo}
+              onEditHistory={onEditViaHistory}
+              onDeleteItem={onDeleteItem}
+            />
           ) : (
-            <InventoryList items={current} />
+            <InventoryList
+              items={current}
+              onStockAdded={handleCreated}
+              onEditInfo={onEditInfo}
+              onEditHistory={onEditViaHistory}
+              onDeleteItem={onDeleteItem}
+            />
           )
         ) : (
           <div className="p-4 text-sm text-amber-700">
@@ -417,6 +524,46 @@ export default function InventoryPage() {
           onClose={() => setOpenCreate(false)}
           onCreated={handleCreated}
           vendors={vendors}
+        />
+      )}
+
+      {/* edit info dialog */}
+      {activeEditItem && (
+        <EditInfoDialog
+          open
+          item={activeEditItem}
+          vendors={vendors}
+          onClose={handleEditClose}
+        />
+      )}
+
+      {/* edit history dialog */}
+      {openHistory && activeHistoryItem && (
+        <EditHistoryDialog
+          open={openHistory}
+          item={activeHistoryItem}
+          onClose={async (res) => {
+            setOpenHistory(false);
+            setActiveHistoryItem(null);
+            if (res?.refreshed) await refetch();
+          }}
+        />
+      )}
+      {AddStockPicker && (
+        <AddStockPicker
+          open={openStockPicker}
+          onOpenChange={setOpenStockPicker}
+          items={pickerItems}
+          onPick={handlePickerPick}
+        />
+      )}
+      {/* Quantity + details dialog; seeded with pickedVariant if present */}
+      {pickedItem && (
+        <AddStockDialog
+          open={openAddDialog}
+          onClose={handleAddDialogClose}
+          item={pickedItem}
+          initialVariant={pickedVariant || undefined}
         />
       )}
     </main>

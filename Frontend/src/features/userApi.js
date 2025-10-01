@@ -52,9 +52,34 @@ export const userApi = createApi({
             ]
           : [{ type: 'User', id: 'LIST' }],
     }),
-
-    // add more endpoints (verifyUser, updateUser, etc.) here
+    /** GET /api/user/get-all-customer-users */
+    getAllCustomerUsers: builder.query({
+      query: () => '/get-all-customer-users',
+      transformResponse: (res) => {
+        if (res?.success && Array.isArray(res.users)) return res.users;
+        if (Array.isArray(res)) return res;
+        throw new Error(res?.message || 'Failed to fetch customer users');
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((u) => ({ type: 'User', id: u._id })),
+              { type: 'User', id: 'LIST' },
+            ]
+          : [{ type: 'User', id: 'LIST' }],
+    }),
+    /** PATCH /api/user/toggle-user-status/:userId */
+    toggleUserStatus: builder.mutation({
+      query: (userId) => ({
+        url: `/active_inactive-user/${userId}`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (result, error, userId) => [
+        { type: 'User', id: userId },
+        { type: 'User', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
-export const { useGetAllUsersQuery } = userApi;
+export const { useGetAllUsersQuery, useGetAllCustomerUsersQuery, useToggleUserStatusMutation } = userApi;

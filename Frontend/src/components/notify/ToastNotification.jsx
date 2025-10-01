@@ -1,3 +1,4 @@
+// ToastNotification.jsx
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -5,7 +6,7 @@ import { X, CheckCircle, AlertCircle } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useSpring, animated } from '@react-spring/web';
 
-export function ToastNotification({ isVisible, type, name, details, onClose, onActionClick, duration = 5000 }) {
+export function ToastNotification({ isVisible, type, name, details, status, onClose, onActionClick, duration = 5000 }) {
   const [visible, setVisible] = useState(isVisible);
   const [progress, setProgress] = useState(100);
 
@@ -36,7 +37,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
   const messages = {
     login: {
       title: `Welcome back, ${name || 'User'}!`,
-      description: 'You’re logged in and ready to go.',
+      description: `You’re logged in and ready to go.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -44,7 +45,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     logout: {
       title: 'Logged out successfully',
-      description: 'See you next time!',
+      description: `See you next time!${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -52,7 +53,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     account_deleted: {
       title: 'Account removed',
-      description: `Account ${name || 'unknown'} has been permanently deleted.`,
+      description: `Account ${name || 'unknown'} has been permanently deleted.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-red-100',
       textColor: 'text-red-800',
       icon: <AlertCircle className="w-5 h-5" />,
@@ -60,7 +61,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     account_disconnected: {
       title: 'Account disconnected',
-      description: `Account ${name || 'unknown'} has been disconnected.`,
+      description: `Account ${name || 'unknown'} has been disconnected.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-red-100',
       textColor: 'text-red-800',
       icon: <AlertCircle className="w-5 h-5" />,
@@ -68,7 +69,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     account_activated: {
       title: 'Account activated',
-      description: `Account ${name || 'unknown'} is now active.`,
+      description: `Account ${name || 'unknown'} is now active.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -76,7 +77,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     post_created: {
       title: 'Post created',
-      description: 'Your post has been successfully created.',
+      description: `Your post has been successfully created.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -84,7 +85,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     post_updated: {
       title: 'Post updated',
-      description: 'Your post has been updated.',
+      description: `Your post has been updated.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -92,7 +93,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     post_deleted: {
       title: 'Post deleted',
-      description: 'Your post has been removed.',
+      description: `Your post has been removed.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-red-100',
       textColor: 'text-red-800',
       icon: <AlertCircle className="w-5 h-5" />,
@@ -100,7 +101,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     success: {
       title: 'Success',
-      description: details || 'Action completed successfully.',
+      description: details || `Action completed successfully.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-green-100',
       textColor: 'text-green-800',
       icon: <CheckCircle className="w-5 h-5" />,
@@ -108,7 +109,7 @@ export function ToastNotification({ isVisible, type, name, details, onClose, onA
     },
     error: {
       title: 'Error',
-      description: details || 'Something went wrong. Please try again or contact support.',
+      description: details || `Something went wrong. Please try again or contact support.${status ? ` (Status: ${status})` : ''}`,
       bgColor: 'bg-red-100',
       textColor: 'text-red-800',
       icon: <AlertCircle className="w-5 h-5" />,
@@ -155,6 +156,7 @@ ToastNotification.propTypes = {
   type: PropTypes.string.isRequired,
   name: PropTypes.string,
   details: PropTypes.string,
+  status: PropTypes.oneOfType([PropTypes.number, PropTypes.string]), // Add status prop
   onClose: PropTypes.func.isRequired,
   onActionClick: PropTypes.func,
   duration: PropTypes.number,

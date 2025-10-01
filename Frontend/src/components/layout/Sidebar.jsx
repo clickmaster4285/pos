@@ -118,7 +118,7 @@ export default function Sidebar() {
         { href: "/superadmin/dashboard", label: "Dashboard", icon: iconMap["Dashboard"] },
         { href: "/superadmin/plan", label: "Plans", icon: iconMap["Plans"] },
         { href: "/superadmin/company", label: "Companies", icon: iconMap["Companies"] },
-        { href: "#", label: "Users", icon: iconMap["Users"] },
+        { href: "/superadmin/users", label: "Users", icon: iconMap["Users"] },
         { href: "#", label: "Payment / Billing", icon: iconMap["Payment / Billing"] },
         { href: "#", label: "Settings", icon: iconMap["Settings"] },
       ],

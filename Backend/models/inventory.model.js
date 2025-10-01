@@ -140,8 +140,8 @@ const InventorySchema = new Schema(
     itemType: {
       type: String,
       enum: {
-        values: ["part", "vehicle", "accessory", "other"],
-        message: "Invalid item type. Must be part, vehicle, or accessory",
+        values: ["Part", "Whole", "Other"],
+        message: "Invalid item type. Must be Part, Whole, or Other",
       },
       required: [true, "Item type is required"],
     },

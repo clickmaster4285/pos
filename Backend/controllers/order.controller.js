@@ -257,13 +257,29 @@ const getOrders = async (req, res) => {
       companyId,
       deleted: false,
     }).lean();
-    console.log('the orders are :');
-    res.status(200).json(orders);
+
+    const data = await Promise.all(
+      orders.map(async (order) => {
+        const user = await IndexModel.User.findOne({
+          userId: order.userId, // <-- string field
+          companyId: order.companyId,
+          deleted: false,
+        }).lean();
+
+        return {
+          ...order,
+          userName: user ? user.name : null,
+        };
+      })
+    );
+
+    return res.status(200).json(data);
   } catch (error) {
     console.error('Error fetching orders:', error);
-    res
-      .status(400)
-      .json({ message: 'Error fetching orders', error: error.message });
+    return res.status(400).json({
+      message: 'Error fetching orders',
+      error: error.message,
+    });
   }
 };
 

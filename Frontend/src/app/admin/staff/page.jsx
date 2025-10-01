@@ -162,16 +162,10 @@ const Staff = () => {
     );
   }
 
-  if (error || filteredStaff.length === 0) {
+  if (filteredStaff.length === 0) {
     return (
       <Card className="shadow-lg backdrop-blur-sm bg-card/80 border border-border/50">
-        <CardContent className="py-12 text-center">
-          <Users className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
-          <h3 className="mt-4 text-xl font-semibold text-foreground">No staff members found</h3>
-          <p className="text-muted-foreground mt-2">
-            {searchTerm ? 'Try adjusting your search criteria.' : 'Get started by creating a new staff member.'}
-          </p>
-          {!searchTerm && (
+          {/* {!searchTerm && ( */}
             <StaffHeader 
               isAddDialogOpen={isAddDialogOpen}
               setIsAddDialogOpen={setIsAddDialogOpen}
@@ -185,7 +179,13 @@ const Staff = () => {
               viewMode={viewMode}
               setViewMode={setViewMode}
             />
-          )}
+          {/* )} */}
+        <CardContent className="py-12 text-center">
+          <Users className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
+          <h3 className="mt-4 text-xl font-semibold text-foreground">No staff members found</h3>
+          <p className="text-muted-foreground mt-2">
+            {searchTerm ? 'Try adjusting your search criteria.' : 'Get started by creating a new staff member.'}
+          </p>
         </CardContent>
       </Card>
     );

@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, List, Package, MapPin, AlertTriangle } from 'lucide-react';
 // import { useGetAllInventoryQuery } from '@/features/InventoryApi';
 
-export function InventoryGrid({ items = [] }) {
+export function InventoryGrid({
+  items = [],
+  onEditInfo, // ← add
+  onEditHistory, // ← add
+  onDeleteItem,
+}) {
   if (!items.length)
     return (
       <div className="p-4 text-sm text-muted-foreground">

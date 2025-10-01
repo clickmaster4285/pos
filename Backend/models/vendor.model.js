@@ -17,7 +17,6 @@ const VendorSchema = new Schema(
     },
     phone: {
       type: String,
-      match: [/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"],
     },
     address: {
       type: String,

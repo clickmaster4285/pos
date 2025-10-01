@@ -295,6 +295,33 @@ export function OrdersGrid({
             items.length > 0 &&
             items.every((it) => String(it.status || '') === 'delivered');
 
+          const norm = (v) =>
+            String(v || '')
+              .toLowerCase()
+              .trim()
+              .replace(/\s+/g, '_');
+          const isAcceptedStatus = (s) =>
+            /(return(ed)?_accepted|accepted_return)/.test(norm(s));
+          const isRejectedStatus = (s) =>
+            /(return(ed)?_rejected|rejected_return|return_denied)/.test(
+              norm(s)
+            );
+          // pending / delivered as you had
+
+          // 👇 more robust finalization checks (items + history)
+          const anyAccepted = items.some((it) => isAcceptedStatus(it.status));
+          const anyRejected = items.some((it) => isRejectedStatus(it.status));
+
+          const latestRecord = norm(latestHistoryAction(o) || '');
+          const finalizedByHistory =
+            /(return(ed)?_accepted|accepted_return|return(ed)?_rejected|rejected_return|return_denied)/.test(
+              latestRecord
+            );
+
+          // HIDE menu if any item finalized OR history says finalized
+          const hideKebab = anyAccepted || anyRejected || finalizedByHistory;
+          // (you can keep your existing hasPendingReturn / isAllDelivered, etc.)
+
           return (
             <Card
               key={id || o.orderNumber}
@@ -318,76 +345,78 @@ export function OrdersGrid({
                       <p className="mt-1 text-xs text-muted-foreground truncate flex items-center gap-1.5">
                         <Hash className="h-3.5 w-3.5" />
                         <span className="truncate">#{short}</span>
-                        <span className="opacity-50">•</span>
-                        <span className="truncate">{safe(o.companyId)}</span>
+                        {/* <span className="opacity-50">•</span> */}
+                        {/* <span className="truncate">{safe(o.companyId)}</span> */}
                       </p>
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 -mr-2 opacity-80 hover:opacity-100"
-                          aria-label="Open actions"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      {/* If a return is requested, ONLY show accept/reject */}
-                      {hasPendingReturn ? (
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuLabel>Return</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => runReturnAction(o, 'accept')}
+                    {!hideKebab && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 -mr-2 opacity-80 hover:opacity-100"
+                            aria-label="Open actions"
                           >
-                            Accept Return Request
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => runReturnAction(o, 'reject')}
-                          >
-                            Reject Return Request
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      ) : (
-                        <DropdownMenuContent align="end" className="w-52">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
 
-                          {/* your existing rules: hide update/cancel when fully delivered */}
-                          {!isAllDelivered && (
-                            <DropdownMenuItem onClick={() => onEdit?.(o)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Update Order Status
-                            </DropdownMenuItem>
-                          )}
-                          {!isAllDelivered && (
+                        {/* If a return is requested, ONLY show accept/reject */}
+                        {hasPendingReturn ? (
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuLabel>Return</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => onDelete?.(o)}
-                              disabled={!!loadingIds?.has(getId(o) || o._id)}
+                              onClick={() => runReturnAction(o, 'accept')}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Cancel Order Items
+                              Accept Return Request
                             </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuSeparator />
-
-                          {/* ✅ Only show "Request Return" if there is at least one delivered item */}
-                          {hasDeliveredItems && (
                             <DropdownMenuItem
-                              onClick={() => onRequestReturn?.(o)}
+                              onClick={() => runReturnAction(o, 'reject')}
                             >
-                              Request Return
+                              Reject Return Request
                             </DropdownMenuItem>
-                          )}
-                          {/* If nothing delivered, show nothing here */}
-                        </DropdownMenuContent>
-                      )}
-                    </DropdownMenu>
+                          </DropdownMenuContent>
+                        ) : (
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* your existing rules: hide update/cancel when fully delivered */}
+                            {!isAllDelivered && (
+                              <DropdownMenuItem onClick={() => onEdit?.(o)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Update Order Status
+                              </DropdownMenuItem>
+                            )}
+                            {!isAllDelivered && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => onDelete?.(o)}
+                                disabled={!!loadingIds?.has(getId(o) || o._id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Cancel Order Items
+                              </DropdownMenuItem>
+                            )}
+
+                            <DropdownMenuSeparator />
+
+                            {/* ✅ Only show "Request Return" if there is at least one delivered item */}
+                            {hasDeliveredItems && (
+                              <DropdownMenuItem
+                                onClick={() => onRequestReturn?.(o)}
+                              >
+                                Request Return
+                              </DropdownMenuItem>
+                            )}
+                            {/* If nothing delivered, show nothing here */}
+                          </DropdownMenuContent>
+                        )}
+                      </DropdownMenu>
+                    )}
                   </div>
                 </div>
               </div>
@@ -407,7 +436,10 @@ export function OrdersGrid({
                         {shipping.name}
                       </span>
                     </div>
-                    <div className="pl-5 mt-1 truncate" title={shipping.addr}>
+                    <div
+                      className="pl-5 mt-1 whitespace-normal break-words leading-relaxed"
+                      title={shipping.addr}
+                    >
                       {shipping.addr}
                     </div>
                     <div className="pl-5 mt-1 text-muted-foreground">

@@ -1,3 +1,4 @@
+// ToastContainer.jsx
 "use client";
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -8,8 +9,7 @@ import { useTransition, animated } from '@react-spring/web';
 export function ToastContainer() {
   const dispatch = useDispatch();
   const toasts = useSelector((state) => state.toast.toasts);
-
-  // Add transitions for smooth entry/exit
+console.log('Current toasts:', toasts);
   const transitions = useTransition(toasts, {
     keys: (toast, index) => index,
     from: { opacity: 0, transform: 'translateX(100%)' },
@@ -28,6 +28,7 @@ export function ToastContainer() {
             type={toast.type}
             name={toast.name}
             details={toast.details}
+            status={toast.status} // Pass status to ToastNotification
             onClose={() => dispatch(removeToast(index))}
             onActionClick={(label) => console.log(`Action clicked: ${label}`)}
             duration={toast.duration || 5000}

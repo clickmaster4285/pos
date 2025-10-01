@@ -53,11 +53,17 @@ const login = async (req, res, next) => {
       return next(new ErrorResponse("Please provide email and password", 400));
     }
 
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email, deleted:false }).select("+password");
     if (!user) {
       return next(new ErrorResponse("Invalid credentials", 401));
     }
-
+    console.log("User found:", user.isActive);
+    if (user.isActive === false) {
+      return res.status(401).json({
+        success: false,
+        message: "User or company is deactivated",
+      });
+    }
     if (user.status?.isaccepted === "pending") {
       return res.status(401).json({
         success: false,
@@ -85,6 +91,7 @@ const login = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      status: 200,
       data: {
         user: {
           userId: user.userId,

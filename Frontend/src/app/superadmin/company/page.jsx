@@ -1,10 +1,12 @@
+// page.jsx
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, Clock, Search, Filter } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CompanyGrid } from '@/components/company/CompanyGrid';
 import { CompanyList } from '@/components/company/CompanyList';
+import { UnverifiedCompanies } from '@/components/company/UnverifiedCompanies';
 import {
   useGetAllCompaniesQuery,
   useToggleCompanyStatusMutation,
@@ -16,12 +18,12 @@ function mapCompany(c) {
     name: c.name || '—',
     industry: c.industry || '—',
     status: c.isActive ? 'Active' : 'Inactive',
-    isActive: c.isActive, // Add this for the status toggle
-    contactEmail: c.contactEmail || '—', // Add this
-    contactPhone: c.contactPhone || '—', // Add this
-    address: c.address || '—', // Add this
-    plan: c.plan || [], // Add this for plan badges
-    gain: c.gain || { staff: [], vendor: 0, inventory: 0 }, // Add this
+    isActive: c.isActive,
+    contactEmail: c.contactEmail || '—',
+    contactPhone: c.contactPhone || '—',
+    address: c.address || '—',
+    plan: c.plan || [],
+    gain: c.gain || { staff: [], vendor: 0, inventory: 0 },
     usersCount: Array.isArray(c?.gain?.staff)
       ? c.gain.staff.length
       : typeof c.usersCount === 'number'
@@ -30,7 +32,7 @@ function mapCompany(c) {
     createdAt: c.createdAt || new Date().toISOString(),
   };
 }
-// Date filter options
+
 const dateFilterOptions = [
   { value: 'all', label: 'All Dates' },
   { value: 'today', label: 'Today' },
@@ -40,13 +42,13 @@ const dateFilterOptions = [
 ];
 
 export default function CompaniesPage() {
-  const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [view, setView] = useState('list');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [showUnverified, setShowUnverified] = useState(false);
   const pageSize = 10;
-  const [view, setView] = useState('grid');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
-  const [dateFilter, setDateFilter] = useState('all'); // date filter value
 
   const {
     data: companies = [],
@@ -55,35 +57,27 @@ export default function CompaniesPage() {
     error,
   } = useGetAllCompaniesQuery();
 
-   const [toggleStatus, { isLoading: isToggling }] =
-     useToggleCompanyStatusMutation();
-   const [pendingId, setPendingId] = useState(null);
+  const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
+  const [pendingId, setPendingId] = useState(null);
 
-  
-  const handleToggle = async (company) => {
-    try {
-      setPendingId(company.id);
-      await toggleStatus(company.id).unwrap();
-    } catch (err) {
-      console.error('Failed to toggle status:', err);
-    } finally {
-      setPendingId(null);
-    }
-  };
-  //
-  useEffect(() => {
-    if (Array.isArray(companies) && companies.length) {
-      setItems(companies.map(mapCompany));
-    } else {
-      setItems([]);
-    }
+  // Separate verified and unverified companies
+  const { verifiedCompanies, unverifiedCompanies } = useMemo(() => {
+    const mapped = Array.isArray(companies) && companies.length
+      ? companies.map(mapCompany)
+      : [];
+
+    return {
+      verifiedCompanies: mapped.filter(c => c.isActive),
+      unverifiedCompanies: mapped.filter(c => !c.isActive),
+    };
   }, [companies]);
 
-  // Enhanced filter function with status and date filtering
-  const filtered = useMemo(() => {
-    let result = items;
+  // Use appropriate data based on view mode
+  const dataToUse = showUnverified ? unverifiedCompanies : verifiedCompanies;
 
-    // Text search filter
+  const filtered = useMemo(() => {
+    let result = dataToUse;
+
     const q = query.trim().toLowerCase();
     if (q) {
       result = result.filter((c) =>
@@ -93,12 +87,10 @@ export default function CompaniesPage() {
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       result = result.filter((c) => c.status.toLowerCase() === statusFilter);
     }
 
-    // Date filter
     if (dateFilter !== 'all') {
       const now = new Date();
       const startDate = new Date();
@@ -110,8 +102,6 @@ export default function CompaniesPage() {
         case 'yesterday':
           startDate.setDate(now.getDate() - 1);
           startDate.setHours(0, 0, 0, 0);
-          const yesterdayEnd = new Date(startDate);
-          yesterdayEnd.setHours(23, 59, 59, 999);
           break;
         case 'last7':
           startDate.setDate(now.getDate() - 7);
@@ -146,7 +136,7 @@ export default function CompaniesPage() {
     }
 
     return result;
-  }, [items, query, statusFilter, dateFilter]);
+  }, [dataToUse, query, statusFilter, dateFilter]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -154,150 +144,222 @@ export default function CompaniesPage() {
   useEffect(() => {
     if (page > totalPages) setPage(1);
   }, [totalPages, page]);
+
   const start = (page - 1) * pageSize;
   const current = filtered.slice(start, start + pageSize);
 
   if (isLoading) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        Loading companies…
+      <div className="min-h-screen bg-background p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/4 mb-2"></div>
+          <div className="h-4 bg-muted rounded w-1/3 mb-6"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-20 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
+
   if (isError) {
     return (
-      <div className="p-6 text-sm text-destructive">
-        Failed to load companies
-        {error?.data?.error ? `: ${error.data.error}` : ''}.
+      <div className="min-h-screen bg-background p-6">
+        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
+          <div className="text-destructive font-semibold mb-2">
+            Failed to load companies
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {error?.data?.error ? error.data.error : 'Please try again later.'}
+          </div>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-full p-6">
-      {/* header */}
-      <div className="flex justify-between">
-        <div className="mb-6">
-          <h1 className="text-3xl font-semibold mt-3">Companies Management</h1>
-          <p className="text-sm text-muted-foreground">
-            End-to-end company management for superadmins
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={view === 'grid' ? 'default' : 'outline'}
-            onClick={() => setView('grid')}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={view === 'list' ? 'default' : 'outline'}
-            onClick={() => setView('list')}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* toolbar with filters */}
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center gap-2 w-full">
-          {/* Search bar taking remaining space */}
-          <input
-            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm outline-none ring-0 focus:border-ring min-w-0"
-            placeholder="Search by name, industry, status"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-
-          {/* Status filter */}
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm outline-none ring-0 focus:border-ring"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-
-          {/* Date filter */}
-          <select
-            className="h-9 rounded-md border bg-background px-3 text-sm outline-none ring-0 focus:border-ring"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-          >
-            {dateFilterOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* content */}
-      <div>
-        {view === 'grid' ? (
-          <CompanyGrid
-            items={current}
-            handleToggle={handleToggle}
-            pendingId={pendingId}
-          />
-        ) : (
-          <CompanyList
-            items={current}
-            handleToggle={handleToggle}
-            pendingId={pendingId}
-          />
-        )}
-
-        {/* pagination */}
-        <div className="mt-4 flex flex-col items-center justify-between gap-3 md:flex-row">
-          <p className="text-xs text-muted-foreground">
-            Showing {total === 0 ? 0 : start + 1}-
-            {Math.min(start + pageSize, total)} of {total}
-          </p>
-          <nav className="flex items-center gap-1" aria-label="Pagination">
-            <button
-              className="h-8 rounded-md border bg-secondary px-2 text-xs text-secondary-foreground disabled:opacity-50"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl p-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Companies Management
+            </h1>
+            <p className="text-sm text-muted-foreground mt-2">
+              {showUnverified 
+                ? `Manage unverified company applications (${unverifiedCompanies.length} pending)`
+                : 'End-to-end company management for superadmins'
+              }
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button
+              variant={showUnverified ? "default" : "outline"}
+              onClick={() => {
+                setShowUnverified(!showUnverified);
+                setPage(1);
+              }}
+              className="flex items-center gap-2"
             >
-              Previous
-            </button>
-            {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
-              const windowStart = Math.max(
-                1,
-                Math.min(page - 2, totalPages - 4)
-              );
-              const pageNumber = windowStart + i;
-              if (pageNumber > totalPages) return null;
-              const active = pageNumber === page;
-              return (
-                <button
-                  key={pageNumber}
-                  className={`h-8 w-8 rounded-md text-xs ${
-                    active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border bg-background text-foreground'
-                  }`}
-                  onClick={() => setPage(pageNumber)}
+              <Clock className="h-4 w-4" />
+              {showUnverified ? 'Verified Companies' : 'Unverified Companies'}
+              {unverifiedCompanies.length > 0 && !showUnverified && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary-foreground text-primary rounded-full">
+                  {unverifiedCompanies.length}
+                </span>
+              )}
+            </Button>
+            
+            <div className="flex items-center border rounded-lg">
+              <Button
+                variant={view === 'grid' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setView('grid')}
+                className="rounded-r-none"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={view === 'list' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setView('list')}
+                className="rounded-l-none border-l"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                className="w-full h-11 pl-10 pr-4 rounded-lg border bg-background text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-colors"
+                placeholder="Search by name, industry, status..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <select
+                className="h-11 px-3 rounded-lg border bg-background text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-colors"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              
+              <select
+                className="h-11 px-3 rounded-lg border bg-background text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-colors"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              >
+                {dateFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div>
+          {view === 'grid' ? (
+            <CompanyGrid
+              items={current}
+              handleToggle={handleToggle}
+              pendingId={pendingId}
+              showUnverified={showUnverified}
+            />
+          ) : (
+            <CompanyList
+              items={current}
+              handleToggle={handleToggle}
+              pendingId={pendingId}
+              showUnverified={showUnverified}
+            />
+          )}
+
+          {/* Pagination */}
+          {total > 0 && (
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {start + 1}-{Math.min(start + pageSize, total)} of {total} companies
+              </p>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
                 >
-                  {pageNumber}
-                </button>
-              );
-            })}
-            <button
-              className="h-8 rounded-md border bg-secondary px-2 text-xs text-secondary-foreground disabled:opacity-50"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-            </button>
-          </nav>
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                    const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
+                    const pageNumber = windowStart + i;
+                    if (pageNumber > totalPages) return null;
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={pageNumber === page ? "default" : "outline"}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
   );
+
+  async function handleToggle(company) {
+    try {
+      setPendingId(company.id);
+      await toggleStatus(company.id).unwrap();
+    } catch (err) {
+      console.error('Failed to toggle status:', err);
+    } finally {
+      setPendingId(null);
+    }
+  }
 }

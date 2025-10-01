@@ -296,6 +296,25 @@ export function OrdersTable({
             items.every((it) => String(it.status || '') === 'delivered');
 
           const orderStatus = computeOrderStatus(o);
+          // Normalize status strings like "Return Accepted", "returned_accept" → "returned_accept"
+          const norm = (v) =>
+            String(v || '')
+              .toLowerCase()
+              .trim()
+              .replace(/\s+/g, '_');
+
+          // Treat both variants as final: returned_accept/returned_accepted and returned_reject/returned_rejected
+          const isReturnFinal = (s) =>
+            /(returned_(accept|accepted)|returned_(reject|rejected))/.test(
+              norm(s)
+            );
+
+          // finalization checks
+          const finalizedByItems = items.some((it) => isReturnFinal(it.status));
+          const finalizedByOrder = isReturnFinal(orderStatus);
+
+          // hide kebab if finalized
+          const hideKebab = finalizedByItems || finalizedByOrder;
 
           return (
             <div
@@ -371,72 +390,74 @@ export function OrdersTable({
 
               {/* Actions: ONLY 3-dot menu */}
               <div className="col-span-1 flex items-center justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 hover:bg-accent"
-                      aria-label="More actions"
-                      title="More actions"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-
-                  {/* If a return is pending: ONLY Accept/Reject */}
-                  {hasPendingReturn ? (
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>Return</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => runReturnAction(o, 'accept')}
-                        disabled={acting}
+                {!hideKebab && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 hover:bg-accent"
+                        aria-label="More actions"
+                        title="More actions"
                       >
-                        Accept Return Request
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => runReturnAction(o, 'reject')}
-                        disabled={acting}
-                      >
-                        Reject Return Request
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  ) : (
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
 
-                      {/* Hide update/cancel when fully delivered */}
-                      {!isAllDelivered && (
-                        <DropdownMenuItem onClick={() => onEdit?.(o)}>
-                          Update Order Status
-                        </DropdownMenuItem>
-                      )}
-                      {!isAllDelivered && (
+                    {/* If a return is pending: ONLY Accept/Reject */}
+                    {hasPendingReturn ? (
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Return</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => onDelete?.(o)}
-                          disabled={!!loadingIds?.has(id)}
-                          className="text-destructive focus:text-destructive"
+                          onClick={() => runReturnAction(o, 'accept')}
+                          disabled={acting}
                         >
-                          Cancel Order Items
+                          Accept Return Request
                         </DropdownMenuItem>
-                      )}
+                        <DropdownMenuItem
+                          onClick={() => runReturnAction(o, 'reject')}
+                          disabled={acting}
+                        >
+                          Reject Return Request
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    ) : (
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
 
-                      {/* Request Return only if any delivered item exists */}
-                      {hasDeliveredItems && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => onRequestReturn?.(o)}
-                          >
-                            Request Return
+                        {/* Hide update/cancel when fully delivered */}
+                        {!isAllDelivered && (
+                          <DropdownMenuItem onClick={() => onEdit?.(o)}>
+                            Update Order Status
                           </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  )}
-                </DropdownMenu>
+                        )}
+                        {!isAllDelivered && (
+                          <DropdownMenuItem
+                            onClick={() => onDelete?.(o)}
+                            disabled={!!loadingIds?.has(id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            Cancel Order Items
+                          </DropdownMenuItem>
+                        )}
+
+                        {/* Request Return only if any delivered item exists */}
+                        {hasDeliveredItems && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => onRequestReturn?.(o)}
+                            >
+                              Request Return
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    )}
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           );

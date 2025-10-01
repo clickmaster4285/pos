@@ -1,3 +1,4 @@
+// authApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { createSlice } from "@reduxjs/toolkit";
 import { addToast } from "./toastSlice";
@@ -40,8 +41,7 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearAuth, setLoading, setError } =
-  authSlice.actions;
+export const { setCredentials, clearAuth, setLoading, setError } = authSlice.actions;
 
 export const authApi = createApi({
   reducerPath: "authApi",
@@ -55,7 +55,8 @@ export const authApi = createApi({
     responseHandler: async (response) => {
       const text = await response.text();
       try {
-        return JSON.parse(text);
+        const parsed = JSON.parse(text);
+        return { ...parsed, status: response.status }; // Include status in response
       } catch {
         return {
           status: response.status,
@@ -73,44 +74,29 @@ export const authApi = createApi({
         method: "POST",
         body: loginData,
       }),
-      transformResponse: (res) => {
+      transformResponse: (res, meta) => {
         if (res.success) {
-          return res;
+          return { ...res, status: meta?.response?.status || 200 };
         }
-        throw new Error(res.message || "Login failed");
+        throw { message: res.message || "Login failed", status: meta?.response?.status || 400 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         dispatch(setLoading(true));
         dispatch(setError(null));
 
         try {
           const { data } = await queryFulfilled;
-
           if (data.success && data.data.user) {
-            console.log("the data.data are: ", data)
-            // ✅ Save tokens in sessionStorage
             sessionStorage.setItem("authToken", data.data.token);
             sessionStorage.setItem("refreshToken", data.data.refreshToken);
-
-            // ✅ Update redux state
             dispatch(setCredentials({ user: data.data.user }));
-
-            // ✅ Show success toast
-            dispatch(
-              addToast({
-                type: "success",
-                message: `Welcome back, ${data.data.user.name}!`,
-              })
-            );
           }
         } catch (error) {
           dispatch(setError(error.message));
-          dispatch(
-            addToast({
-              type: "error",
-              message: error.message || "Login failed",
-            })
-          );
         } finally {
           dispatch(setLoading(false));
         }
@@ -123,6 +109,14 @@ export const authApi = createApi({
         method: "DELETE",
         credentials: "include",
       }),
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 200,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -131,35 +125,28 @@ export const authApi = createApi({
             sessionStorage.removeItem("authToken");
             sessionStorage.removeItem("refreshToken");
             dispatch(clearAuth());
-            dispatch(
-              addToast({
-                type: "info",
-                message: data.message || "Logged out successfully",
-              })
-            );
           }
         } catch (error) {
           console.error("[authApi] Logout API error:", error);
-          dispatch(
-            addToast({
-              type: "error",
-              message: "Logout failed, please try again",
-            })
-          );
         }
       },
     }),
+
     refreshToken: builder.mutation({
       query: () => ({
         url: "/refresh",
         method: "POST",
       }),
-      transformResponse: (res) => {
+      transformResponse: (res, meta) => {
         if (res.success) {
-          return res;
+          return { ...res, status: meta?.response?.status || 200 };
         }
-        throw new Error(res.message || "Token refresh failed");
+        throw { message: res.message || "Token refresh failed", status: meta?.response?.status || 400 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -172,8 +159,17 @@ export const authApi = createApi({
         }
       },
     }),
+
     getMe: builder.query({
       query: () => "/me",
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 200,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       providesTags: ["Auth"],
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
@@ -186,11 +182,20 @@ export const authApi = createApi({
         }
       },
     }),
+
     registerUser: builder.mutation({
       query: (registerData) => ({
         url: "/register",
         method: "POST",
         body: registerData,
+      }),
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 201,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
       }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         dispatch(setLoading(true));
@@ -200,48 +205,34 @@ export const authApi = createApi({
           const { data } = await queryFulfilled;
           if (data.success && data.data.user) {
             dispatch(setCredentials({ user: data.data.user }));
-            dispatch(
-              addToast({
-                type: "success",
-                message: `Welcome, ${data.data.user.name}!`,
-              })
-            );
           }
         } catch (error) {
           dispatch(setError(error.message));
-          dispatch(
-            addToast({
-              type: "error",
-              message: error.message || "Registration failed",
-            })
-          );
         } finally {
           dispatch(setLoading(false));
         }
       },
     }),
+
     verifyEmail: builder.mutation({
       query: ({ email, otp }) => ({
         url: "/verify-email",
         method: "POST",
         body: { email, otp },
       }),
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 200,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          dispatch(
-            addToast({
-              type: "success",
-              message: data.message || "Email verified successfully",
-            })
-          );
         } catch (error) {
-          dispatch(
-            addToast({
-              type: "error",
-              message: error?.data?.message || "Email verification failed",
-            })
-          );
+          // Error handling is managed by toastMiddleware
         }
       },
     }),

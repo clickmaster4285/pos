@@ -1,3 +1,4 @@
+// CompanyList.jsx
 'use client';
 
 import { Card } from '@/components/ui/card';
@@ -24,9 +25,11 @@ import {
   Mail,
   Phone,
   MapPin,
-  Edit,
-  Trash2,
   MoreVertical,
+  Calendar,
+  Users,
+  Package,
+  FileText,
 } from 'lucide-react';
 
 const safe = (v) => (typeof v === 'string' ? v : '—');
@@ -38,178 +41,207 @@ function statusVariant(isActive) {
 
 export function CompanyList({
   items = [],
-
-  handleToggle, 
-  pendingId, 
+  handleToggle,
+  pendingId,
+  showUnverified = false,
 }) {
   if (!items?.length) {
     return (
-      <p className="text-center text-muted-foreground py-6">
-        No companies found.
-      </p>
+      <Card className="border-border/60">
+        <div className="text-center py-12">
+          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Building2 className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium text-foreground mb-2">
+            No companies found
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            {showUnverified 
+              ? "All company applications have been processed."
+              : "No companies match your current filters."
+            }
+          </p>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <Card className="divide-y border-border">
-      {/* Header row */}
-      <div className="grid grid-cols-12 items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <div className="col-span-3">Company</div>
-        <div className="col-span-2">Email</div>
-        <div className="col-span-2">Phone</div>
+    <Card className="border-border/60 overflow-hidden">
+      {/* Header */}
+      <div className="grid grid-cols-12 items-center px-6 py-4 bg-muted/30 border-b border-border/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="col-span-4">Company</div>
+        <div className="col-span-2">Contact</div>
         <div className="col-span-3">Address</div>
-        <div className="col-span-1 text-center">Status</div>
+        <div className="col-span-2">Stats</div>
+        <div className="col-span-1 text-right">Actions</div>
       </div>
 
       {/* Rows */}
-      {items.map((c) => {
-        const id = getId(c);
-        const isPending = pendingId === id;
-        const plans = Array.isArray(c.plan) ? c.plan : [];
+      <div className="divide-y divide-border/50">
+        {items.map((c) => {
+          const id = getId(c);
+          const isPending = pendingId === id;
+          const plans = Array.isArray(c.plan) ? c.plan : [];
+          
+          const usersCount = Array.isArray(c?.gain?.staff) ? c.gain.staff.length : 0;
+          const vendorsCount = c?.gain?.vendor || 0;
+          const inventoryCount = c?.gain?.inventory || 0;
 
-        return (
-          <div
-            key={id}
-            className="grid grid-cols-12 items-center px-4 py-3 hover:bg-accent/30 transition-colors"
-          >
-            {/* Company (icon + name + plans) */}
-            <div className="col-span-12 sm:col-span-3 mb-2 sm:mb-0">
-              <div className="flex items-start gap-2">
-                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                  <Building2 className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-tight truncate">
-                    {safe(c.name)}
-                  </p>
-                  {/* Plans as small badges */}
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {plans.length > 0 ? (
-                      plans.slice(0, 4).map((pl, idx) => (
-                        <Badge
-                          key={pl?._id || idx}
-                          variant="outline"
-                          className="text-[10px] font-normal"
-                        >
-                          {safe(pl?.name)}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">
-                        No Plans
-                      </span>
-                    )}
-                    {plans.length > 4 ? (
-                      <span className="text-[10px] text-muted-foreground">
-                        +{plans.length - 4} more
-                      </span>
-                    ) : null}
+          return (
+            <div
+              key={id}
+              className="grid grid-cols-12 items-center px-6 py-4 hover:bg-muted/20 transition-colors group"
+            >
+              {/* Company */}
+              <div className="col-span-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">
+                      {safe(c.name)}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {safe(c.industry)}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {plans.length > 0 ? (
+                        plans.slice(0, 2).map((pl, idx) => (
+                          <Badge
+                            key={pl?._id || idx}
+                            variant="outline"
+                            className="text-[10px] font-normal bg-primary/5"
+                          >
+                            {safe(pl?.name)}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">
+                          No Plans
+                        </span>
+                      )}
+                      {plans.length > 2 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          +{plans.length - 2} more
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Email */}
-            <div className="col-span-6 sm:col-span-2 mb-2 sm:mb-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-3 w-3 shrink-0 text-secondary-foreground" />
-                <span className="truncate">{safe(c.contactEmail)}</span>
+              {/* Contact */}
+              <div className="col-span-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate">{safe(c.contactEmail)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate">{safe(c.contactPhone)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="col-span-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="line-clamp-2">{safe(c.address)}</span>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="col-span-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    <span className="font-medium text-foreground">{usersCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    <span className="font-medium text-foreground">{vendorsCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    <span className="font-medium text-foreground">{inventoryCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status & Actions */}
+              <div className="col-span-1">
+                <div className="flex items-center justify-end gap-2">
+                  <Badge
+                    variant={statusVariant(!!c.isActive)}
+                    className="text-xs font-medium"
+                  >
+                    {c.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                  
+                  {!showUnverified && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Company Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        
+                        <HoverCard openDelay={100} closeDelay={100}>
+                          <HoverCardTrigger asChild>
+                            <DropdownMenuItem className="cursor-default">
+                              Change Status
+                            </DropdownMenuItem>
+                          </HoverCardTrigger>
+                          <HoverCardContent side="left" align="start" className="w-64">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">
+                                  Set Active
+                                </span>
+                                <Switch
+                                  checked={!!c.isActive}
+                                  onCheckedChange={() => handleToggle?.(c)}
+                                  disabled={isPending}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                Toggle to {c.isActive ? 'deactivate' : 'activate'} this company.
+                              </p>
+                              <Button
+                                size="sm"
+                                className="w-full"
+                                onClick={() => handleToggle?.(c)}
+                                disabled={isPending}
+                              >
+                                {isPending
+                                  ? 'Updating…'
+                                  : c.isActive
+                                  ? 'Deactivate'
+                                  : 'Activate'}
+                              </Button>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Phone */}
-            <div className="col-span-6 sm:col-span-2 mb-2 sm:mb-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-3 w-3 shrink-0 text-secondary-foreground" />
-                <span className="truncate">{safe(c.contactPhone)}</span>
-              </div>
-            </div>
-
-            {/* Address */}
-            <div className="col-span-12 sm:col-span-3 mb-2 sm:mb-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-                <MapPin className="h-3 w-3 shrink-0 text-secondary-foreground" />
-                <span className="truncate">{safe(c.address)}</span>
-              </div>
-            </div>
-
-            {/* Status (badge) */}
-            <div className="col-span-3 sm:col-span-1 flex items-center justify-center">
-              <Badge
-                variant={statusVariant(!!c.isActive)}
-                className="h-6 px-2 text-[10px]"
-              >
-                {c.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </div>
-
-            {/* Actions */}
-            <div className="col-span-3 sm:col-span-1">
-              <div className="flex justify-start sm:justify-end gap-1">
-                {/* 3-dot with HoverCard to change status */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 hover:bg-accent"
-                      aria-label="More actions"
-                    >
-                      <MoreVertical className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-
-                    <HoverCard openDelay={100} closeDelay={100}>
-                      <HoverCardTrigger asChild>
-                        <DropdownMenuItem className="cursor-default">
-                          Change Status
-                        </DropdownMenuItem>
-                      </HoverCardTrigger>
-                      <HoverCardContent
-                        side="left"
-                        align="start"
-                        className="w-64"
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">
-                              Set Active
-                            </span>
-                            <Switch
-                              checked={!!c.isActive}
-                              onCheckedChange={() => handleToggle?.(c)}
-                              disabled={!!isPending}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Toggle to {c.isActive ? 'deactivate' : 'activate'}{' '}
-                            this company.
-                          </p>
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            onClick={() => handleToggle?.(c)}
-                            disabled={!!isPending}
-                          >
-                            {isPending
-                              ? 'Updating…'
-                              : c.isActive
-                              ? 'Deactivate'
-                              : 'Activate'}
-                          </Button>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </Card>
   );
 }

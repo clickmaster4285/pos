@@ -101,7 +101,7 @@ export default function OrdersClient() {
     isError,
     refetch,
   } = useGetOrdersQuery({ companyId }, { skip: !companyId });
-console.log("orders are" , orders)
+  // console.log("orders are" , orders)
   //fetching inventory
   const { data: inventory = [] } = useGetInventoryQuery();
   //fetching addresses
@@ -437,11 +437,11 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
           {/* Date Range */}
           <div className="w-[9.5rem] shrink-0">
             <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className={'h-9 w-full'}>
-                <SelectValue placeholder="Date" />
+              <SelectTrigger id="dateFilter" className="h-9 w-full">
+                <SelectValue placeholder="All Dates" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Dates</SelectItem>
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="yesterday">Yesterday</SelectItem>
                 <SelectItem value="last7">Last 7 days</SelectItem>
@@ -449,7 +449,6 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
               </SelectContent>
             </Select>
           </div>
-
           {/* Order Status */}
           <div className="w-[9.5rem] shrink-0">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -457,7 +456,7 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Order Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -473,7 +472,7 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
                 <SelectValue placeholder="Payment" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All Payment Types</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
                 <SelectItem value="partial">Partial</SelectItem>

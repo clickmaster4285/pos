@@ -425,6 +425,75 @@ const getUserAllById = async (req, res) => {
   }
 };
 
+const deleteStaff = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { companyId } = req.user;
+    let user = await IndexModel.User.findOneAndUpdate(
+      { _id: id, companyId, deleted: false },   // only update if not already deleted
+      { $set: { deleted: true } },   // mark as deleted
+      { new: true }                  // return updated document
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found or already deleted',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'User deleted successfully',
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Server error while deleting user',
+      details: error.message,
+    });
+  }
+};
+
+const active_inactiveUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.user;
+console.log("The id and userId are:", id);
+    let user = await IndexModel.User.findOne({
+      _id: id,
+      deleted: false,
+    });
+
+    // Toggle status
+    const newStatus = !user.isActive;
+    user.isActive = newStatus;
+
+    // Add to history
+    user.history.push({
+      action: `Set isActive to ${newStatus}`,
+      performedBy: userId || 'system',
+      createdAt: new Date(),
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      message: `user ${
+        newStatus ? 'activated' : 'deactivated'
+      } successfully`,
+      user,
+    });
+  } catch (error) {
+    console.error('Error toggling user active state:', error);
+    return res.status(500).json({
+      message: 'Failed to update user status',
+      error: error.message,
+    });
+  }
+};
+
 export default {
   createStaff,
   registerUser,
@@ -432,5 +501,7 @@ export default {
   updateStaff,
   getUserAllById,
   getAllAdminUsers,
-  getAllCustomerUsers
+  getAllCustomerUsers,
+  deleteStaff,
+  active_inactiveUser,
 };

@@ -60,8 +60,8 @@ const validateCreateInput = (data) => {
   if (!itemName || typeof itemName !== 'string' || itemName.length > 200) {
     errors.push('itemName must be a non-empty string (max 200 chars)');
   }
-  if (!itemType || !['part', 'vehicle', 'accessory', 'other'].includes(itemType)) {
-    errors.push('itemType must be part, vehicle, or accessory');
+  if (!itemType || !['Part', 'Whole', 'Other'].includes(itemType)) {
+    errors.push('itemType must be Part, Whole, or Other');
   }
   if (!vendor || !mongoose.isValidObjectId(vendor)) {
     errors.push('vendor must be a valid ObjectId');
@@ -103,8 +103,8 @@ const validateUpdateInput = (data, includeQuantity = true) => {
   if (itemName && (typeof itemName !== 'string' || itemName.length > 200)) {
     errors.push('itemName must be a non-empty string (max 200 chars)');
   }
-  if (itemType && !['part', 'vehicle', 'accessory', 'other'].includes(itemType)) {
-    errors.push('itemType must be part, vehicle, or accessory');
+  if (itemType && !['Part', 'Whole', 'Other'].includes(itemType)) {
+    errors.push('itemType must be Part, Whole, or Other');
   }
   if (vendor && !mongoose.isValidObjectId(vendor)) {
     errors.push('vendor must be a valid ObjectId');

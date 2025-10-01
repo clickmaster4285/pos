@@ -15,6 +15,14 @@ const router = express.Router();
   Indexcontroller.User.createStaff
 );
 
+  router.delete(
+  "/delete-staff/:id",
+  passport.authenticate("jwt", { session: false }),
+  authenticateToken,
+  checkPlanIsActive,
+  Indexcontroller.User.deleteStaff
+);
+
   router.post(
   "/create-user",
   Indexcontroller.User.registerUser
@@ -49,5 +57,11 @@ router.get(
   '/get-all-users-by-id/:id',
   passport.authenticate('jwt', { session: false }),
   Indexcontroller.User.getUserAllById
+);
+
+router.patch(
+  '/active_inactive-user/:id',
+  passport.authenticate('jwt', { session: false }),
+  Indexcontroller.User.active_inactiveUser
 );
 export default router;

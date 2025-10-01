@@ -1,7 +1,7 @@
+// companyApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '') // ← empty lets us use relative paths (works great with Next rewrites)
-  .replace(/\/$/, '');
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -16,7 +16,6 @@ const getToken = (getState) =>
 export const companyApi = createApi({
   reducerPath: 'companyApi',
   baseQuery: fetchBaseQuery({
-    // If API_URL is empty we’ll hit the same-origin, which can be proxied via Next rewrites (see section 3)
     baseUrl: `${API_URL}/api/company`,
     credentials: 'include',
     prepareHeaders: (headers, { getState }) => {
@@ -25,7 +24,19 @@ export const companyApi = createApi({
       if (token) headers.set('Authorization', `Bearer ${token}`);
       return headers;
     },
-    // Better logger: prints true HTTP method + final URL
+    responseHandler: async (response) => {
+      const text = await response.text();
+      try {
+        const parsed = JSON.parse(text);
+        return { ...parsed, status: response.status }; // Include status
+      } catch {
+        return {
+          status: response.status,
+          message: text,
+          isHtml: text.startsWith("<!DOCTYPE html>"),
+        };
+      }
+    },
     fetchFn: async (input, init) => {
       try {
         const isReq = input instanceof Request;
@@ -38,94 +49,114 @@ export const companyApi = createApi({
   }),
   tagTypes: ['Company', 'User'],
   endpoints: (builder) => ({
-    /** POST /api/company/create-company */
     createCompany: builder.mutation({
       query: (body) => ({
         url: '/create-company',
         method: 'POST',
-        body, // e.g. { name, email, phone, address, industry, size, logoUrl }
+        body,
       }),
-      transformResponse: (res) => {
-        // Accept either { success, data } or a raw company doc
-        if (res?.success && res?.data) return res.data;
-        if (res && res._id) return res;
-        throw new Error(res?.message || 'Failed to create company');
+      transformResponse: (res, meta) => {
+        if (res?.success && res?.data) return { ...res, status: meta?.response?.status || 201 };
+        if (res && res._id) return { ...res, status: meta?.response?.status || 201 };
+        throw { message: res?.message || 'Failed to create company', status: meta?.response?.status || 400 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       invalidatesTags: [{ type: 'Company', id: 'LIST' }],
     }),
 
-    /** GET /api/company/get-all-company */
     getAllCompanies: builder.query({
       query: () => '/get-all-company',
-      transformResponse: (res) => {
-        if (res?.success && Array.isArray(res.data)) return res.data;
-        if (Array.isArray(res)) return res;
-        throw new Error(res?.message || 'Failed to fetch companies');
+      transformResponse: (res, meta) => {
+        if (res?.success && Array.isArray(res.data)) return { ...res, status: meta?.response?.status || 200 };
+        if (Array.isArray(res)) return { data: res, status: meta?.response?.status || 200 };
+        throw { message: res?.message || 'Failed to fetch companies', status: meta?.response?.status || 400 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       providesTags: (result) =>
         result
           ? [
-              ...result.map((c) => ({ type: 'Company', id: c._id })),
+              ...result.data.map((c) => ({ type: 'Company', id: c._id })),
               { type: 'Company', id: 'LIST' },
             ]
           : [{ type: 'Company', id: 'LIST' }],
     }),
 
-    /** PUT /api/company/verify-company_admin?id=<id> */
     verifyCompanyAdmin: builder.mutation({
       query: (id) => ({
-        url: `/verify-company_admin?id=${encodeURIComponent(id)}`, // EXACT path your backend expects
+        url: `/verify-company_admin?id=${encodeURIComponent(id)}`,
         method: 'PUT',
-        body: { confirm: true }, // tiny body to keep it a JSON PUT
+        body: { confirm: true },
       }),
-      // Surface backend errors cleanly
-      transformResponse: (res) => {
+      transformResponse: (res, meta) => {
         if (!res?.success)
-          throw new Error(res?.error || res?.message || 'Verification failed');
-        return { message: res.message, user: res.data };
+          throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
+        return { ...res, status: meta?.response?.status || 200 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       invalidatesTags: (result, _error, id) =>
         result
           ? [
               { type: 'User', id },
               { type: 'User', id: 'LIST' },
-              { type: 'Company', id: 'LIST' }, // triggers GET refetch of companies
+              { type: 'Company', id: 'LIST' },
             ]
           : [],
     }),
+
     verifyEmailCode: builder.mutation({
       query: ({ email, otp }) => ({
-        url: '/verify-email-admin', // adjust if your backend path differs
+        url: '/verify-email-admin',
         method: 'POST',
-        body: { email, otp }, // <-- send OTP key the backend expects
+        body: { email, otp },
       }),
-      transformResponse: (res) => {
+      transformResponse: (res, meta) => {
         if (!res?.success)
-          throw new Error(res?.error || res?.message || 'Verification failed');
-        return res;
+          throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
+        return { ...res, status: meta?.response?.status || 200 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       invalidatesTags: [{ type: 'User', id: 'LIST' }],
     }),
 
-    /** POST /api/company/resend-code  body: { email } */
     resendVerificationCode: builder.mutation({
       query: ({ email }) => ({
-        url: '/resend-code', // <-- adjust if backend path differs
+        url: '/resend-code',
         method: 'POST',
         body: { email },
       }),
-      transformResponse: (res) => {
+      transformResponse: (res, meta) => {
         if (!res?.success)
-          throw new Error(
-            res?.error || res?.message || 'Failed to resend code'
-          );
-        return res;
+          throw { message: res?.error || res?.message || 'Failed to resend code', status: meta?.response?.status || 400 };
+        return { ...res, status: meta?.response?.status || 200 };
       },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
     }),
 
-    // PATCH /api/vendor/status-update-vendor/:id
     toggleCompanyStatus: builder.mutation({
       query: (id) => ({ url: `/status-update-company/${id}`, method: 'PATCH' }),
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 200,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
       invalidatesTags: (result, error, id) => [{ type: 'Company', id }],
     }),
   }),

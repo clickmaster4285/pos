@@ -328,44 +328,57 @@ const getAllCompany = async (req, res) => {
     });
   }
 };
+
 const active_inactiveCompany = async (req, res) => {
   try {
     const { id } = req.params;
-    const { companyId, userId } = req.user;
+    const { userId } = req.user;
 
+    // 1. Find company
     let company = await IndexModel.Company.findOne({
       _id: id,
-
       deleted: false,
     });
 
-    // Toggle status
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    // 2. Toggle status
     const newStatus = !company.isActive;
     company.isActive = newStatus;
 
-    // Add to history
+    // 3. Add to history
     company.history.push({
       action: `Set isActive to ${newStatus}`,
-      performedBy: userId || 'system',
+      performedBy: userId || "system",
       createdAt: new Date(),
     });
 
+    // 4. Save company
     await company.save();
+
+    // 5. Update all users of the company
+    await IndexModel.User.updateMany(
+      { companyId: company.companyId, deleted: false },
+      { $set: { isActive: newStatus } }
+    );
 
     return res.status(200).json({
       message: `Company ${
-        newStatus ? 'activated' : 'deactivated'
-      } successfully`,
+        newStatus ? "activated" : "deactivated"
+      } successfully, and all users updated.`,
       company,
     });
   } catch (error) {
-    console.error('Error toggling company active state:', error);
+    console.error("Error toggling company active state:", error);
     return res.status(500).json({
-      message: 'Failed to update company status',
+      message: "Failed to update company status",
       error: error.message,
     });
   }
 };
+
 
 export default {
   createCompany,
