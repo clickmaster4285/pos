@@ -8,6 +8,7 @@ import Vendor from "./vendor.routes.js";
 import Inventory from "./inventory.routes.js";
 import Order from "./order.routes.js";
 import AddressBook from "./addressBook.route.js";
+import Bill from "./billing.route.js";
 
 const router = express.Router();
 
@@ -53,5 +54,6 @@ router.use("/vendor", Vendor);
 router.use("/inventory", Inventory);
 router.use("/order", Order);
 router.use("/address-book", AddressBook);
+router.use("/billing", Bill);
 
 export default router;

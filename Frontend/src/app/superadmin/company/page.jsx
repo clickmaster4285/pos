@@ -10,6 +10,7 @@ import { UnverifiedCompanies } from '@/components/company/UnverifiedCompanies';
 import {
   useGetAllCompaniesQuery,
   useToggleCompanyStatusMutation,
+  useVerifyCompanyAdminMutation, // Add this import
 } from '@/features/CompanyApi';
 
 function mapCompany(c) {
@@ -55,23 +56,27 @@ export default function CompaniesPage() {
     isLoading,
     isError,
     error,
+    refetch, // Add refetch to refresh data after verification
   } = useGetAllCompaniesQuery();
 
   const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
+  const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation(); // Add verification mutation
   const [pendingId, setPendingId] = useState(null);
-
   // Separate verified and unverified companies
   const { verifiedCompanies, unverifiedCompanies } = useMemo(() => {
-    const mapped = Array.isArray(companies) && companies.length
-      ? companies.map(mapCompany)
-      : [];
-
+    
+    const mapped = Array.isArray(companies.data) && companies.data.length
+    ? companies.data.map(mapCompany)
+    : [];
+    
+    
     return {
       verifiedCompanies: mapped.filter(c => c.isActive),
       unverifiedCompanies: mapped.filter(c => !c.isActive),
     };
   }, [companies]);
-
+  
+  // console.log('unverifiedCompanies data:', unverifiedCompanies.length);
   // Use appropriate data based on view mode
   const dataToUse = showUnverified ? unverifiedCompanies : verifiedCompanies;
 
@@ -115,7 +120,6 @@ export default function CompaniesPage() {
 
       result = result.filter((c) => {
         const createdDate = new Date(c.createdAt);
-
         switch (dateFilter) {
           case 'today':
             return createdDate >= startDate;
@@ -147,6 +151,15 @@ export default function CompaniesPage() {
 
   const start = (page - 1) * pageSize;
   const current = filtered.slice(start, start + pageSize);
+
+  const handleVerify = async (id, action) => {
+    try {
+      await verifyCompany({ id, action }).unwrap();
+      refetch(); // Refresh data after verification
+    } catch (e) {
+      console.error('Verification error:', e);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -283,19 +296,25 @@ export default function CompaniesPage() {
 
         {/* Content */}
         <div>
-          {view === 'grid' ? (
+          {showUnverified ? (
+            <UnverifiedCompanies unverifiedCompanie={unverifiedCompanies}/>
+          ) : view === 'grid' ? (
             <CompanyGrid
               items={current}
               handleToggle={handleToggle}
+              handleVerify={handleVerify} // Pass handleVerify
               pendingId={pendingId}
               showUnverified={showUnverified}
+              isVerifying={isVerifying} // Pass isVerifying
             />
           ) : (
             <CompanyList
               items={current}
               handleToggle={handleToggle}
+              handleVerify={handleVerify} // Pass handleVerify
               pendingId={pendingId}
               showUnverified={showUnverified}
+              isVerifying={isVerifying} // Pass isVerifying
             />
           )}
 

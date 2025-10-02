@@ -40,15 +40,15 @@ export function PendingVerifications() {
   };
 
   const pendingUsers = (Array.isArray(users) ? users : []).filter(
-    (u) => u?.status?.isaccepted !== 'true'
+    (u) => u?.status?.isaccepted !== 'true' && u?.status?.isactive !== 'true'
   );
 
   const handleVerify = async (id, action) => {
     try {
-      await verifyCompanyAdmin(id).unwrap();
+      await verifyCompanyAdmin({ id, action }).unwrap();
       refetch();
     } catch (e) {
-      console.error(e);
+      console.error('Verification error:', e);
     }
   };
 

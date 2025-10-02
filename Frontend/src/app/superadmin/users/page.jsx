@@ -138,7 +138,7 @@ export default function UsersPage() {
   }
   if (isError) {
     return (
-      <div className="p-6 text-sm text-destructive">
+      <div className="p-6 text-sm ">
         Failed to load users{error?.data?.error ? `: ${error.data.error}` : ''}.
       </div>
     );

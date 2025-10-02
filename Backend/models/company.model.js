@@ -51,6 +51,35 @@ const CompanySchema = new Schema(
       vendor: Number,
       order: Number,
     },
+     invoiceSettings: {
+      format: {
+        prefix: { type: String, default: "INV-" }, // e.g. INV-2025-001
+        numbering: {
+          type: String,
+          enum: ["sequential", "yearly"],
+          default: "sequential",
+        },
+        startNumber: { type: Number, default: 1 },
+      },
+      currency: {
+        code: { type: String, default: "PKR" }, // PKR, USD, EUR
+        symbol: { type: String, default: "₨" },
+      },
+      tax: {
+        isTaxPayerRegistered: { type: Boolean, default: false },
+        taxRate: { type: Number, default: 0 }, // e.g. 16
+      },
+      template: {
+        header: { type: String, default: "" }, // custom header HTML/text
+        footer: { type: String, default: "" }, // footer text
+        logoUrl: { type: String, default: "" }, // company logo for invoices
+      },
+      thermalPrint: {
+        paperWidth: { type: Number, default: 58 }, // mm, common: 58mm or 80mm
+        fontSize: { type: Number, default: 12 },
+        showLogo: { type: Boolean, default: true },
+      },
+    },
     isActive: {
       type: Boolean,
       default: false,

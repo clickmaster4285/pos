@@ -24,7 +24,13 @@ const ALLOWED_FEATURES = [
   'support',
 ];
 
-export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
+export function PlanForm({
+  formData,
+  onFormChange,
+  isEditMode,
+  planName,
+  onCancel,
+}) {
   const [featureText] = useState(''); // kept to avoid touching other logic
 
   const setField = (field, value) =>
@@ -56,10 +62,13 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
   const removeFeature = (idx) => {
     const next = currentFeatures.filter((_, i) => i !== idx);
     setFeatures(next);
+    onCancel?.();
   };
 
   const selectAll = () => setFeatures([...ALLOWED_FEATURES]);
   const clearAll = () => setFeatures([]);
+  const readNum = (v) => (v === 0 || typeof v === 'number' ? String(v) : ''); // for value=
+  const writeNum = (s) => (s === '' ? undefined : Number(s)); // for onChange
 
   return (
     <div className="grid gap-4 py-4">
@@ -83,10 +92,8 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
           <Input
             id={isEditMode ? 'edit-validateDays' : 'validateDays'}
             type="number"
-            value={formData.validateDays ?? 0}
-            onChange={(e) =>
-              setField('validateDays', parseInt(e.target.value) || 0)
-            }
+            value={readNum(formData.validateDays)}
+            onChange={(e) => setField('validateDays', writeNum(e.target.value))}
             placeholder="30"
           />
         </div>
@@ -96,8 +103,8 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
             id={isEditMode ? 'edit-price' : 'price'}
             type="number"
             step="1"
-            value={formData.price}
-            onChange={(e) => setField('price', parseFloat(e.target.value) || 0)}
+            value={readNum(formData.price)}
+            onChange={(e) => setField('price', writeNum(e.target.value))}
             placeholder="0.00"
           />
         </div>
@@ -130,9 +137,9 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
           <Input
             id={isEditMode ? 'edit-maxInventoryItems' : 'maxInventoryItems'}
             type="number"
-            value={formData.limitations?.maxInventoryItems ?? 0}
+            value={readNum(formData.limitations?.maxInventoryItems)}
             onChange={(e) =>
-              setLimit('maxInventoryItems', parseInt(e.target.value) || 0)
+              setLimit('maxInventoryItems', writeNum(e.target.value))
             }
           />
         </div>
@@ -143,10 +150,8 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
           <Input
             id={isEditMode ? 'edit-maxStaff' : 'maxStaff'}
             type="number"
-            value={formData.limitations?.maxStaff ?? 0}
-            onChange={(e) =>
-              setLimit('maxStaff', parseInt(e.target.value) || 0)
-            }
+            value={readNum(formData.limitations?.maxStaff)}
+            onChange={(e) => setLimit('maxStaff', writeNum(e.target.value))}
           />
         </div>
         <div className="col-span-4 space-y-2">
@@ -156,10 +161,8 @@ export function PlanForm({ formData, onFormChange, isEditMode, planName }) {
           <Input
             id={isEditMode ? 'edit-maxVendors' : 'maxVendors'}
             type="number"
-            value={formData.limitations?.maxVendors ?? 0}
-            onChange={(e) =>
-              setLimit('maxVendors', parseInt(e.target.value) || 0)
-            }
+            value={readNum(formData.limitations?.maxVendors)}
+            onChange={(e) => setLimit('maxVendors', writeNum(e.target.value))}
           />
         </div>
       </div>

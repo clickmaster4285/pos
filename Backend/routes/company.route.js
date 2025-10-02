@@ -20,7 +20,7 @@ router.get(
 );
 
 router.get(
-  '/get-company/:id',
+  '/get-company',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   // checkplan("inventory"),
@@ -37,5 +37,11 @@ router.patch(
   '/status-update-company/:id',
   passport.authenticate('jwt', { session: false }),
   Indexcontroller.Company.active_inactiveCompany
+);
+
+router.put(
+  '/update-invoice-settings',
+  passport.authenticate('jwt', { session: false }),
+  Indexcontroller.Company.updateInvoiceSettings
 );
 export default router;

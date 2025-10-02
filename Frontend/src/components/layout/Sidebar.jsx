@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useMemo, useEffect } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import React, { useMemo, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 
 import {
   LayoutDashboard,
@@ -19,14 +19,17 @@ import {
   Users,
   BarChart,
   Briefcase,
-} from "lucide-react";
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+} from 'lucide-react';
 
 const iconMap = {
   Dashboard: LayoutDashboard,
   Plans: FileText,
   Companies: Building,
   Users: User,
-  "Payment / Billing": CreditCard,
+  'Payment / Billing': CreditCard,
   Settings: Settings,
   Staff: ClipboardList,
   Permission: Store,
@@ -37,33 +40,33 @@ const iconMap = {
   Orders: ShoppingCart,
   Sumeries: FileText,
   Reports: BarChart,
-  "Live Store": Store,
+  'Live Store': Store,
   Attendance: ClipboardList,
-  "Staff Saleries": CreditCard,
+  'Staff Saleries': CreditCard,
 };
 
 function SidebarFooter({ userName, userRole }) {
   return (
-    <div className="sticky bottom-0 border-t border-sidebar-border bg-sidebar/90 px-4 py-3 backdrop-blur-sm">
+    <div className="sticky bottom-0 border-t border-sidebar-border/50 bg-sidebar/95 px-4 py-3 backdrop-blur-lg">
       <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-radius-md bg-gradient-primary flex items-center justify-center">
-          <User className="h-5 w-5 text-primary-foreground" />
+        <div className="h-10 w-10 rounded-xl text-primary flex items-center justify-center ">
+          <User className="h-5 w-5 text-secoundry" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-sidebar-foreground">
-            {userName || "Guest"}
+            {userName || 'Guest'}
           </p>
-          <p className="truncate text-xs text-sidebar-accent-foreground capitalize">
-            {userRole || "unauthenticated"}
+          <p className="truncate text-xs text-sidebar-accent-foreground/80 capitalize">
+            {userRole || 'unauthenticated'}
           </p>
         </div>
         <Link
           href="/settings/profile"
-          className="flex h-9 w-9 items-center justify-center rounded-radius-md text-sidebar-accent-foreground hover:bg-primary hover:text-primary-foreground transition-colors duration-animation-normal"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-accent-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 transition-all duration-200"
           aria-label="Settings"
           title="Settings"
         >
-          <Settings className="h-5 w-5" />
+          <Settings className="h-4 w-4" />
         </Link>
       </div>
     </div>
@@ -73,19 +76,19 @@ function SidebarFooter({ userName, userRole }) {
 // Function to get auth state from session storage
 const getAuthState = () => {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const authState = sessionStorage.getItem('authUser');
     if (authState) {
       return JSON.parse(authState);
     }
-    
+
     // Alternative: check localStorage if sessionStorage doesn't have it
     const localAuthState = localStorage.getItem('authUser');
     if (localAuthState) {
       return JSON.parse(localAuthState);
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error reading auth state:', error);
@@ -96,12 +99,15 @@ const getAuthState = () => {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  
-  const isSettingsMode = pathname?.startsWith("/settings");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState(null);
 
-  const isActive = (href) => pathname === href || pathname.startsWith(`${href}/`);
+  const isSettingsMode = pathname?.startsWith('/settings');
+
+  const isActive = (href) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   // Get user data from session storage on component mount
   useEffect(() => {
@@ -115,39 +121,63 @@ export default function Sidebar() {
   const roleBasedLinks = useMemo(
     () => ({
       superAdmin: [
-        { href: "/superadmin/dashboard", label: "Dashboard", icon: iconMap["Dashboard"] },
-        { href: "/superadmin/plan", label: "Plans", icon: iconMap["Plans"] },
-        { href: "/superadmin/company", label: "Companies", icon: iconMap["Companies"] },
-        { href: "/superadmin/users", label: "Users", icon: iconMap["Users"] },
-        { href: "#", label: "Payment / Billing", icon: iconMap["Payment / Billing"] },
-        { href: "#", label: "Settings", icon: iconMap["Settings"] },
+        {
+          href: '/superadmin/dashboard',
+          label: 'Dashboard',
+          icon: iconMap['Dashboard'],
+        },
+        { href: '/superadmin/plan', label: 'Plans', icon: iconMap['Plans'] },
+        {
+          href: '/superadmin/company',
+          label: 'Companies',
+          icon: iconMap['Companies'],
+        },
+        { href: '#', label: 'Users', icon: iconMap['Users'] },
+        {
+          href: '#',
+          label: 'Payment / Billing',
+          icon: iconMap['Payment / Billing'],
+        },
+        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
       ],
       admin: [
-        { href: "/admin/dashboard", label: "Dashboard", icon: iconMap["Dashboard"] },
-        { href: "/admin/staff", label: "Staff", icon: iconMap["Staff"] },
-        { href: "#", label: "Permission", icon: iconMap["Permission"] },
-        { href: "/admin/inventory", label: "Inventory", icon: iconMap["Inventory"] },
-        { href: "#", label: "Billing", icon: iconMap["Billing"] },
-        { href: "/admin/vendors", label: "Vendors", icon: iconMap["Vendors"] },
-        { href: "#", label: "Customers", icon: iconMap["Customers"] },
-        { href: "/admin/orders", label: "Orders", icon: iconMap["Orders"] },
-        { href: "#", label: "Sumeries", icon: iconMap["Sumeries"] },
-        { href: "#", label: "Reports", icon: iconMap["Reports"] },
-        { href: "#", label: "Live Store", icon: iconMap["Live Store"] },
-        { href: "#", label: "Attendance", icon: iconMap["Attendance"] },
-        { href: "#", label: "Staff Saleries", icon: iconMap["Staff Saleries"] },
-        { href: "#", label: "Settings", icon: iconMap["Settings"] },
+        {
+          href: '/admin/dashboard',
+          label: 'Dashboard',
+          icon: iconMap['Dashboard'],
+        },
+        { href: '/admin/staff', label: 'Staff', icon: iconMap['Staff'] },
+        {
+          href: '/admin/permissions',
+          label: 'Permission',
+          icon: iconMap['Permission'],
+        },
+        {
+          href: '/admin/inventory',
+          label: 'Inventory',
+          icon: iconMap['Inventory'],
+        },
+        { href: '/admin/billing', label: 'Billing', icon: iconMap['Billing'] },
+        { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
+        { href: '#', label: 'Customers', icon: iconMap['Customers'] },
+        { href: '/admin/orders', label: 'Orders', icon: iconMap['Orders'] },
+        { href: '#', label: 'Sumeries', icon: iconMap['Sumeries'] },
+        { href: '#', label: 'Reports', icon: iconMap['Reports'] },
+        { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
+        { href: '#', label: 'Attendance', icon: iconMap['Attendance'] },
+        { href: '#', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
+        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
       ],
       staff: [
-        { href: "#", label: "Vendor Dashboard", icon: iconMap["Dashboard"] },
-        { href: "#", label: "Orders", icon: iconMap["Orders"] },
-        { href: "#", label: "Inventory", icon: iconMap["Inventory"] },
-        { href: "#", label: "Settings", icon: iconMap["Settings"] },
+        { href: '#', label: 'Vendor Dashboard', icon: iconMap['Dashboard'] },
+        { href: '#', label: 'Orders', icon: iconMap['Orders'] },
+        { href: '#', label: 'Inventory', icon: iconMap['Inventory'] },
+        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
       ],
       user: [
-        { href: "#", label: "Dashboard", icon: iconMap["Dashboard"] },
-        { href: "#", label: "Orders", icon: iconMap["Orders"] },
-        { href: "#", label: "Settings", icon: iconMap["Settings"] },
+        { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
+        { href: '#', label: 'Orders', icon: iconMap['Orders'] },
+        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
       ],
       guest: [],
     }),
@@ -160,20 +190,49 @@ export default function Sidebar() {
   }, [user, loading, roleBasedLinks]);
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 border-r border-sidebar-border bg-sidebar shadow-shadow-sm flex flex-col transition-all duration-animation-normal">
-      <div className="px-6 py-5">
-        <h1 className="text-xl font-bold text-primary">AutoMotive</h1>
+    <aside
+      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col transition-all duration-300 z-50 ${
+        collapsed ? 'w-20' : 'w-64'
+      }`}
+    >
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-sidebar-border/30">
+        <div className="flex items-center justify-between">
+          {/* {!collapsed && ( */}
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent">
+              AutoMotive
+            </h1>
+          </div>
+          {/* )} */}
+          {/* <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 rounded-lg hover:bg-primary/10 text-sidebar-foreground/70 hover:text-primary transition-all duration-200"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button> */}
+        </div>
       </div>
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sidebar-accent-foreground animate-pulse">Loading...</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            <p className="text-sidebar-accent-foreground/70 text-sm">
+              Loading...
+            </p>
+          </div>
         </div>
       ) : (
         <div className="flex flex-1 flex-col">
           {!isSettingsMode ? (
             <>
-              <nav className="flex-1 overflow-y-auto px-3">
+              <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <ul className="space-y-1">
                   {mainLinks.map(({ href, label, icon: Icon }) => {
                     const active = isActive(href);
@@ -181,15 +240,41 @@ export default function Sidebar() {
                       <li key={label}>
                         <Link
                           href={href}
-                          className={`flex items-center rounded-radius-md px-3 py-2 text-sm font-medium transition-colors duration-animation-normal ${
+                          className={`group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
                             active
-                              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-shadow-sm"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          }`}
-                          aria-current={active ? "page" : undefined}
+                              ? 'bg-gradient-to-r from-secondary-foreground/20 to-secondary-foreground/10 text-secondary-foreground border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
+                          } ${collapsed ? 'justify-center' : ''}`}
+                          aria-current={active ? 'page' : undefined}
+                          onMouseEnter={() => setHoveredItem(label)}
+                          onMouseLeave={() => setHoveredItem(null)}
                         >
-                          <Icon className="mr-3 h-5 w-5" />
-                          {label}
+                          <div className="relative">
+                            <Icon
+                              className={`transition-transform duration-200 ${
+                                hoveredItem === label
+                                  ? 'scale-110'
+                                  : 'scale-100'
+                              } ${collapsed ? 'mr-0' : 'mr-3'} h-5 w-5`}
+                            />
+                          </div>
+                          {!collapsed && (
+                            <span className="transition-all duration-200">
+                              {label}
+                            </span>
+                          )}
+
+                          {/* Tooltip for collapsed state */}
+                          {collapsed && (
+                            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
+                              {label}
+                            </div>
+                          )}
+
+                          {/* Active indicator dot for collapsed state */}
+                          {collapsed && active && (
+                            <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-secondary-foreground rounded-full"></div>
+                          )}
                         </Link>
                       </li>
                     );
@@ -200,17 +285,31 @@ export default function Sidebar() {
             </>
           ) : (
             <div className="flex flex-1 flex-col">
-              <div className="px-3 py-2">
+              <div className="px-3 py-4">
                 <button
-                  onClick={() => router.push(mainLinks[0]?.href || "/dashboard")}
-                  className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-colors duration-animation-normal"
+                  onClick={() =>
+                    router.push(mainLinks[0]?.href || '/dashboard')
+                  }
+                  className={`flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-all duration-200 hover:gap-3 ${
+                    collapsed ? 'justify-center' : ''
+                  }`}
                   aria-label="Back to Main"
                   title="Back to Main"
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
                   </svg>
-                  <span>Back to Main</span>
+                  {!collapsed && <span>Back to Main</span>}
                 </button>
               </div>
               <SidebarFooter userName={user?.name} userRole={user?.role} />

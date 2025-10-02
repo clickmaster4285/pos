@@ -10,6 +10,9 @@ import { vendorApi } from '@/features/vendorApi';
 import { inventoryApi } from '@/features/inventoryApi';
 import { staffApi } from '@/features/staffApi';
 import { addressApi } from '@/features/addressApi';
+import { billsApi } from '@/features/billingApi';
+import { settingsApi } from '@/features/settingsApi';
+
 export const store = configureStore({
   reducer: {
     auth: authSlice.reducer,
@@ -23,6 +26,8 @@ export const store = configureStore({
     [inventoryApi.reducerPath]: inventoryApi.reducer,
     [staffApi.reducerPath]: staffApi.reducer,
     [addressApi.reducerPath]: addressApi.reducer,
+    [billsApi.reducerPath]: billsApi.reducer,
+    [settingsApi.reducerPath]: settingsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -35,7 +40,9 @@ export const store = configureStore({
       vendorApi.middleware,
       inventoryApi.middleware,
       staffApi.middleware,
-      addressApi.middleware
+      addressApi.middleware,
+      billsApi.middleware,
+      settingsApi.middleware,
     ),
 });
 

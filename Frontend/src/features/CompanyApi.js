@@ -87,30 +87,30 @@ export const companyApi = createApi({
           : [{ type: 'Company', id: 'LIST' }],
     }),
 
-    verifyCompanyAdmin: builder.mutation({
-      query: (id) => ({
-        url: `/verify-company_admin?id=${encodeURIComponent(id)}`,
-        method: 'PUT',
-        body: { confirm: true },
-      }),
-      transformResponse: (res, meta) => {
-        if (!res?.success)
-          throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
-        return { ...res, status: meta?.response?.status || 200 };
-      },
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
-      }),
-      invalidatesTags: (result, _error, id) =>
-        result
-          ? [
-              { type: 'User', id },
-              { type: 'User', id: 'LIST' },
-              { type: 'Company', id: 'LIST' },
-            ]
-          : [],
-    }),
+verifyCompanyAdmin: builder.mutation({
+  query: ({ id, action }) => ({
+    url: `/verify-company_admin?id=${encodeURIComponent(id)}&action=${encodeURIComponent(action)}`,
+    method: 'PUT',
+    body: { confirm: true },
+  }),
+  transformResponse: (res, meta) => {
+    if (!res?.success)
+      throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
+    return { ...res, status: meta?.response?.status || 200 };
+  },
+  transformErrorResponse: (res, meta) => ({
+    ...res,
+    status: meta?.response?.status || 400,
+  }),
+  invalidatesTags: (result, _error, { id }) =>
+    result
+      ? [
+          { type: 'User', id },
+          { type: 'User', id: 'LIST' },
+          { type: 'Company', id: 'LIST' },
+        ]
+      : [],
+}),
 
     verifyEmailCode: builder.mutation({
       query: ({ email, otp }) => ({
@@ -159,6 +159,20 @@ export const companyApi = createApi({
       }),
       invalidatesTags: (result, error, id) => [{ type: 'Company', id }],
     }),
+    getCompany: builder.query({
+      query: () => `/get-company`,
+      transformResponse: (res, meta) => {
+        // console.log("tehres?.success aer:  ",res)
+        if (res?.success && res?.data) return { ...res, status: meta?.response?.status || 200 };
+        if (res && res._id) return { ...res, status: meta?.response?.status || 200 };
+        throw { message: res?.message || 'Failed to fetch company', status: meta?.response?.status || 400 };
+      },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
+      providesTags: (result, error, id) => [{ type: 'Company', id }],
+    }),
   }),
 });
 
@@ -169,4 +183,5 @@ export const {
   useVerifyEmailCodeMutation,
   useResendVerificationCodeMutation,
   useToggleCompanyStatusMutation,
+  useGetCompanyQuery,
 } = companyApi;

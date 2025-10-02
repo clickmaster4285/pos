@@ -1,29 +1,21 @@
-// UnverifiedCompanies.jsx
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Clock, Building2, Mail, Calendar } from 'lucide-react';
-import { useGetAllCompaniesQuery, useVerifyCompanyAdminMutation } from '@/features/CompanyApi';
+import { useVerifyCompanyAdminMutation } from '@/features/CompanyApi';
 
-export function UnverifiedCompanies() {
-  const {
-    data: companies = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useGetAllCompaniesQuery();
+export function UnverifiedCompanies(unverifiedCompanie) {
+  const unverifiedCompanies = unverifiedCompanie.unverifiedCompanie;
+  const isLoading = unverifiedCompanie.isLoading;
+  const isError = unverifiedCompanie.isError;
+  const error = unverifiedCompanie.error;
+  const refetch = unverifiedCompanie.refetch;
 
   const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation();
 
   const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString() : '—');
-
-  const unverifiedCompanies = (Array.isArray(companies) ? companies : []).filter(
-    (c) => c?.isActive !== true
-  );
-
   const handleVerify = async (id, action) => {
     try {
       await verifyCompany({ id, action }).unwrap();
@@ -160,9 +152,10 @@ export function UnverifiedCompanies() {
                     <XCircle className="h-4 w-4 mr-1" />
                     Reject
                   </Button>
+                  {/* {console.log('the id is : ', c)} */}
                   <Button
                     size="sm"
-                    onClick={() => handleVerify(c._id, 'approve')}
+                    onClick={() => handleVerify(c.id, 'approve')}
                     disabled={isVerifying}
                   >
                     <CheckCircle className="h-4 w-4 mr-1" />

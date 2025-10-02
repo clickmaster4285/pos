@@ -66,8 +66,6 @@ export const verifyOTP = async (req, res) => {
       deleted: false,
     });
     if (company) {
-      company.isActive = true;
-
       company.history = company.history || [];
       company.history.push({
         action: "Company activated after OTP verification",

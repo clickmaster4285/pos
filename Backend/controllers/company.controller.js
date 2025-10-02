@@ -89,6 +89,9 @@ const createCompany = async (req, res) => {
         manageAppointments: true, // receptionist use
         manageTeams: true,
         managePlans: true, // for superadmin/admin
+        editBilling: true,
+        deleteBilling: true,
+        addBilling: true,
       },
       history: [
         {
@@ -201,30 +204,56 @@ const createCompany = async (req, res) => {
 };
 
 const verifyCompany_Admin = async (req, res) => {
+  const { id, action } = req.query;
   try {
-    const { id } = req.query;
-    // console.log("tje id: ", id)
+    console.log("the id and action is : ",id, action)
     if (req.user.role !== 'superAdmin') {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized: Only superAdmin can perform this action',
       });
     }
-    const performedBy = req.user?.userId; // Assuming authenticated user ID is available in req.user
 
-    // Update user to set status.isaccepted to "true" and add history entry
-    const updatedUser = await IndexModel.User.findByIdAndUpdate(
-      { _id: id },
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid action: Must be "approve" or "reject"',
+      });
+    }
+
+    const performedBy = req.user?.userId;
+    const isActive = action === 'approve' ? 'true' : 'false';
+    const actionMessage = action === 'approve' ? 'Company admin approved' : 'Company admin rejected';
+
+    const company = await IndexModel.Company.findByIdAndUpdate(
+      { _id: id, deleted: false, isActive: false },
       {
         $set: {
-          'status.isaccepted': 'true',
-          'status.performedBy': performedBy,
-          'status.updatedAt': new Date(),
-          // "status.updatedAt": new Date(),
+          isActive: action === 'approve',
         },
         $push: {
           history: {
-            action: 'Company admin verified',
+            action: actionMessage,
+            performedBy,
+            performedAt: new Date(),
+          },
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    // Update user to set status.isaccepted and status.isactive
+    const updatedUser = await IndexModel.User.findOneAndUpdate(
+      { userId: company.owner, deleted: false, isActive: true, verified:true},
+      {
+        $set: {
+          'status.isaccepted': isActive,
+          'status.performedBy': performedBy,
+          'status.updatedAt': new Date(),
+        },
+        $push: {
+          history: {
+            action: actionMessage,
             performedBy,
             performedAt: new Date(),
           },
@@ -242,7 +271,7 @@ const verifyCompany_Admin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Company admin verified successfully',
+      message: `Company admin ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
       data: {
         userId: updatedUser.userId,
         name: updatedUser.name,
@@ -252,30 +281,73 @@ const verifyCompany_Admin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error verifying company admin:', error);
+    console.error(`Error ${action} company admin:`, error);
     return res.status(500).json({
       success: false,
-      error: 'Server error during verification',
+      error: `Server error during ${action} verification`,
       details: error.message,
     });
+  }
+};
+
+const updateInvoiceSettings = async (req, res) => {
+  try {
+    const companyId = req.user.companyId;
+    const updateData = req.body;
+    // Validate input
+    if (!companyId) {
+      return res.status(400).json({ error: 'Company ID is required' });
+    }
+    
+    // Validate invoice settings
+    const validNumbering = ['sequential', 'yearly'];
+    if (updateData.format?.numbering && !validNumbering.includes(updateData.format.numbering)) {
+      return res.status(400).json({ error: 'Invalid numbering format' });
+    }
+    
+    if (updateData.tax?.taxRate && (updateData.tax.taxRate < 0 || updateData.tax.taxRate > 100)) {
+      return res.status(400).json({ error: 'Tax rate must be between 0 and 100' });
+    }
+    
+    if (updateData.thermalPrint?.paperWidth && ![58, 80].includes(updateData.thermalPrint.paperWidth)) {
+      return res.status(400).json({ error: 'Paper width must be 58mm or 80mm' });
+    }
+    
+    console.log("the update data is : ", updateData, companyId)
+    // Update invoice settings
+    const updatedCompany = await IndexModel.Company.findOneAndUpdate(
+      {companyId, deleted: false, isActive: true},
+      { $set: { invoiceSettings: updateData } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedCompany) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
+    res.status(200).json({
+      message: 'Invoice settings updated successfully',
+      invoiceSettings: updatedCompany.invoiceSettings
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
 // Get company by ID
 const getCompany = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.query;
+    console.log("the id from get company is : ", id, req.user.companyId)
     let company;
     if (req.user.role === 'superAdmin') {
       // console.log("eh id is : ", id)
       company = await IndexModel.Company.findOne({ _id: id });
     }
     company = await IndexModel.Company.findOne({
-      owner: req.user.userId,
-      _id: id,
+      companyId: req.user.companyId,
       deleted: false,
       isActive: true,
-      role: 'admin',
     });
 
     if (!company) {
@@ -312,7 +384,7 @@ const getAllCompany = async (req, res) => {
     if (!company) {
       return res.status(404).json({
         success: false,
-        error: 'Company not found',
+        error: 'Company not available',
       });
     }
 
@@ -341,7 +413,7 @@ const active_inactiveCompany = async (req, res) => {
     });
 
     if (!company) {
-      return res.status(404).json({ message: "Company not found" });
+      return res.status(404).json({ message: 'Company not found' });
     }
 
     // 2. Toggle status
@@ -351,7 +423,7 @@ const active_inactiveCompany = async (req, res) => {
     // 3. Add to history
     company.history.push({
       action: `Set isActive to ${newStatus}`,
-      performedBy: userId || "system",
+      performedBy: userId || 'system',
       createdAt: new Date(),
     });
 
@@ -366,19 +438,18 @@ const active_inactiveCompany = async (req, res) => {
 
     return res.status(200).json({
       message: `Company ${
-        newStatus ? "activated" : "deactivated"
+        newStatus ? 'activated' : 'deactivated'
       } successfully, and all users updated.`,
       company,
     });
   } catch (error) {
-    console.error("Error toggling company active state:", error);
+    console.error('Error toggling company active state:', error);
     return res.status(500).json({
-      message: "Failed to update company status",
+      message: 'Failed to update company status',
       error: error.message,
     });
   }
 };
-
 
 export default {
   createCompany,
@@ -386,4 +457,5 @@ export default {
   verifyCompany_Admin,
   getAllCompany,
   active_inactiveCompany,
+  updateInvoiceSettings,
 };

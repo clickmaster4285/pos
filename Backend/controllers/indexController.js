@@ -6,6 +6,7 @@ import Vendor from "./vendor.controller.js";
 import Inventory from "./inventory.controller.js";
 import Order from "./order.controller.js";
 import AddressBook from "./addressBook.controller.js";
+import Bill from "./billing.controller.js";
 
 export default {
   Company,
@@ -15,5 +16,6 @@ export default {
   Vendor,
   Inventory,
   Order,
-  AddressBook
+  AddressBook,
+  Bill,
 };

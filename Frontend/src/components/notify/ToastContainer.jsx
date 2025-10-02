@@ -9,7 +9,7 @@ import { useTransition, animated } from '@react-spring/web';
 export function ToastContainer() {
   const dispatch = useDispatch();
   const toasts = useSelector((state) => state.toast.toasts);
-console.log('Current toasts:', toasts);
+// console.log('Current toasts:', toasts);
   const transitions = useTransition(toasts, {
     keys: (toast, index) => index,
     from: { opacity: 0, transform: 'translateX(100%)' },

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   LayoutGrid,
   List,
@@ -14,20 +14,18 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-} from 'lucide-react';
-import { useAddStockMutation } from '@/features/inventoryApi';
-import { AddStockDialog } from './AddStockDialog';
-import dynamic from 'next/dynamic';
+} from "lucide-react";
+import { useAddStockMutation } from "@/features/inventoryApi";
+import { AddStockDialog } from "./AddStockDialog";
+import dynamic from "next/dynamic";
 
-const BarcodeDialog = dynamic(
-  () => import('../barcode/BarcodeDialog'),
-  { ssr: false }
-);
+const BarcodeDialog = dynamic(() => import("../barcode/BarcodeDialog"), {
+  ssr: false,
+});
 
-const InventoryDetailDialog = dynamic(
-  () => import('./InventoryDetailDialog'),
-  { ssr: false }
-);
+const InventoryDetailDialog = dynamic(() => import("./InventoryDetailDialog"), {
+  ssr: false,
+});
 
 export function InventoryList({
   items = [],
@@ -37,12 +35,17 @@ export function InventoryList({
   onDeleteItem,
 }) {
   const [activeItem, setActiveItem] = useState(null);
-  const [barcodeDialog, setBarcodeDialog] = useState({ open: false, sku: '', variantName: '', itemName: '' });
+  const [barcodeDialog, setBarcodeDialog] = useState({
+    open: false,
+    sku: "",
+    variantName: "",
+    itemName: "",
+  });
   const [detailDialog, setDetailDialog] = useState({ open: false, item: null });
   const [expandedItems, setExpandedItems] = useState({});
 
   const handleBarcodeGenerate = (pdfInfo) => {
-    console.log('PDF generated:', pdfInfo);
+    console.log("PDF generated:", pdfInfo);
   };
 
   const toggleVariants = (itemId) => {
@@ -78,8 +81,8 @@ export function InventoryList({
                   <span
                     className={`rounded px-2 py-1 text-xs font-medium ${
                       it.isActive
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-rose-100 text-rose-800'
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800"
                     }`}
                   >
                     {it.status}
@@ -89,7 +92,7 @@ export function InventoryList({
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {it.description || '—'}
+                  {it.description || "—"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -115,10 +118,7 @@ export function InventoryList({
                 >
                   Edit Inventory
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setActiveItem(it)}
-                >
+                <Button size="sm" onClick={() => setActiveItem(it)}>
                   <Plus className="mr-1 h-4 w-4" />
                   Add Stock
                 </Button>
@@ -147,7 +147,8 @@ export function InventoryList({
               <div className="grid gap-4">
                 {it.variants.map((v) => {
                   const low =
-                    v.lowStockThreshold > 0 && v.quantity <= v.lowStockThreshold;
+                    v.lowStockThreshold > 0 &&
+                    v.quantity <= v.lowStockThreshold;
                   return (
                     <div
                       key={v.id}
@@ -155,7 +156,7 @@ export function InventoryList({
                     >
                       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         <Cell label="Variant" value={v.variantName} />
-                        <Cell label="SKU" value={v.sku || '—'} mono />
+                        <Cell label="SKU" value={v.sku || "—"} mono />
                         <Cell label="Qty" value={v.quantity} />
                         <Cell label="Incoming" value={v.incomingQuantity} />
                         <Cell
@@ -177,7 +178,8 @@ export function InventoryList({
                         <div className="mt-2 text-xs text-muted-foreground">
                           {Object.entries(v.attributes).map(([k, val]) => (
                             <span key={k} className="mr-3">
-                              <span className="font-medium uppercase">{k}</span>: {String(val)}
+                              <span className="font-medium uppercase">{k}</span>
+                              : {String(val)}
                             </span>
                           ))}
                         </div>
@@ -207,11 +209,24 @@ export function InventoryList({
               </div>
             )}
 
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-4 text-right">
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-6 gap-4 text-left">
+              <Stat
+                label="Last update"
+                value={new Date(it.updatedAt).toLocaleString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              />
               <Stat label="Variants" value={it.variants.length} />
               <Stat label="Total Quantity" value={it.totalQuantity} />
               <Stat label="Total Cost Price" value={it.totalCostPrice} />
-              <Stat label="totalPrice" value={Intl.NumberFormat().format(it.totalPrice)} />
+              <Stat
+                label="totalPrice"
+                value={Intl.NumberFormat().format(it.totalPrice)}
+              />
               <Stat label="Location" value={it.location} />
             </div>
           </div>
@@ -233,7 +248,14 @@ export function InventoryList({
       {barcodeDialog.open && (
         <BarcodeDialog
           open={true}
-          onClose={() => setBarcodeDialog({ open: false, sku: '', variantName: '', itemName: '' })}
+          onClose={() =>
+            setBarcodeDialog({
+              open: false,
+              sku: "",
+              variantName: "",
+              itemName: "",
+            })
+          }
           sku={barcodeDialog.sku}
           variantName={barcodeDialog.variantName}
           itemName={barcodeDialog.itemName}
@@ -265,7 +287,7 @@ function Cell({ label, value, mono }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={`text-sm font-medium ${mono ? 'font-mono' : ''}`}>
+      <div className={`text-sm font-medium ${mono ? "font-mono" : ""}`}>
         {value}
       </div>
     </div>

@@ -18,7 +18,7 @@ import {
   HoverCardContent,
 } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
-
+import { CheckCircle, XCircle } from 'lucide-react'; // Add icons for Approve/Reject
 import {
   Building2,
   Mail,
@@ -43,8 +43,10 @@ function statusVariant(isActive) {
 export function CompanyGrid({
   items = [],
   handleToggle,
+  handleVerify, // Add handleVerify prop
   pendingId,
   showUnverified = false,
+  isVerifying, // Add isVerifying prop
 }) {
   if (!items?.length) {
     return (
@@ -111,7 +113,30 @@ export function CompanyGrid({
                         {company.isActive ? 'Active' : 'Inactive'}
                       </Badge>
 
-                      {!showUnverified && (
+                      {showUnverified ? (
+                        // Show Approve/Reject buttons for unverified companies
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => handleVerify(id, 'reject')}
+                            disabled={isVerifying || isPending}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerify(id, 'approve')}
+                            disabled={isVerifying || isPending}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </div>
+                      ) : (
+                        // Show existing toggle for verified companies
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

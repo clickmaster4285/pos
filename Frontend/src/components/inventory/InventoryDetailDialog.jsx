@@ -28,10 +28,10 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
     skip: !open || !item,
   });
 
+  // console.log('inventoryData are :', inventoryData);
   const downloadPDF = () => {
     const doc = new jsPDF();
-    const { inventoryItem, historySummary } = inventoryData;
-
+    const { inventoryItem } = inventoryData;
     // Title
     doc.setFontSize(20);
     doc.text(`Inventory Details - ${inventoryItem.itemName}`, 14, 15);
@@ -80,13 +80,15 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
     // History Section
     doc.text('Stock History', 14, doc.lastAutoTable.finalY + 15);
     
-    const historyData = historySummary?.map(history => [
-      history.action,
-      history.performedBy,
-      history.description,
-      new Date(history.createdAt).toLocaleDateString(),
-      history.variantChanges?.length || 0
-    ]) || [];
+    const historyData = [...inventoryItem.history]
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map(history => [
+        history.action,
+        history.performedBy,
+        history.description || 'N/A',
+        new Date(history.createdAt).toLocaleDateString(),
+        history.variantChanges?.length || 0
+      ]) || [];
 
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 20,
@@ -124,7 +126,7 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
     );
   }
 
-  const { inventoryItem, historySummary } = inventoryData;
+  const { inventoryItem } = inventoryData;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -217,7 +219,7 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
           {/* History Table */}
           <div className="border rounded-lg">
             <div className="p-4 border-b">
-              <h3 className="text-lg font-semibold">Stock History ({historySummary?.length || 0})</h3>
+              <h3 className="text-lg font-semibold">Stock History ({inventoryItem.history?.length || 0})</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -231,38 +233,40 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {historySummary?.map((history) => (
-                    <tr key={history.id} className="border-b">
-                      <td className="p-3">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          history.action === 'created' 
-                            ? 'bg-green-100 text-green-800'
-                            : history.action === 'info_updated'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {history.action.replace('_', ' ').toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="p-3 font-medium">{history.performedBy}</td>
-                      <td className="p-3 text-sm">{history.description}</td>
-                      <td className="p-3 text-sm">
-                        {new Date(history.createdAt).toLocaleString()}
-                      </td>
-                      <td className="p-3">
-                        {history.variantChanges?.map((change, idx) => (
-                          <div key={idx} className="text-xs bg-muted p-2 rounded mb-1">
-                            <div><strong>{change.variantName}</strong></div>
-                            <div>Change: {change.change > 0 ? '+' : ''}{change.change}</div>
-                            <div>Previous: {change.previousQuantity} → New: {change.newQuantity}</div>
-                          </div>
-                        ))}
-                        {!history.variantChanges?.length && (
-                          <span className="text-muted-foreground text-sm">No variant changes</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {[...inventoryItem.history]
+                    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                    .map((history) => (
+                      <tr key={history.id} className="border-b">
+                        <td className="p-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            history.action === 'created' 
+                              ? 'bg-green-100 text-green-800'
+                              : history.action === 'info_updated'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {history.action.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium">{history.performedBy}</td>
+                        <td className="p-3 text-sm">{history.description || 'N/A'}</td>
+                        <td className="p-3 text-sm">
+                          {new Date(history.createdAt).toLocaleString()}
+                        </td>
+                        <td className="p-3">
+                          {history.variantChanges?.map((change, idx) => (
+                            <div key={idx} className="text-xs bg-muted p-2 rounded mb-1">
+                              <div><strong>{change.variantName}</strong></div>
+                              <div>Change: {change.change > 0 ? '+' : ''}{change.change}</div>
+                              <div>Previous: {change.previousQuantity} → New: {change.newQuantity}</div>
+                            </div>
+                          ))}
+                          {!history.variantChanges?.length && (
+                            <span className="text-muted-foreground text-sm">No variant changes</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

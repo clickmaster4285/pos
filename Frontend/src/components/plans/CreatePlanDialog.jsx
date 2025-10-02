@@ -19,7 +19,13 @@ export function CreatePlanDialog({
   onCancel,
 }) {
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        onOpenChange?.(open);
+        if (!open) onCancel?.(); // ← ensures close = clear
+      }}
+    >
       {/* wider */}
       <DialogContent className="max-w-6xl">
         <DialogHeader>
@@ -33,6 +39,7 @@ export function CreatePlanDialog({
           formData={formData}
           onFormChange={onFormChange}
           isEditMode={false}
+          onCancel={onCancel}
         />
 
         <DialogFooter>

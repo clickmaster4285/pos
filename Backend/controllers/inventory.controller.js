@@ -454,7 +454,7 @@ const getAllInventoryItems = async (req, res) => {
       companyId,
       isActive: true,
       deleted: false,
-    }).select('-history');
+    }).sort({ createdAt: -1 });
 
     // Collect all vendorIds from inventory
     const vendorIds = inventoryItems.map(item => item.vendor);
@@ -490,8 +490,6 @@ const getAllInventoryItems = async (req, res) => {
     });
   }
 };
-
-
 
 // Modified getInventoryItemById for clearer historySummary
 const getInventoryItemById = async (req, res) => {

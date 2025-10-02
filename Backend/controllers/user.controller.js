@@ -329,7 +329,7 @@ const getAllAdminUsers = async (req, res) => {
     if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'No users found',
+        error: 'company Admin not found',
       });
     }
 

@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["superAdmin", "admin", "staff", "user"],
-    default: "user",
+    enum: ['superAdmin', 'admin', 'staff', 'user'],
+    default: 'user',
   },
   subRole: {
     type: String,
@@ -49,6 +49,9 @@ const userSchema = new mongoose.Schema({
     staffUpdate: { type: Boolean, default: false },
     viewReports: { type: Boolean, default: false },
     viewallstaff: { type: Boolean, default: false },
+    editBilling: { type: Boolean, default: false },
+    deleteBilling: { type: Boolean, default: false },
+    addBilling: { type: Boolean, default: false },
   },
   phone: {
     type: String,
@@ -69,8 +72,8 @@ const userSchema = new mongoose.Schema({
   status: {
     isaccepted: {
       type: String,
-      enum: ["true", "false", "pending"],
-      default: "pending",
+      enum: ['true', 'false', 'pending'],
+      default: 'pending',
     },
     performedBy: {
       type: String,
@@ -135,7 +138,7 @@ const userSchema = new mongoose.Schema({
   addressBookId: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Address",
+      ref: 'Address',
     },
   ],
   createdAt: {
@@ -148,12 +151,12 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-userSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
+userSchema.pre('save', async function (next) {
+  if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   this.updatedAt = Date.now();
   next();
 });
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model('User', userSchema);

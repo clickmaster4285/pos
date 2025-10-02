@@ -285,9 +285,10 @@ export const toastMiddleware = (store) => (next) => (action) => {
   }
 
   if (isRejectedWithValue(action)) {
+    console.error("Rejected action:", action);
     const errorMessage =
-      action.payload?.message ||
-      action.payload?.error ||
+      action.payload?.data?.message ||
+      action.payload?.data?.error ||
       "An error occurred. Please try again or contact support.";
     const status = action.payload?.status || action.error?.status || "Unknown";
     store.dispatch(
