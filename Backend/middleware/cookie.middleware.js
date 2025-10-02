@@ -3,8 +3,8 @@ import { serialize } from "cookie";
 const cookieOptions = {
   httpOnly: true,
   secure: true,
-  // sameSite: "lax",
-  sameSite: "none",
+  // sameSite: "strict",
+  sameSite: "strict",
   maxAge: parseInt(process.env.JWT_COOKIE_EXPIRES_IN, 10) * 24 * 60 * 60 * 1000, // Convert days to milliseconds
 };
 

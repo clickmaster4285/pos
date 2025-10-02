@@ -83,13 +83,13 @@ export const inventoryApi = createApi({
 
     // PATCH /api/inventory/update-inventory-item/:id  (history-based updater)
     updateInventoryItem: builder.mutation({
-      query: ({ id, ...patch }) => ({
-        url: `/update-inventory-item/${id}`,
+      query: ({ inventoryId, historyId, ...patch }) => ({
+        url: `/update-inventory-item/${inventoryId}/${historyId}`,
         method: 'PATCH',
-        body: patch, // supports ?historyId=... via fetchBaseQuery params if you prefer
+        body: patch,
       }),
-      invalidatesTags: (_res, _err, { id }) => [
-        { type: 'Inventory', id },
+      invalidatesTags: (_res, _err, { inventoryId }) => [
+        { type: 'Inventory', id: inventoryId },
         { type: 'Inventory', id: 'LIST' },
       ],
     }),

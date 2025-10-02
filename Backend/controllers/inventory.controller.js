@@ -96,7 +96,6 @@ const validateUpdateInput = (data, includeQuantity = true) => {
   const { itemName, itemType, price, costPrice, vendor, description, location, variants, source } = data;
   const errors = [];
   const hasFields = Object.keys(data).length > 0;
-
   if (!hasFields) {
     errors.push('At least one field must be provided for update');
   }
@@ -290,7 +289,7 @@ const addStock = async (req, res) => {
     if (!variants || !Array.isArray(variants) || variants.length === 0) {
       throw new InventoryError('Variants array is required and must not be empty', 400);
     }
-
+// console.log("the variants are : ", variants)
     variants.forEach((variant, index) => {
       const errors = validateVariantInput(variant);
       if (errors.length > 0) {
@@ -450,16 +449,38 @@ const updateInfo = async (req, res) => {
 const getAllInventoryItems = async (req, res) => {
   try {
     const { companyId } = req.user;
+
     const inventoryItems = await IndexModel.Inventory.find({
       companyId,
       isActive: true,
       deleted: false,
-    }).select('-history'); // Exclude embedded history for brevity
+    }).select('-history');
+
+    // Collect all vendorIds from inventory
+    const vendorIds = inventoryItems.map(item => item.vendor);
+
+    const vendors = await IndexModel.Vendor.find({
+      _id: { $in: vendorIds },
+      companyId,
+      deleted: false,
+    }).select('name email phone');
+
+    // Convert vendors to map for quick lookup
+    const vendorMap = {};
+    vendors.forEach(v => {
+      vendorMap[v._id.toString()] = v;
+    });
+
+    // Merge vendor info into inventory items
+    const data = inventoryItems.map(item => ({
+      ...item.toObject(),
+      vendor: vendorMap[item.vendor?.toString()] || null,
+    }));
 
     return res.status(200).json({
       success: true,
       message: 'Inventory items retrieved successfully',
-      inventoryItems,
+      inventoryItems: data,
     });
   } catch (error) {
     console.error('Error retrieving inventory items:', error);
@@ -470,9 +491,12 @@ const getAllInventoryItems = async (req, res) => {
   }
 };
 
+
+
 // Modified getInventoryItemById for clearer historySummary
 const getInventoryItemById = async (req, res) => {
   try {
+    
     const { companyId } = req.user;
     const { id } = req.params;
 
@@ -553,6 +577,7 @@ const getInventoryItemById = async (req, res) => {
         source: h.source || 'N/A',
         comments: h.comments || 'N/A',
         variantChanges, // Detailed changes per variant
+        id: h._id.toString(),
       };
     });
 

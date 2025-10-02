@@ -36,12 +36,7 @@ export default function VerifyEmailPage() {
       {/* Left Column */}
       <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-orange-50 via-orange-50 flex-col items-center justify-center gap-6 p-10">
         <div className="w-full flex justify-center">
-          <Image
-            src={landingPageImages.FoxyLogo}
-            alt="Logo"
-            priority
-            className="max-w-[80%]"
-          />
+          <h6>AutoMotive Industery</h6>
         </div>
         <div className="text-center">
           <h2 className="text-xl mb-2 text-gray-800 -mt-5">

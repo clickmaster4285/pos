@@ -23,6 +23,7 @@ export function AddStockDialog({ open, onClose, item }) {
     costPrice: '',
     returnUnder: 7,
     attributes: { size: '', material: '' },
+    isCustom: true, // Track if custom variant is selected
   };
 
   const [rows, setRows] = useState([EMPTY_ROW]);
@@ -31,8 +32,6 @@ export function AddStockDialog({ open, onClose, item }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [addStock, { isLoading }] = useAddStockMutation();
 
-  // put this near the top of AddStockDialog
-  // put this near the top of AddStockDialog, after `const existingVariantNames = ...`
   const existingByName = React.useMemo(() => {
     const map = {};
     (item.variants || []).forEach((v) => {
@@ -44,12 +43,19 @@ export function AddStockDialog({ open, onClose, item }) {
     return map;
   }, [item.variants]);
 
+  const existingVariantNames = useMemo(() => {
+    return (item.variants || []).map((v) => ({
+      name: v.variantName || '',
+      id: v.id || v._id || '',
+    }));
+  }, [item.variants]);
+
   useEffect(() => {
     if (!open || !item) return;
     setReason('');
     setComments('');
     setErrorMsg('');
-    setRows([{ ...EMPTY_ROW }]); // ← no seeding
+    setRows([{ ...EMPTY_ROW }]);
   }, [open, item?.id || item?._id]);
 
   if (!open || !item) return null;
@@ -69,6 +75,38 @@ export function AddStockDialog({ open, onClose, item }) {
           : row
       )
     );
+
+  const handleVariantChange = (idx, value) => {
+    const isCustom = value === 'custom';
+    const selectedVariant = isCustom
+      ? null
+      : existingByName[String(value).trim().toLowerCase()];
+
+    setRows((prev) =>
+      prev.map((row, i) => {
+        if (i !== idx) return row;
+        const newRow = {
+          ...row,
+          variantName: isCustom ? '' : value,
+          isCustom, // Track custom selection
+        };
+
+        if (selectedVariant) {
+          newRow.price = selectedVariant.price || '';
+          newRow.costPrice = selectedVariant.costPrice || '';
+          newRow.returnUnder = selectedVariant.returnUnder || 7;
+          newRow.attributes = { ...(selectedVariant.attributes || {}) };
+        } else if (isCustom) {
+          newRow.price = '';
+          newRow.costPrice = '';
+          newRow.returnUnder = 7;
+          newRow.attributes = { size: '', material: '' };
+        }
+
+        return newRow;
+      })
+    );
+  };
 
   const validate = () => {
     if (!rows.length) return 'Add at least one variant';
@@ -97,9 +135,8 @@ export function AddStockDialog({ open, onClose, item }) {
     const err = validate();
     if (err) return setErrorMsg(err);
 
-    // in handleSubmit, when you build the payload:
     const payload = {
-      id: item.id || item._id, // safe
+      id: item.id || item._id,
       variants: rows.map((v) => {
         const key = String(v.variantName || '')
           .trim()
@@ -119,11 +156,9 @@ export function AddStockDialog({ open, onClose, item }) {
           ),
         };
 
-        // If matches existing variant name, reuse its SKU.
         if (match && match.sku) {
           base.sku = match.sku;
         }
-        // IMPORTANT: do NOT set base.sku = null for new variants.
 
         return base;
       }),
@@ -141,11 +176,6 @@ export function AddStockDialog({ open, onClose, item }) {
       );
     }
   };
-
-  const existingVariantNames = (item.variants || []).map((v) => v.variantName);
-  // inside AddStockDialog, before return()
-  const safeId = item?.id || item?._id || 'new';
-  const listId = `variant-suggestions-${safeId}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -207,52 +237,28 @@ export function AddStockDialog({ open, onClose, item }) {
                       <label className="mb-1 block text-xs text-muted-foreground">
                         Variant name
                       </label>
-                      <input
-                        list={listId}
+                      <select
                         className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                        value={v.variantName}
-                        // when changing variant name
-                        onChange={(e) => {
-                          const name = e.target.value;
-                          const key = String(name).trim().toLowerCase();
-                          const m = existingByName[key];
-
-                          setRows((prev) =>
-                            prev.map((row, i) => {
-                              if (i !== idx) return row;
-
-                              // Start with the new name
-                              const next = { ...row, variantName: name };
-
-                              if (m) {
-                                // Only auto-fill if the current field is empty
-                                if (!next.price) next.price = m.price || '';
-                                if (!next.costPrice)
-                                  next.costPrice = m.costPrice || '';
-                                if (!next.returnUnder)
-                                  next.returnUnder = m.returnUnder || 7;
-                                // If you want to copy attributes only when empty:
-                                if (
-                                  !next.attributes ||
-                                  !Object.keys(next.attributes).length
-                                ) {
-                                  next.attributes = { ...(m.attributes || {}) };
-                                }
-                              }
-                              return next;
-                            })
-                          );
-                        }}
-                        placeholder="Front Brake Pad - Medium"
-                        autoComplete="off"
-                        name={`variant-name-${idx}-${safeId}`}
-                      />
-
-                      <datalist id={listId}>
-                        {existingVariantNames.map((n) => (
-                          <option key={n} value={n} />
+                        value={v.isCustom ? 'custom' : v.variantName}
+                        onChange={(e) => handleVariantChange(idx, e.target.value)}
+                      >
+                        <option value="custom">Custom</option>
+                        {existingVariantNames.map((vn) => (
+                          <option key={vn.id} value={vn.name}>
+                            {vn.name}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
+                      {v.isCustom && (
+                        <input
+                          className="h-9 w-full rounded-md border bg-background px-3 text-sm mt-2"
+                          value={v.variantName}
+                          onChange={(e) => setRow(idx, { variantName: e.target.value })}
+                          placeholder="Enter custom variant name"
+                          autoComplete="off"
+                          name={`variant-name-${idx}-${item.id || item._id}`}
+                        />
+                      )}
                     </div>
 
                     <NumField
@@ -331,6 +337,7 @@ export function AddStockDialog({ open, onClose, item }) {
     </div>
   );
 }
+
 function NumField({ label, value, onChange, placeholder, min = 0 }) {
   return (
     <div>
@@ -349,6 +356,7 @@ function NumField({ label, value, onChange, placeholder, min = 0 }) {
     </div>
   );
 }
+
 function TextField({ label, value, onChange, placeholder }) {
   return (
     <div>

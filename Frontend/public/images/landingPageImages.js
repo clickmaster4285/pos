@@ -7,8 +7,6 @@ import Blog3 from './landingpageImages/Blog3.png';
 import BlogAvatar1 from './landingpageImages/BlogAvatar1.png';
 import BlogAvatar2 from './landingpageImages/BlogAvatar2.png';
 import BlogAvatar3 from './landingpageImages/BlogAvatar3.png';
-import FoxyLogo from './landingpageImages/FoxyLogo.png';
-import FoxyLoading from './landingpageImages/Foxy.png';
 // import channelGroup from './landingpageImages/channelGroup';
 import Faq from './landingpageImages/Faq.png';
 import FooterLogo from './landingpageImages/FooterLogo.png';
@@ -34,7 +32,6 @@ import Vector1 from './landingpageImages/Vector1.png';
 import Vector2 from './landingpageImages/Vector2.png';
 import Vector3 from './landingpageImages/Vector3.png';
 import Vector4 from './landingpageImages/Vector4.png';
-import ClickLogo from './auth/logo.png';
 import Text from './auth/text.png';
 import socialIllistration from './auth/socialIllistration.png';
 import signInPic from './auth/sign-in-pic.png';
@@ -48,7 +45,6 @@ export default {
   BlogAvatar1,
   BlogAvatar2,
   BlogAvatar3,
-  FoxyLogo,
   Faq,
   FooterLogo,
   GooglePlus,
@@ -73,9 +69,7 @@ export default {
   Vector2,
   Vector3,
   Vector4,
-  ClickLogo,
   signInPic,
   socialIllistration,
   Text,
-  FoxyLoading,
 };

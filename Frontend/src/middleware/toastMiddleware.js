@@ -4,7 +4,7 @@ import { addToast } from "@/features/toastSlice";
 export const toastMiddleware = (store) => (next) => (action) => {
   if (isFulfilled(action)) {
     const { type, meta, payload } = action;
-    console.log("Fulfilled action:", type, payload, meta);
+    // console.log("Fulfilled action:", type, payload, meta);
 
     const endpoint = meta?.arg?.endpointName;
 

@@ -16,7 +16,7 @@ const Navbar = () => {
       <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo Section */}
         <div className="flex items-center ">
-          <Image src={landingPageImages.FoxyLogo} alt="Logo" width={150} height={150} className="h-16" />
+          <h6 >AutoMotive Industery</h6>
         </div>
 
         {/* Menu Items (Desktop) */}

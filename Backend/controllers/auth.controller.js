@@ -32,15 +32,15 @@ const generateTokens = async (user) => {
 
 const setTokens = (res, accessToken, refreshToken) => {
   res.cookie("authToken", accessToken, {
-    httpOnly: true,
+    httpOnly: true,             // true
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "strict",          // strict
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
+    httpOnly: true,            // true
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "strict",     // strict
     maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days
   });
 };

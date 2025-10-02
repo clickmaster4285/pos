@@ -53,7 +53,6 @@ export default function CreateInventoryModal({
 
   const addVariant = () => {
     setVariants((v) => [
-      ...v,
       {
         variantName: '',
         incomingQuantity: '',
@@ -62,6 +61,7 @@ export default function CreateInventoryModal({
         returnUnder: 7,
         attributes: { size: '', material: '' },
       },
+      ...v,
     ]);
   };
 
@@ -229,7 +229,7 @@ export default function CreateInventoryModal({
                   className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                   value={itemType}
                   onChange={(e) => setItemType(e.target.value)}
-                  >{/* // >//'Part', 'Whole', 'Other' */}
+                >
                   <option value="Part">Part</option>
                   <option value="Whole">Whole</option>
                   <option value="Other">Other</option>
@@ -387,6 +387,21 @@ export default function CreateInventoryModal({
                           min={0}
                         />
                       </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-muted-foreground">
+                          Cost Price
+                        </label>
+                        <input
+                          type="number"
+                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                          value={v.costPrice}
+                          onChange={(e) =>
+                            updateVariant(idx, 'costPrice', e.target.value)
+                          }
+                          placeholder="2000"
+                          min={0}
+                        />
+                      </div>
 
                       <div>
                         <label className="mb-1 block text-xs text-muted-foreground">
@@ -404,21 +419,6 @@ export default function CreateInventoryModal({
                         />
                       </div>
 
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Cost Price
-                        </label>
-                        <input
-                          type="number"
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.costPrice}
-                          onChange={(e) =>
-                            updateVariant(idx, 'costPrice', e.target.value)
-                          }
-                          placeholder="2000"
-                          min={0}
-                        />
-                      </div>
 
                       <div>
                         <label className="mb-1 block text-xs text-muted-foreground">

@@ -18,13 +18,13 @@ router.post(
 );
 
 router.patch(
-  "/update-info-inventory",
+  "/update-info-inventory/:id",
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
   checkPermissionsValidation("manageInventory"),
   checkplan("Inventory"),
-  Indexcontroller.Inventory.createInventory
+  Indexcontroller.Inventory.updateInfo
 );
 
 router.put(
