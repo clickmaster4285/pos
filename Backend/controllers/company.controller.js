@@ -4,6 +4,9 @@ import { generateUniqueCompanyId } from '../utils/generateUniqueCompanyId.js';
 import sendEmail from '../utils/sendEmail.js';
 import { generateOTP } from '../utils/generate_verifyOTP.js';
 import bcrypt from 'bcrypt';
+import { upload } from '../config/multer.js';
+import path from 'path';
+
 
 const createCompany = async (req, res) => {
   try {
@@ -290,55 +293,101 @@ const verifyCompany_Admin = async (req, res) => {
   }
 };
 
-const updateInvoiceSettings = async (req, res) => {
+const updateCompanySettings = async (req, res) => {
+  console.log("the logoUrl is : ", req.file)
   try {
     const companyId = req.user.companyId;
-    const updateData = req.body;
+    let updateData = req.body;
+
+    // console.log("raw updateData:", updateData);
+
+    // Parse stringified JSON if needed
+    if (updateData.settings && typeof updateData.settings === "string") {
+      try {
+        updateData = JSON.parse(updateData.settings);
+      } catch (err) {
+        return res.status(400).json({ error: "Invalid settings JSON" });
+      }
+    }
+
+    // console.log("parsed updateData:", updateData);
+
     // Validate input
     if (!companyId) {
-      return res.status(400).json({ error: 'Company ID is required' });
+      return res.status(400).json({ error: "Company ID is required" });
     }
-    
-    // Validate invoice settings
-    const validNumbering = ['sequential', 'yearly'];
-    if (updateData.format?.numbering && !validNumbering.includes(updateData.format.numbering)) {
-      return res.status(400).json({ error: 'Invalid numbering format' });
+
+    const validNumbering = ["sequential", "yearly"];
+    if (
+      updateData.invoiceSettings?.format?.numbering &&
+      !validNumbering.includes(updateData.invoiceSettings.format.numbering)
+    ) {
+      return res.status(400).json({ error: "Invalid numbering format" });
     }
-    
-    if (updateData.tax?.taxRate && (updateData.tax.taxRate < 0 || updateData.tax.taxRate > 100)) {
-      return res.status(400).json({ error: 'Tax rate must be between 0 and 100' });
+
+    if (
+      updateData.invoiceSettings?.tax?.taxRateCash &&
+      (updateData.invoiceSettings.tax.taxRateCash < 0 ||
+        updateData.invoiceSettings.tax.taxRateCash > 100)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Tax rate (cash) must be between 0 and 100" });
     }
-    
-    if (updateData.thermalPrint?.paperWidth && ![58, 80].includes(updateData.thermalPrint.paperWidth)) {
-      return res.status(400).json({ error: 'Paper width must be 58mm or 80mm' });
+
+    if (
+      updateData.invoiceSettings?.tax?.taxRateCard &&
+      (updateData.invoiceSettings.tax.taxRateCard < 0 ||
+        updateData.invoiceSettings.tax.taxRateCard > 100)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Tax rate (card) must be between 0 and 100" });
     }
-    
-    console.log("the update data is : ", updateData, companyId)
-    // Update invoice settings
+
+    // Handle logo (optional upload)
+    let logoUrl = updateData.logoPreview || "";
+    if (req.file) {
+      logoUrl = `/uploads/company/${req.file.filename}`;
+    }
+    // Update company
     const updatedCompany = await IndexModel.Company.findOneAndUpdate(
-      {companyId, deleted: false, isActive: true},
-      { $set: { invoiceSettings: updateData } },
+      { companyId, deleted: false, isActive: true },
+      {
+        $set: {
+          invoiceSettings: updateData.invoiceSettings || {},
+          name: updateData.companyName,
+          companyLogo: logoUrl,
+        },
+      },
       { new: true, runValidators: true }
     );
 
     if (!updatedCompany) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: "Company not found" });
     }
 
     res.status(200).json({
-      message: 'Invoice settings updated successfully',
-      invoiceSettings: updatedCompany.invoiceSettings
+      success: true,
+      message: "Settings updated successfully",
+      companySettings: {
+        companyName: updatedCompany.name,
+        terms: updatedCompany.terms,
+        companyLogo: updatedCompany.companyLogo,
+      },
+      invoiceSettings: updatedCompany.invoiceSettings,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 };
+
 
 // Get company by ID
 const getCompany = async (req, res) => {
   try {
     const { id } = req.query;
-    console.log("the id from get company is : ", id, req.user.companyId)
+    // console.log("the id from get company is : ", id, req.user.companyId)
     let company;
     if (req.user.role === 'superAdmin') {
       // console.log("eh id is : ", id)
@@ -457,5 +506,5 @@ export default {
   verifyCompany_Admin,
   getAllCompany,
   active_inactiveCompany,
-  updateInvoiceSettings,
+  updateCompanySettings,
 };

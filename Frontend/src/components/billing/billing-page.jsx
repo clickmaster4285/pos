@@ -11,8 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { toast, Toaster } from 'sonner';
-
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -21,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
 import {
   Dialog,
   DialogContent,
@@ -30,20 +28,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Download,
-  MoreVertical,
-  Trash2,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Edit3,
-  Printer,
-  ChevronDown,
-  ChevronUp,
   Loader,
+  Printer,
+  Trash2,
 } from 'lucide-react';
 import ThermalPrintSlip from '@/components/billing/ThermalPrintSlip';
-/** ====== RTK Query hooks ====== */
 import { useGetInventoryQuery } from '@/features/inventoryApi';
 import {
   useGetBillsQuery,
@@ -51,28 +40,30 @@ import {
   useUpdateBillStatusMutation,
   useSoftDeleteBillMutation,
 } from '@/features/billingApi';
-
+import { useGetCompanyQuery } from '@/features/CompanyApi';
 import { Header, StatsCards, FilterBar } from './billingHeader';
 import { CreateBillDialog } from './CreateBillDialog';
-import { BillRow } from './billing-table-dialog';
+import { BillRow } from './billTable'; // Updated import
+import { useClickOutside } from '@/utils/useClickOutside';
+import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 
 export default function BillingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedBillId, setExpandedBillId] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  // Pagination
+  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.CASH);
+  const [paymentNumber, setPaymentNumber] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const { data: bills = [], isLoading: billsLoading } = useGetBillsQuery();
-
+  const { data: companyData, isLoading: companyLoading } = useGetCompanyQuery();
   const [createBill, { isLoading: creating }] = useCreateBillMutation();
   const [updateBillStatus] = useUpdateBillStatusMutation();
   const [softDeleteBill] = useSoftDeleteBillMutation();
+  const { data: inventoryData, isLoading: inventoryLoading } = useGetInventoryQuery();
 
-  /* ---------- Inventory search state (used in create dialog) ---------- */
   const [searchInventory, setSearchInventory] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', email: '', phone: '' });
@@ -80,43 +71,47 @@ export default function BillingPage() {
   const [items, setItems] = useState([]);
   const [notes, setNotes] = useState('');
   const searchRef = useRef(null);
+  const thermalRef = useRef(null);
 
-  /* ---------- Partial Refund Modal ---------- */
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundBill, setRefundBill] = useState(null);
-  const [refundLines, setRefundLines] = useState([]); // [{ sku, itemName, variantName, maxQty, quantity, reason }]
+  const [refundLines, setRefundLines] = useState([]);
   const [refundNotes, setRefundNotes] = useState('');
-
-  /* ---------- Delete Bill Modal ---------- */
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBillState, setDeleteBillState] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmRefundOpen, setConfirmRefundOpen] = useState(false);
+  const [billToRefund, setBillToRefund] = useState(null);
 
-  /* ---------- Inventory data ---------- */
-  const { data: inventoryData, isLoading: inventoryLoading } =
-    useGetInventoryQuery();
+  // Define totalRecords based on bills data
+  const totalRecords = useMemo(() => bills.length, [bills]);
 
-  //print
-  const thermalRef = useRef(null);
+  useClickOutside(searchRef, () => setShowSearchResults(false));
 
-  const handlePreviewThermal = (bill) => thermalRef.current?.preview(bill);
-  const handlePrintThermal = (bill) => thermalRef.current?.print(bill);
-  /* ---------- Flatten inventory for search ---------- */
+  // Update taxPercent when paymentMethod or taxRates change
+  useEffect(() => {
+    if (paymentMethod === PAYMENT_METHODS.CASH) {
+      setTaxPercent(taxRates.taxRateCash || 0);
+    } else if (
+      paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
+      paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
+    ) {
+      setTaxPercent(taxRates.taxRateCard || 0);
+    } else {
+      setTaxPercent(0);
+    }
+  }, [paymentMethod]);
+
+  const taxRates = useMemo(() => ({
+    taxRateCash: companyData?.data?.invoiceSettings?.tax?.taxRateCash || 0,
+    taxRateCard: companyData?.data?.invoiceSettings?.tax?.taxRateCard || 0,
+  }), [companyData]);
+
   const searchableInventory = useMemo(() => {
-    const inventoryList =
-      (inventoryData && inventoryData.data) || inventoryData || [];
+    const inventoryList = (inventoryData && inventoryData.data) || inventoryData || [];
     const flattened = [];
 
-    (inventoryList || []).forEach((product) => {
-      flattened.push({
-        type: 'product',
-        productId: product._id || product.id,
-        productName: product.itemName,
-        productType: product.itemType,
-        description: product.description,
-        variants: product.variants || [],
-      });
-
+    inventoryList.forEach((product) => {
       (product.variants || []).forEach((variant) => {
         flattened.push({
           type: 'variant',
@@ -127,7 +122,7 @@ export default function BillingPage() {
           variantName: variant.variantName,
           sku: variant.sku,
           price: variant.price,
-          quantity: variant.quantity,
+          quantity: variant.quantity || 1,
           description: variant.description,
           costPrice: variant.costPrice ?? 0,
           returnUnder: variant.returnUnder ?? 0,
@@ -138,7 +133,6 @@ export default function BillingPage() {
     return flattened;
   }, [inventoryData]);
 
-  /* ---------- Search results ---------- */
   const searchResults = useMemo(() => {
     if (!searchInventory.trim()) return [];
     const q = searchInventory.toLowerCase().trim();
@@ -157,22 +151,10 @@ export default function BillingPage() {
     });
   }, [searchInventory, searchableInventory]);
 
-  /* ---------- click-outside to close search results ---------- */
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowSearchResults(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  /* ---------- Add to "cart" for create bill ---------- */
   const addItemToBill = (item) => {
     if (item.type === 'variant') {
       if (item.quantity <= 0) {
-        toast.success('This variant is out of stock.');
+        toast.error('This variant is out of stock.');
         return;
       }
       const existing = items.find((x) => x.variantId === item.variantId);
@@ -196,34 +178,6 @@ export default function BillingPage() {
           },
         ]);
       }
-    } else if (item.type === 'product') {
-      const firstVariant = item.variants?.[0];
-      if (!firstVariant) return;
-      if (firstVariant.quantity <= 0) {
-        toast.error('This variant is out of stock.');
-        return;
-      }
-      const existing = items.find((x) => x.variantId === firstVariant._id);
-      if (existing) {
-        updateQty(firstVariant._id, existing.qty + 1);
-      } else {
-        setItems((prev) => [
-          ...prev,
-          {
-            inventoryItem: item.productId,
-            variantId: firstVariant._id,
-            itemName: item.productName,
-            variantName: firstVariant.variantName,
-            sku: firstVariant.sku,
-            price: Number(firstVariant.price || 0),
-            qty: 1,
-            lineTotal: Number(firstVariant.price || 0),
-            availableQty: Number(firstVariant.quantity || 0),
-            costPrice: Number(firstVariant.costPrice || 0),
-            returnUnder: Number(firstVariant.returnUnder || 0),
-          },
-        ]);
-      }
     }
     setSearchInventory('');
     setShowSearchResults(false);
@@ -235,7 +189,8 @@ export default function BillingPage() {
     setItems((prev) =>
       prev.map((it) => {
         if (it.variantId !== variantId) return it;
-        const limited = Math.min(q, it.availableQty ?? q);
+        const available = Number(it.availableQty || 0);
+        const limited = Math.min(q, available > 0 ? available : q);
         return {
           ...it,
           qty: limited,
@@ -265,517 +220,416 @@ export default function BillingPage() {
   const resetCreateForm = () => {
     setItems([]);
     setBuyer({ name: '', email: '', phone: '' });
-    setTaxPercent(0);
+    setTaxPercent(paymentMethod === PAYMENT_METHODS.CASH ? taxRates.taxRateCash : taxRates.taxRateCard);
     setNotes('');
     setSearchInventory('');
     setShowSearchResults(false);
+    setPaymentNumber('');
+  };
+// console.log('companyData', paymentMethod, PAYMENT_METHODS.CASH, taxRates.taxRateCash);
+  const validateBuyer = (buyer) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return {
+      name: buyer.name?.trim() || '',
+      email: emailRegex.test(buyer.email) ? buyer.email?.trim() : '',
+      phone: buyer.phone?.replace(/[^0-9+]/g, '') || '',
+    };
   };
 
-  const handleSaveBill = async () => {
-    if (!items.length) return toast.error('Please add at least one product.');
-
-    // Build request payload
-    const payload = {
-      buyer,
-      items: items.map((it) => ({
-        inventoryItem: it.inventoryItem,
-        variantId: it.variantId,
-        variantName: it.variantName,
-        itemName: it.itemName,
-        sku: it.sku,
-        price: it.price,
-        quantity: it.qty,
-        lineTotal: it.lineTotal,
-        costPrice: it.costPrice ?? 0,
-        returnUnder: it.returnUnder ?? 0,
-        refundAmount: 0,
-        status: 'pending',
-        total: it.lineTotal,
-      })),
-      subtotal,
-      taxPercent: Number(taxPercent || 0),
-      taxAmount,
-      total: grandTotal,
-      notes,
-      paymentMethod, // ✅ keep only this (no duplicate key)
-      status: 'pending',
-    };
+  const submitPartialRefund = async () => {
+    if (!refundBill || refundLines.length === 0) {
+      toast.error('No refund details provided.');
+      return;
+    }
 
     try {
-      // create bill on server
-      const res = await createBill(payload).unwrap();
+      const refundData = {
+        billId: refundBill._id,
+        refundLines: refundLines.map(line => ({
+          variantId: line.variantId,
+          quantity: line.quantity,
+          reason: line.reason || '',
+        })),
+        notes: refundNotes,
+      };
 
-      // Normalize the created bill (API may return `data` or the object itself)
-      const createdBill = res?.data ||
-        res || {
-          ...payload,
-          _id: 'LOCAL',
-          billNumber: '(Draft)',
-          createdAt: new Date().toISOString(),
-        };
+      await updateBillStatus({ billId: refundBill._id, status: 'partial_refund', refundData });
 
-      // OPTIONAL: auto-print after successful creation
-      // thermalRef?.current?.print(createdBill);
-
-      // Cleanup UI
-      resetCreateForm();
-      setIsCreateModalOpen(false);
-      toast.success('Bill created successfully.');
-    } catch (e) {
-      console.error('Create bill failed:', e);
-      toast.error(e?.data?.error || 'Failed to create bill.');
+      toast.success('Partial refund submitted successfully.');
+      setRefundOpen(false);
+      setRefundLines([]);
+      setRefundNotes('');
+      setRefundBill(null);
+    } catch (error) {
+      toast.error('Failed to submit partial refund.');
+      console.error(error);
     }
   };
 
-  /* ---------- filter + search over fetched bills ---------- */
-  const filteredBills = useMemo(() => {
-    const list = Array.isArray(bills) ? bills : [];
-    return list.filter((b) => {
-      const statusOk =
-        filterStatus === 'all' ? true : b.status === filterStatus;
-      const q = searchQuery.toLowerCase();
-      const inText =
-        (b.billNumber || '').toLowerCase().includes(q) ||
-        ((b.buyer && b.buyer.name) || '').toLowerCase().includes(q) ||
-        ((b.buyer && b.buyer.email) || '').toLowerCase().includes(q) ||
-        ((b.buyer && b.buyer.phone) || '').toLowerCase().includes(q);
-      return statusOk && inText;
-    });
-  }, [bills, filterStatus, searchQuery]);
-
-  /* ---------- pagination over filteredBills ---------- */
-  const totalRecords = filteredBills.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-
-  // reset page if filters change and current page out of range
-  useEffect(() => {
-    setPage(1);
-  }, [filterStatus, searchQuery, pageSize]);
-
-  const paginatedBills = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    return filteredBills.slice(start, end);
-  }, [filteredBills, page, pageSize]);
-
-  /* ---------- summary from filteredBills ---------- */
-  const summaryStats = useMemo(() => {
-    const completed = filteredBills.filter((x) => x.status === 'completed');
-    const pending = filteredBills.filter((x) => x.status === 'pending');
-
-    // Paid bills
-    const paid = filteredBills.filter((x) => x.status === 'paid');
-
-    // Refund-related
-    const refunded = filteredBills.filter(
-      (x) => x.status === 'refunded' || x.status === 'partially_refunded'
-    );
-    const totalRefunded = refunded.reduce(
-      (sum, x) => sum + (Number(x.refundDetails?.totalRefundAmount) || 0),
-      0
-    );
-
-    // Revenue-related
-    const totalRevenue = paid.reduce(
-      (sum, x) => sum + (Number(x.total) || 0),
-      0
-    );
-    const todayStr = new Date().toDateString();
-    const todayRevenue = paid
-      .filter((x) => new Date(x.createdAt).toDateString() === todayStr)
-      .reduce((sum, x) => sum + (Number(x.total) || 0), 0);
-
-    return {
-      total: filteredBills.length,
-      completed: completed.length,
-      pending: pending.length,
-      paid: paid.length, // ✅ total paid bills
-      refunded: refunded.length, // ✅ total refunded bills
-      totalRefunded, // ✅ sum refunded
-      todayRevenue,
-      totalRevenue,
-    };
-  }, [filteredBills]);
-
-  const onPrintBill = (bill) => {
-    thermalRef.current?.print(bill);
-  };
-
-  /* ---------- Delete handlers (NO BODY) ---------- */
-  const openDeleteDialog = (bill) => {
-    setDeleteBillState(bill);
-    setDeleteOpen(true);
-  };
-
   const submitDelete = async () => {
-    if (!deleteBillState?._id) return;
+    if (!deleteBillState) return;
+
+    setDeleting(true);
     try {
-      setDeleting(true);
-      // NO BODY — backend doesn’t need it now
-      await softDeleteBill(deleteBillState._id).unwrap();
+      await softDeleteBill(deleteBillState._id);
+      toast.success('Bill deleted successfully.');
       setDeleteOpen(false);
       setDeleteBillState(null);
-      toast.success('Bill deleted and items returned to inventory.');
-    } catch (e) {
-      console.error(e);
-      toast.error(e?.data?.error || 'Failed to delete bill.');
+    } catch (error) {
+      toast.error('Failed to delete bill.');
+      console.error(error);
     } finally {
       setDeleting(false);
     }
   };
 
-  /* ---------- Refund Handlers ---------- */
-  const openPartialRefundModal = (bill) => {
-    const lines = (bill.items || []).map((it) => ({
-      sku: it.sku,
-      itemName: it.itemName,
-      variantName: it.variantName,
-      maxQty: Number(it.quantity || 0),
-      quantity: 0,
-      reason: '',
-    }));
-    setRefundBill(bill);
-    setRefundLines(lines);
-    setRefundNotes('');
-    setRefundOpen(true);
-  };
-
-  const handleRefundFull = async (bill) => {
-    if (!bill?._id) return;
-    if (!confirm('Are u sure you want to refund this bill?')) return;
+  const submitFullRefund = async () => {
+    if (!billToRefund) return;
 
     try {
-      // empty body -> backend interprets FULL refund (based on your update status logic)
-      await updateBillStatus({ id: bill._id, body: {} }).unwrap();
-      toast.success('Bill fully refunded.');
-    } catch (e) {
-      console.error(e);
-      toast.error(e?.data?.error || 'Failed to process full refund.');
+      await updateBillStatus({ billId: billToRefund._id, status: 'refunded' });
+      toast.success('Full refund submitted successfully.');
+      setConfirmRefundOpen(false);
+      setBillToRefund(null);
+    } catch (error) {
+      toast.error('Failed to submit full refund.');
+      console.error(error);
     }
   };
 
-  const handleRefundAction = (bill, type) => {
-    if (type === 'partial') {
-      openPartialRefundModal(bill);
-    } else {
-      handleRefundFull(bill);
-    }
-  };
-
-  const submitPartialRefund = async () => {
-    if (!refundBill?._id) return;
-
-    const refundItems = refundLines
-      .filter((l) => Number(l.quantity) > 0)
-      .map((l) => ({
-        sku: l.sku,
-        quantity: Number(l.quantity),
-        reason: l.reason?.trim() || 'Partial refund',
-      }));
-
-    if (refundItems.length === 0) {
-      if (!confirm('No quantities selected. Process FULL refund instead?'))
-        return;
-      try {
-        await updateBillStatus({
-          id: refundBill._id,
-          body: { notes: refundNotes?.trim() || '' },
-        }).unwrap();
-        toast.success('Bill fully refunded.');
-        setRefundOpen(false);
-        setRefundBill(null);
-        setRefundLines([]);
-        setRefundNotes('');
-        return;
-      } catch (e) {
-        console.error(e);
-        toast.error(e?.data?.error || 'Failed to process refund.');
-        return;
+  const handleSaveBill = async () => {
+    console.log("tehpaymentMethod is:  ", paymentMethod, paymentNumber)
+    if (paymentMethod !== 'cash'){
+      if(!paymentNumber){
+      toast.success('paymentNumber is required.');
+      return;
       }
     }
 
-    try {
-      await updateBillStatus({
-        id: refundBill._id,
-        body: {
-          refundItems,
-          notes: refundNotes?.trim() || 'Partial refund from UI',
-        },
-      }).unwrap();
+    const validatedBuyer = validateBuyer(buyer);
+    const billData = {
+      buyer: validatedBuyer,
+      items,
+      notes,
+      paymentMethod,
+      paymentNumber,
+      companyId: companyData?.data?._id,
+    };
 
-      setRefundOpen(false);
-      setRefundBill(null);
-      setRefundLines([]);
-      setRefundNotes('');
-      toast.success('Partial refund processed.');
-    } catch (e) {
-      console.error(e);
-      toast.error(e?.data?.error || 'Failed to process partial refund.');
+    try {
+      await createBill(billData).unwrap();
+      toast.success('Bill created successfully.');
+      setIsCreateModalOpen(false);
+      resetCreateForm();
+    } catch (error) {
+      toast.error('Failed to create bill.');
+      console.error(error);
     }
   };
 
+  const handlePreviewThermal = (draft) => {
+    if (thermalRef.current) {
+      thermalRef.current.preview(draft);
+    }
+  };
+
+  const handlePrintThermal = (draft) => {
+    if (thermalRef.current) {
+      thermalRef.current.print(draft);
+    }
+  };
+
+  // Calculate total pages for pagination
+  const totalPages = useMemo(() => Math.ceil(totalRecords / pageSize), [totalRecords, pageSize]);
+
+  const handleToggleExpand = (billId) => {
+    setExpandedBillId(expandedBillId === billId ? null : billId);
+  };
+
+  const handleEdit = (bill) => {
+    setRefundBill(bill);
+    setRefundOpen(true);
+  };
+
+  const handleDelete = (billId) => {
+    const bill = bills.find(b => b._id === billId);
+    setDeleteBillState(bill);
+    setDeleteOpen(true);
+  };
+
   return (
-    <div className="bg-background">
+    <div className="container mx-auto py-10">
       <Header onCreate={() => setIsCreateModalOpen(true)} />
-
-      <main className="mx-auto px-6 py-8">
-        <StatsCards summary={summaryStats} />
-
-        <FilterBar
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
-
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-card-foreground">Bills</CardTitle>
-            <CardDescription>View and manage all bills</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-muted/50">
-                    <TableHead>Bill #</TableHead>
-                    <TableHead>Buyer</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {billsLoading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="py-10 text-center text-muted-foreground"
-                      >
-                        <Loader className="w-4 h-4 inline mr-2 animate-spin" />
-                        Loading bills…
-                      </TableCell>
-                    </TableRow>
-                  ) : paginatedBills.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="py-10 text-center text-muted-foreground"
-                      >
-                        No bills found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedBills.map((bill) => (
-                      <BillRow
-                        key={bill._id}
-                        bill={bill}
-                        expanded={expandedBillId === bill._id}
-                        onToggleExpand={() =>
-                          setExpandedBillId((prev) =>
-                            prev === bill._id ? null : bill._id
-                          )
-                        }
-                        onEdit={handleRefundAction} // Refund submenu
-                        onPrint={() => handlePrintThermal(bill)} // ✅ print
-                        onPreview={() => handlePreviewThermal(bill)} // ✅ preview
-                        onDelete={() => openDeleteDialog(bill)} // Delete dialog
-                      />
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+      <StatsCards summary={{
+        total: bills.length,
+        paid: bills.filter(b => b.status === 'paid').length,
+        refunded: bills.filter(b => b.status === 'refunded' || b.status === 'partially_refunded').length,
+        todayRevenue: bills
+          .filter(b => new Date(b.createdAt).toDateString() === new Date().toDateString())
+          .reduce((sum, b) => sum + Number(b.total || 0), 0)
+          .toFixed(2),
+      }} />
+      <FilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+      />
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Billing</CardTitle>
+          <CardDescription>Manage and create bills</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bill #</TableHead>
+                <TableHead>Buyer</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {billsLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    <Loader className="w-6 h-6 animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ) : bills.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    No bills found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                bills
+                  .filter(bill =>
+                    (filterStatus === 'all' || bill.status === filterStatus) &&
+                    (searchQuery === '' ||
+                      bill.billNumber.includes(searchQuery) ||
+                      bill.buyer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      bill.buyer?.email?.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )
+                  .slice((page - 1) * pageSize, page * pageSize)
+                  .map((bill) => (
+                    <BillRow
+                      key={bill._id}
+                      bill={bill}
+                      expanded={expandedBillId === bill._id}
+                      onToggleExpand={() => handleToggleExpand(bill._id)}
+                      onEdit={() => handleEdit(bill)}
+                      onPrint={() => handlePrintThermal(bill)}
+                      onDelete={() => handleDelete(bill._id)}
+                    />
+                  ))
+              )}
+            </TableBody>
+          </Table>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground">
+              Showing{' '}
+              <span className="font-medium">
+                {Math.min((page - 1) * pageSize + 1, totalRecords)}
+              </span>{' '}
+              to{' '}
+              <span className="font-medium">
+                {Math.min(page * pageSize, totalRecords)}
+              </span>{' '}
+              of <span className="font-medium">{totalRecords}</span> results
             </div>
 
-            {/* Pagination controls */}
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <div className="text-sm text-muted-foreground">
-                Showing{' '}
-                <span className="font-medium">
-                  {Math.min((page - 1) * pageSize + 1, totalRecords)}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(page * pageSize, totalRecords)}
-                </span>{' '}
-                of <span className="font-medium">{totalRecords}</span> results
-              </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm">Rows per page</label>
+              <select
+                className="border rounded px-2 py-1 bg-background"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                {[5, 10, 20, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
 
-              <div className="flex items-center gap-2">
-                <label className="text-sm">Rows per page</label>
-                <select
-                  className="border rounded px-2 py-1 bg-background"
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                >
-                  {[5, 10, 20, 50].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Prev
-                </Button>
-                <span className="text-sm">
-                  Page <span className="font-medium">{page}</span> of{' '}
-                  <span className="font-medium">{totalPages}</span>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <span className="text-sm">
+                Page <span className="font-medium">{page}</span> of{' '}
+                <span className="font-medium">{totalPages}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* ===== Partial Refund Dialog ===== */}
-        <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Partial Refund</DialogTitle>
-              <DialogDescription>
-                Select items and quantities to refund for bill{' '}
-                <span className="font-medium">{refundBill?.billNumber}</span>.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Partial Refund</DialogTitle>
+            <DialogDescription>
+              Select items and quantities to refund for bill{' '}
+              <span className="font-medium">{refundBill?.billNumber}</span>.
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="border rounded-md divide-y">
-                {refundLines.map((line, idx) => (
-                  <div
-                    key={`${line.sku}-${idx}`}
-                    className="p-3 flex items-center gap-3"
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">
-                        {line.itemName}{' '}
-                        <span className="text-muted-foreground">
-                          · {line.variantName}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        SKU: {line.sku}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Max refundable: {line.maxQty}
-                      </div>
+          <div className="space-y-4">
+            <div className="border rounded-md divide-y">
+              {refundLines.map((line, idx) => (
+                <div
+                  key={`${line.sku}-${idx}`}
+                  className="p-3 flex items-center gap-3"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">
+                      {line.itemName}{' '}
+                      <span className="text-muted-foreground">
+                        · {line.variantName}
+                      </span>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={line.maxQty}
-                        value={line.quantity}
-                        onChange={(e) => {
-                          const v = Math.max(
-                            0,
-                            Math.min(line.maxQty, Number(e.target.value || 0))
-                          );
-                          setRefundLines((prev) =>
-                            prev.map((l, i) =>
-                              i === idx ? { ...l, quantity: v } : l
-                            )
-                          );
-                        }}
-                        className="w-24"
-                        placeholder="Qty"
-                      />
-                      <Input
-                        value={line.reason}
-                        onChange={(e) =>
-                          setRefundLines((prev) =>
-                            prev.map((l, i) =>
-                              i === idx ? { ...l, reason: e.target.value } : l
-                            )
-                          )
-                        }
-                        className="w-56"
-                        placeholder="Reason (optional)"
-                      />
+                    <div className="text-xs text-muted-foreground">
+                      SKU: {line.sku}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Max refundable: {line.maxQty}
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div>
-                <label className="block text-sm mb-1">Notes (optional)</label>
-                <Input
-                  value={refundNotes}
-                  onChange={(e) => setRefundNotes(e.target.value)}
-                  placeholder="Add any notes about this partial refund"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setRefundOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={submitPartialRefund}>
-                  Submit Partial Refund
-                </Button>
-              </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={line.maxQty}
+                      value={line.quantity}
+                      onChange={(e) => {
+                        const v = Math.max(
+                          0,
+                          Math.min(line.maxQty, Number(e.target.value || 0))
+                        );
+                        setRefundLines((prev) =>
+                          prev.map((l, i) =>
+                            i === idx ? { ...l, quantity: v } : l
+                          )
+                        );
+                      }}
+                      className="w-24"
+                      placeholder="Qty"
+                    />
+                    <Input
+                      value={line.reason}
+                      onChange={(e) =>
+                        setRefundLines((prev) =>
+                          prev.map((l, i) =>
+                            i === idx ? { ...l, reason: e.target.value } : l
+                          )
+                        )
+                      }
+                      className="w-56"
+                      placeholder="Reason (optional)"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          </DialogContent>
-        </Dialog>
 
-        {/* ===== Delete Bill Dialog (NO BODY) ===== */}
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Delete Bill</DialogTitle>
-              <DialogDescription>
-                This will mark the bill as deleted and return all items to
-                inventory.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3">
-              <div className="text-sm">
-                Bill:&nbsp;
-                <span className="font-medium">
-                  {deleteBillState?.billNumber}
-                </span>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={submitDelete} disabled={deleting}>
-                  {deleting ? (
-                    <>
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      Deleting…
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Bill
-                    </>
-                  )}
-                </Button>
-              </div>
+            <div>
+              <label className="block text-sm mb-1">Notes (optional)</label>
+              <Input
+                value={refundNotes}
+                onChange={(e) => setRefundNotes(e.target.value)}
+                placeholder="Add any notes about this partial refund"
+              />
             </div>
-          </DialogContent>
-        </Dialog>
-      </main>
 
-      {/* Create Bill Dialog */}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setRefundOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitPartialRefund}>
+                Submit Partial Refund
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Bill</DialogTitle>
+            <DialogDescription>
+              This will mark the bill as deleted and return all items to
+              inventory.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="text-sm">
+              Bill:&nbsp;
+              <span className="font-medium">
+                {deleteBillState?.billNumber}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitDelete} disabled={deleting}>
+                {deleting ? (
+                  <>
+                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Bill
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmRefundOpen} onOpenChange={setConfirmRefundOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Full Refund</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to fully refund bill{' '}
+              <span className="font-medium">{billToRefund?.billNumber}</span>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmRefundOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submitFullRefund}>Confirm Refund</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <CreateBillDialog
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
@@ -804,12 +658,15 @@ export default function BillingPage() {
         onReset={resetCreateForm}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
-      
+        paymentNumber={paymentNumber}
+        setPaymentNumber={setPaymentNumber}
         onPreviewReceipt={(draft) => handlePreviewThermal(draft)}
         onPrintReceipt={(draft) => handlePrintThermal(draft)}
+        companyId={companyData?.data?._id || ''}
+        taxRates={taxRates}
+        companyLoading={companyLoading}
       />
       <ThermalPrintSlip ref={thermalRef} />
-      <Toaster richColors position="top-right" />
     </div>
   );
 }

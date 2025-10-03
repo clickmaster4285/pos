@@ -166,7 +166,7 @@ export default function Sidebar() {
         { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
         { href: '#', label: 'Attendance', icon: iconMap['Attendance'] },
         { href: '#', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
-        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
+        { href: '/admin/setting', label: 'Settings', icon: iconMap['Settings'] },
       ],
       staff: [
         { href: '#', label: 'Vendor Dashboard', icon: iconMap['Dashboard'] },

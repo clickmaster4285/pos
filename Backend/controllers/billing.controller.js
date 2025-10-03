@@ -9,11 +9,12 @@ const createBill = async (req, res) => {
     const {
       items,
       buyer,
-      taxPercent = 0,
+      taxPercent: providedTaxPercent,
       notes = '',
       paymentMethod,
+      paymentNumber,
     } = req.body ?? {};
-
+// console.log("the body", req.body);
     // Top-level validation
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('Items must be a non-empty array');
@@ -21,15 +22,14 @@ const createBill = async (req, res) => {
 
     if (
       ![
-        'credit_card',
-        'debit_card',
-        'paypal',
-        'bank_transfer',
         'cash',
+        'credit_card',
+        'bank_transfer',
       ].includes(paymentMethod)
     ) {
       throw new Error('Invalid payment method');
     }
+
     if (
       notes &&
       (typeof notes !== 'string' ||
@@ -38,8 +38,40 @@ const createBill = async (req, res) => {
     ) {
       throw new Error('Invalid notes format or length');
     }
-    if (typeof taxPercent !== 'number' || taxPercent < 0) {
-      throw new Error('taxPercent must be a number ≥ 0');
+
+    // Fetch company settings to get tax rates
+    const company = await IndexModel.Company.findOne({ companyId: req.user.companyId, deleted: false, isActive: true });
+    if (!company) {
+      throw new Error('Company not found');
+    }
+
+    const taxRates = {
+      taxRateCash: company?.invoiceSettings?.tax?.taxRateCash || 0,
+      taxRateCard: company?.invoiceSettings?.tax?.taxRateCard || 0,
+    };
+
+    let taxPercent;
+    if (paymentMethod === 'cash') {
+      taxPercent = taxRates.taxRateCash;
+    } else if (paymentMethod === 'credit_card' || paymentMethod === 'bank_transfer') {
+      taxPercent = taxRates.taxRateCard;
+    } else {
+      taxPercent = 0;
+    }
+    
+    console.log("teh tax rates", taxPercent, providedTaxPercent);
+    // Validate provided taxPercent, if any
+    if (taxPercent !== undefined) {
+      if (typeof taxPercent !== 'number' || taxPercent < 0) {
+        throw new Error('Provided taxPercent must be a number ≥ 0');
+      }
+      if (
+        (paymentMethod === 'cash' && taxPercent !== taxRates.taxRateCash) ||
+        ((paymentMethod === 'credit_card' || paymentMethod === 'bank_transfer') &&
+          taxPercent !== taxRates.taxRateCard)
+      ) {
+        throw new Error('Provided taxPercent does not match company tax settings for the selected payment method');
+      }
     }
 
     // Validate + resolve each requested item to an Inventory + Variant
@@ -52,7 +84,7 @@ const createBill = async (req, res) => {
         ) {
           throw new Error('Each item must have a valid SKU');
         }
-        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        if (!Number.isInteger(item.qty) || item.qty <= 0) {
           throw new Error('Quantity must be a positive integer');
         }
 
@@ -71,13 +103,13 @@ const createBill = async (req, res) => {
           throw new Error(`Variant with SKU ${item.sku} not found`);
         }
 
-        if (variant.quantity < item.quantity) {
+        if (variant.quantity < item.qty) {
           throw new Error(
-            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.quantity}`
+            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.qty}`
           );
         }
 
-        const lineTotal = item.quantity * (variant.price ?? 0);
+        const lineTotal = item.qty * (variant.price ?? 0);
 
         return {
           inventoryItem: inventory._id,
@@ -85,7 +117,7 @@ const createBill = async (req, res) => {
           variantName: variant.variantName,
           itemName: inventory.itemName,
           sku: variant.sku,
-          quantity: item.quantity,
+          quantity: item.qty,
           returnUnder: variant.returnUnder,
           price: variant.price ?? 0,
           costPrice: variant.costPrice ?? 0,
@@ -106,7 +138,7 @@ const createBill = async (req, res) => {
     const affectedInventories = new Set();
     const createdBills = [];
 
-    // Create bills and update variants (keep your inventory logic intact)
+    // Create bills and update variants
     for (const companyId in groups) {
       const groupItems = groups[companyId];
 
@@ -115,7 +147,7 @@ const createBill = async (req, res) => {
       const taxAmount = +(subtotal * (taxPercent / 100)).toFixed(2);
       const total = +(subtotal + taxAmount).toFixed(2);
 
-      // Generate bill number (reuse your generator)
+      // Generate bill number
       const billNumber = await generateBillNumber(companyId);
 
       const bill = new IndexModel.Bill({
@@ -134,6 +166,7 @@ const createBill = async (req, res) => {
         taxAmount,
         total,
         paymentMethod,
+        paymentNumber,
         notes: notes || '',
         history: [
           {
@@ -141,14 +174,14 @@ const createBill = async (req, res) => {
             performedBy: userId,
           },
         ],
-        status: 'paid', // as per schema: 'pending' | 'paid' | 'void'
+        status: 'paid',
       });
 
       // Save bill
       await bill.save();
       createdBills.push(bill);
 
-      // Update inventory variants (unchanged logic)
+      // Update inventory variants
       for (const item of groupItems) {
         const inventory = await IndexModel.Inventory.findById(
           item.inventoryItem
@@ -206,7 +239,7 @@ const createBill = async (req, res) => {
       }
     }
 
-    // Recalculate inventory totals (unchanged)
+    // Recalculate inventory totals
     for (const invId of affectedInventories) {
       const inventory = await IndexModel.Inventory.findById(invId);
       if (inventory) {

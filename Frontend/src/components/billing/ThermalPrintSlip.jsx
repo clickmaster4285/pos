@@ -1,28 +1,36 @@
-'use client';
-import React, {
-  forwardRef,
-  useImperativeHandle,
-  useRef,
-  useEffect,
-} from 'react';
+"use client";
+import React, { forwardRef, useImperativeHandle, useRef, useEffect } from "react";
+import { useGetCompanyQuery } from '@/features/CompanyApi';
 
-function formatPKR(n) {
+function formatCurrency(n, currencySymbol = "₨") {
   const num = Number(n || 0);
-  return num.toLocaleString('en-PK', {
+  return num.toLocaleString("en-PK", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  }) + ` ${currencySymbol}`;
 }
 
-function buildHtml(bill) {
-  // ===== Store info (feel free to tweak) =====
-  const storeName = 'Alpha Automotive Industry';
-  const storeAddr = 'Plot #12, Industrial Area, I-9, Islamabad';
-  const storePhone = '(+92) 300-0000000';
+function buildHtml(bill, companyData) {
+  // Fallback values if companyData is not available
+  const storeName = companyData?.name || "Store Name";
+  const storeAddr = companyData?.address || "Address not provided";
+  const storePhone = companyData?.contactPhone || "N/A";
+  const currencySymbol = companyData?.invoiceSettings?.currency?.symbol || "₨";
+  const terms = companyData?.invoiceSettings?.terms || "Used items are non-refundable.";
+  const fontSize = companyData?.invoiceSettings?.thermalPrint?.fontSize || 11;
+  const paperWidth = companyData?.invoiceSettings?.thermalPrint?.paperWidth || 80;
+  const showLogo = companyData?.invoiceSettings?.thermalPrint?.showLogo ?? true;
+  const logoUrl = companyData?.companyLogo || "";
+  const taxRate = bill?.paymentMethod === "cash"
+    ? companyData?.invoiceSettings?.tax?.taxRateCash || 0
+    : companyData?.invoiceSettings?.tax?.taxRateCard || 0;
 
   const createdAt = bill?.createdAt ? new Date(bill.createdAt) : new Date();
   const billNo =
-    bill?.billNumber || (bill?._id ? bill._id.slice(-6).toUpperCase() : '—');
+    bill?.billNumber ||
+    (bill?._id
+      ? `${companyData?.invoiceSettings?.format?.prefix || ""}${bill._id.slice(-6).toUpperCase()}`
+      : "—");
 
   const itemsHtml = (bill?.items || [])
     .map((it) => {
@@ -33,33 +41,26 @@ function buildHtml(bill) {
         <div style="margin: 1.5mm 0;">
           <div style="display:flex;justify-content:space-between;gap:2mm;">
             <span style="max-width:55mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-              ${(it.itemName || '').toString()}${
-        it.variantName ? ` — ${it.variantName}` : ''
-      }
+              ${(it.itemName || "").toString()}${it.variantName ? ` — ${it.variantName}` : ""}
             </span>
-            <span>PKR ${formatPKR(line)}</span>
+            <span>${formatCurrency(line, currencySymbol)}</span>
           </div>
-          <div style="font-size:10px;opacity:.9;">
-            ${qty} × PKR ${formatPKR(price)}${it.sku ? ` • ${it.sku}` : ''}
+          <div style="font-size:${fontSize - 1}px;opacity:.9;">
+            ${qty} × ${formatCurrency(price, currencySymbol)}${it.sku ? ` • ${it.sku}` : ""}
           </div>
         </div>
       `;
     })
-    .join('');
+    .join("");
 
   const subtotal = Number(bill?.subtotal || 0);
-  const taxAmount = Number(bill?.taxAmount || 0);
+  const taxAmount = Number(bill?.taxAmount || subtotal * (taxRate / 100));
   const total = Number(bill?.total || subtotal + taxAmount);
-  const taxPercent =
-    bill?.taxPercent !== undefined && bill?.taxPercent !== null
-      ? `${Number(bill.taxPercent)}%`
-      : '—';
+  const taxPercent = taxRate !== undefined && taxRate !== null ? `${taxRate}%` : "—";
 
-  const paymentMethod = (bill?.paymentMethod || 'cash')
-    .toString()
-    .toUpperCase();
-  const status = (bill?.status || '').toString().toUpperCase();
-  const buyerName = bill?.buyer?.name || 'Walk-in';
+  const paymentMethod = (bill?.paymentMethod || "cash").toString().toUpperCase();
+  const status = (bill?.status || "").toString().toUpperCase();
+  const buyerName = bill?.buyer?.name || "Walk-in";
 
   return `<!doctype html>
 <html>
@@ -68,16 +69,16 @@ function buildHtml(bill) {
   <title>Receipt ${billNo}</title>
   <style>
     @media print {
-      @page { size: 80mm auto; margin: 0; }
+      @page { size: ${paperWidth}mm auto; margin: 0; }
       body { margin: 0; }
     }
     body {
-      width: 80mm;
+      width: ${paperWidth}mm;
       margin: 0;
       padding: 3mm 3mm 5mm;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 11px;               /* smaller base font */
-      line-height: 1.35;             /* better readability */
+      font-size: ${fontSize}px;
+      line-height: 1.35;
       color: #000;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
@@ -90,9 +91,9 @@ function buildHtml(bill) {
       margin-bottom: 2mm;
     }
     .store-name {
-      font-size: 13px;               /* smaller store title */
+      font-size: ${fontSize + 2}px;
       font-weight: 700;
-      letter-spacing: .2px;          /* subtle tightening */
+      letter-spacing: .2px;
       margin: 0 0 1mm 0;
     }
     .meta { display:flex; justify-content:space-between; gap: 3mm; }
@@ -100,7 +101,7 @@ function buildHtml(bill) {
     .label { opacity:.9; }
     .grand {
       font-weight: 700;
-      font-size: 12px;               /* slightly larger for emphasis */
+      font-size: ${fontSize + 1}px;
     }
     .footer {
       margin-top: 3mm;
@@ -111,6 +112,7 @@ function buildHtml(bill) {
 </head>
 <body>
   <div class="header">
+    ${showLogo && logoUrl ? `<img src="${logoUrl}" style="max-width:30mm;margin:0 auto 1mm;display:block;" />` : ""}
     <div class="text-center store-name">${storeName}</div>
     <div class="text-center muted" style="white-space:pre-wrap">${storeAddr}</div>
     <div class="text-center muted">Phone: ${storePhone}</div>
@@ -120,7 +122,7 @@ function buildHtml(bill) {
 
   <div class="meta">
     <span><span class="label">Bill #:</span> ${billNo}</span>
-    <span>${createdAt.toLocaleString('en-PK')}</span>
+    <span>${createdAt.toLocaleString("en-PK")}</span>
   </div>
 
   <div class="meta" style="margin-top:1mm;">
@@ -141,18 +143,18 @@ function buildHtml(bill) {
 
   <div class="totals-row">
     <span class="label">Subtotal:</span>
-    <span>PKR ${formatPKR(subtotal)}</span>
+    <span>${formatCurrency(subtotal, currencySymbol)}</span>
   </div>
   <div class="totals-row">
     <span class="label">Tax (${taxPercent}):</span>
-    <span>PKR ${formatPKR(taxAmount)}</span>
+    <span>${formatCurrency(taxAmount, currencySymbol)}</span>
   </div>
 
   <div class="divider" style="margin-top:1.5mm;"></div>
 
   <div class="totals-row grand">
     <span>TOTAL:</span>
-    <span>PKR ${formatPKR(total)}</span>
+    <span>${formatCurrency(total, currencySymbol)}</span>
   </div>
 
   <div class="divider" style="margin-top:1.5mm;"></div>
@@ -165,8 +167,7 @@ function buildHtml(bill) {
   <div class="footer">
     <div>Thank you for your purchase!</div>
     <div>** Terms & Conditions **</div>
-    <div>Used items are non-refundable.</div>
-    <div>Changes allowed within three days.</div>
+    <div style="white-space:pre-wrap">${terms}</div>
   </div>
 </body>
 </html>`;
@@ -174,25 +175,29 @@ function buildHtml(bill) {
 
 const ThermalPrintSlip = forwardRef(function ThermalPrintSlip(_props, ref) {
   const iframeRef = useRef(null);
+  const { data: companyData, isLoading: companyLoading } = useGetCompanyQuery();
 
   useImperativeHandle(ref, () => ({
     print(bill) {
+      if (companyLoading) {
+        console.warn("Company data is still loading, cannot print yet.");
+        return;
+      }
       try {
-        const html = buildHtml(bill);
+        const html = buildHtml(bill, companyData?.data);
 
-        // Hidden iframe approach (reliable across browsers)
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.right = "0";
+        iframe.style.bottom = "0";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        iframe.style.border = "0";
         document.body.appendChild(iframe);
         iframeRef.current = iframe;
 
         const doc = iframe.contentWindow?.document;
-        if (!doc) throw new Error('Unable to access iframe document');
+        if (!doc) throw new Error("Unable to access iframe document");
         doc.open();
         doc.write(html);
         doc.close();
@@ -208,18 +213,18 @@ const ThermalPrintSlip = forwardRef(function ThermalPrintSlip(_props, ref) {
               }, 300);
             }, 120);
           } catch (err) {
-            console.error('Print error:', err);
+            console.error("Print error:", err);
             iframe.parentNode?.removeChild(iframe);
           }
         };
 
-        if ('onload' in iframe) {
+        if ("onload" in iframe) {
           iframe.onload = doPrint;
         } else {
           setTimeout(doPrint, 200);
         }
       } catch (err) {
-        console.error('Thermal print failed:', err);
+        console.error("Thermal print failed:", err);
       }
     },
   }));

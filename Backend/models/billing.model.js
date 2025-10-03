@@ -10,10 +10,6 @@ const BillingSchema = new Schema(
       uppercase: true,
       trim: true,
       maxlength: [50, 'Bill number cannot exceed 50 characters'],
-      match: [
-        /^[A-Z0-9-]+$/,
-        'Bill number can only contain A–Z, 0–9, and hyphens',
-      ],
     },
     userId: { type: String, required: true },
     companyId: { type: String, required: true },
@@ -96,6 +92,7 @@ const BillingSchema = new Schema(
       enum: ['credit_card', 'debit_card', 'paypal', 'bank_transfer', 'cash'],
       required: true,
     },
+    paymentNumber: { type: String, trim: true },
     notes: { type: String, trim: true },
     // NEW: Track refund details at bill level
     refundDetails: {

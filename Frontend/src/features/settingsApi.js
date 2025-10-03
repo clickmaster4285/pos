@@ -20,8 +20,8 @@ export const settingsApi = createApi({
     credentials: 'include',
     prepareHeaders: (headers, { getState }) => {
       const token = getToken(getState);
-      headers.set('Content-Type', 'application/json');
       if (token) headers.set('Authorization', `Bearer ${token}`);
+      // Note: Content-Type is not set here; FormData sets multipart/form-data automatically
       return headers;
     },
     responseHandler: async (response) => {
@@ -33,7 +33,7 @@ export const settingsApi = createApi({
         return {
           status: response.status,
           message: text,
-          isHtml: text.startsWith("<!DOCTYPE html>"),
+          isHtml: text.startsWith('<!DOCTYPE html>'),
         };
       }
     },
@@ -49,34 +49,41 @@ export const settingsApi = createApi({
   }),
   tagTypes: ['Settings'],
   endpoints: (builder) => ({
-    getInvoiceSettings: builder.query({
-      query: (companyId) => `/${companyId}`,
+    getCompanySettings: builder.query({
+      query: () => `/get-company`,
       transformResponse: (res, meta) => {
+        // console.log('Raw response from getCompanySettings:', res);
         if (res?.success && res?.data?.invoiceSettings) {
-          return { invoiceSettings: res.data.invoiceSettings, status: meta?.response?.status || 200 };
+          return { invoiceSettings: res.data.invoiceSettings, companyInfo:{companyName: res.data.name, companyLogo: res.data.companyLogo}, status: meta?.response?.status || 200 };
         }
-        if (res?.invoiceSettings) {
-          return { invoiceSettings: res.invoiceSettings, status: meta?.response?.status || 200 };
-        }
-        throw { message: res?.message || 'Failed to fetch invoice settings', status: meta?.response?.status || 400 };
+        throw { message: res?.message || 'Failed to fetch settings', status: meta?.response?.status || 400 };
       },
       transformErrorResponse: (res, meta) => ({
         ...res,
         status: meta?.response?.status || 400,
       }),
-      providesTags: (result, error, companyId) => [{ type: 'Settings', id: companyId }],
+      providesTags: (result, error) => [{ type: 'Settings' }],
     }),
-    updateInvoiceSettings: builder.mutation({
-      query: ({ companyId, settings }) => ({
-        url: `/update-invoice-settings`,
-        method: 'PUT',
-        body: settings,
-      }),
-      transformResponse: (res, meta) => {
-        if (res?.success && res?.invoiceSettings) {
-          return { invoiceSettings: res.invoiceSettings, status: meta?.response?.status || 200 };
+    updateCompanySettings: builder.mutation({
+      query: ({ companyId, settings, logoFile }) => {
+        const formData = new FormData();
+        // Append settings as a JSON string
+        formData.append('settings', JSON.stringify(settings));
+        // Append logo file if provided
+        if (logoFile) {
+          formData.append('companyLogo', logoFile);
         }
-        throw { message: res?.message || 'Failed to update invoice settings', status: meta?.response?.status || 400 };
+        return {
+          url: `/update-company-settings`,
+          method: 'PUT',
+          body: formData,
+        };
+      },
+      transformResponse: (res, meta) => {
+        if (res?.success && res?.companySettings) {
+          return { companySettings: res.companySettings, status: meta?.response?.status || 200 };
+        }
+        throw { message: res?.message || 'Failed to update company settings', status: meta?.response?.status || 400 };
       },
       transformErrorResponse: (res, meta) => ({
         ...res,
@@ -88,6 +95,6 @@ export const settingsApi = createApi({
 });
 
 export const {
-  useGetInvoiceSettingsQuery,
-  useUpdateInvoiceSettingsMutation,
+  useGetCompanySettingsQuery,
+  useUpdateCompanySettingsMutation,
 } = settingsApi;

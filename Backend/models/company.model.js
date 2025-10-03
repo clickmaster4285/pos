@@ -19,6 +19,9 @@ const CompanySchema = new Schema(
       unique: true,
       required: [true, "Company ID is required"],
     },
+    companyLogo: {
+      type: String,
+    },
     address: {
       type: String,
       trim: true,
@@ -51,7 +54,7 @@ const CompanySchema = new Schema(
       vendor: Number,
       order: Number,
     },
-     invoiceSettings: {
+    invoiceSettings: {
       format: {
         prefix: { type: String, default: "INV-" }, // e.g. INV-2025-001
         numbering: {
@@ -67,7 +70,8 @@ const CompanySchema = new Schema(
       },
       tax: {
         isTaxPayerRegistered: { type: Boolean, default: false },
-        taxRate: { type: Number, default: 0 }, // e.g. 16
+        taxRateCash: { type: Number, default: 0 }, // e.g. 16
+        taxRateCard: { type: Number, default: 0 }, // e.g. 16
       },
       template: {
         header: { type: String, default: "" }, // custom header HTML/text
@@ -79,6 +83,9 @@ const CompanySchema = new Schema(
         fontSize: { type: Number, default: 12 },
         showLogo: { type: Boolean, default: true },
       },
+      terms:{
+        type: String,
+      }
     },
     isActive: {
       type: Boolean,
@@ -93,11 +100,11 @@ const CompanySchema = new Schema(
       {
         action: String,
         performedBy: String, //userId
-      createdAt: {
+        createdAt: {
           type: Date,
           default: Date.now,
         },
-      }
+      },
     ],
     deleted: { type: Boolean, default: false },
     updatedAt: {

@@ -4,6 +4,7 @@ import passport from '../middleware/passportAuth.middleware.js';
 import { checkplan } from '../middleware/authMiddleware.js';
 import ErrorResponse from '../utils/errorResponse.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { upload } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -40,8 +41,9 @@ router.patch(
 );
 
 router.put(
-  '/update-invoice-settings',
+  '/update-company-settings',
   passport.authenticate('jwt', { session: false }),
-  Indexcontroller.Company.updateInvoiceSettings
+  upload.single('companyLogo'),
+  Indexcontroller.Company.updateCompanySettings
 );
 export default router;
