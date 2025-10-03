@@ -1,13 +1,13 @@
 import { generateSKU } from "../utils/generateUniqueSKU.js";
 import { generateUniqueSourceId } from "../utils/generateUniqueSourceId.js";
 import IndexModel from "../models/indexModel.js";
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 class InventoryError extends Error {
   constructor(message, statusCode = 400) {
     super(message);
     this.statusCode = statusCode;
-    this.name = 'InventoryError';
+    this.name = "InventoryError";
   }
 }
 
@@ -22,7 +22,9 @@ const computeDelta = (previous, newData) => {
   if (previous.variants && newData.variants) {
     delta.variants = {};
     newData.variants.forEach((newV, i) => {
-      const prevV = previous.variants.find(v => v._id.toString() === newV._id.toString());
+      const prevV = previous.variants.find(
+        (v) => v._id.toString() === newV._id.toString()
+      );
       if (prevV && JSON.stringify(prevV) !== JSON.stringify(newV)) {
         delta.variants[newV.variantName] = computeDelta(prevV, newV);
       }
@@ -34,102 +36,140 @@ const computeDelta = (previous, newData) => {
 // Utility function to validate variant input
 const validateVariantInput = (variant, includeQuantity = true) => {
   const errors = [];
-  if (!variant.variantName || typeof variant.variantName !== 'string' || variant.variantName.length > 100) {
-    errors.push('variantName must be a non-empty string (max 100 chars)');
+  if (
+    !variant.variantName ||
+    typeof variant.variantName !== "string" ||
+    variant.variantName.length > 100
+  ) {
+    errors.push("variantName must be a non-empty string (max 100 chars)");
   }
-  if (includeQuantity && (variant.incomingQuantity === undefined || !Number.isInteger(variant.incomingQuantity) || variant.incomingQuantity < 0)) {
-    errors.push('variant incoming quantity must be a non-negative integer');
+  if (
+    includeQuantity &&
+    (variant.incomingQuantity === undefined ||
+      !Number.isInteger(variant.incomingQuantity) ||
+      variant.incomingQuantity < 0)
+  ) {
+    errors.push("variant incoming quantity must be a non-negative integer");
   }
-  if (variant.price !== undefined && (typeof variant.price !== 'number' || variant.price < 0)) {
-    errors.push('variant price must be a non-negative number');
+  if (
+    variant.price !== undefined &&
+    (typeof variant.price !== "number" || variant.price < 0)
+  ) {
+    errors.push("variant price must be a non-negative number");
   }
-  if (variant.costPrice !== undefined && (typeof variant.costPrice !== 'number' || variant.costPrice < 0)) {
-    errors.push('variant costPrice must be a non-negative number');
+  if (
+    variant.costPrice !== undefined &&
+    (typeof variant.costPrice !== "number" || variant.costPrice < 0)
+  ) {
+    errors.push("variant costPrice must be a non-negative number");
   }
-  if (variant.attributes && typeof variant.attributes !== 'object') {
-    errors.push('variant attributes must be an object');
+  if (variant.attributes && typeof variant.attributes !== "object") {
+    errors.push("variant attributes must be an object");
   }
   return errors;
 };
 
 // Utility function to validate inventory creation input
 const validateCreateInput = (data) => {
-  const { itemName, itemType, price, costPrice, vendor, variants, source } = data;
+  const { itemName, itemType, price, costPrice, vendor, variants, source } =
+    data;
   const errors = [];
 
-  if (!itemName || typeof itemName !== 'string' || itemName.length > 200) {
-    errors.push('itemName must be a non-empty string (max 200 chars)');
+  if (!itemName || typeof itemName !== "string" || itemName.length > 200) {
+    errors.push("itemName must be a non-empty string (max 200 chars)");
   }
-  if (!itemType || !['Part', 'Whole', 'Other'].includes(itemType)) {
-    errors.push('itemType must be Part, Whole, or Other');
+  if (!itemType || !["Part", "Whole", "Other"].includes(itemType)) {
+    errors.push("itemType must be Part, Whole, or Other");
   }
   if (!vendor || !mongoose.isValidObjectId(vendor)) {
-    errors.push('vendor must be a valid ObjectId');
+    errors.push("vendor must be a valid ObjectId");
   }
-  if (data.description && (typeof data.description !== 'string' || data.description.length > 1000)) {
-    errors.push('description must be a string (max 1000 chars)');
+  if (
+    data.description &&
+    (typeof data.description !== "string" || data.description.length > 1000)
+  ) {
+    errors.push("description must be a string (max 1000 chars)");
   }
-  if (data.location && (typeof data.location !== 'string' || data.location.length > 100)) {
-    errors.push('location must be a string (max 100 chars)');
+  if (
+    data.location &&
+    (typeof data.location !== "string" || data.location.length > 100)
+  ) {
+    errors.push("location must be a string (max 100 chars)");
   }
-  if (data.source && (typeof data.source !== 'string' || data.source.length > 200)) {
-    errors.push('source must be a string (max 200 chars)');
+  if (
+    data.source &&
+    (typeof data.source !== "string" || data.source.length > 200)
+  ) {
+    errors.push("source must be a string (max 200 chars)");
   }
   if (variants && !Array.isArray(variants)) {
-    errors.push('variants must be an array');
+    errors.push("variants must be an array");
   } else if (variants) {
     variants.forEach((variant, index) => {
       const variantErrors = validateVariantInput(variant);
       if (variantErrors.length > 0) {
-        errors.push(`Variant ${index + 1}: ${variantErrors.join(', ')}`);
+        errors.push(`Variant ${index + 1}: ${variantErrors.join(", ")}`);
       }
     });
   }
 
   if (errors.length > 0) {
-    throw new InventoryError(`Validation failed: ${errors.join(', ')}`);
+    throw new InventoryError(`Validation failed: ${errors.join(", ")}`);
   }
 };
 
 // Utility function to validate inventory update input
 const validateUpdateInput = (data, includeQuantity = true) => {
-  const { itemName, itemType, price, costPrice, vendor, description, location, variants, source } = data;
+  const {
+    itemName,
+    itemType,
+    price,
+    costPrice,
+    vendor,
+    description,
+    location,
+    variants,
+    source,
+  } = data;
   const errors = [];
   const hasFields = Object.keys(data).length > 0;
   if (!hasFields) {
-    errors.push('At least one field must be provided for update');
+    errors.push("At least one field must be provided for update");
   }
-  if (itemName && (typeof itemName !== 'string' || itemName.length > 200)) {
-    errors.push('itemName must be a non-empty string (max 200 chars)');
+  if (itemName && (typeof itemName !== "string" || itemName.length > 200)) {
+    errors.push("itemName must be a non-empty string (max 200 chars)");
   }
-  if (itemType && !['Part', 'Whole', 'Other'].includes(itemType)) {
-    errors.push('itemType must be Part, Whole, or Other');
+  if (itemType && !["Part", "Whole", "Other"].includes(itemType)) {
+    errors.push("itemType must be Part, Whole, or Other");
   }
   if (vendor && !mongoose.isValidObjectId(vendor)) {
-    errors.push('vendor must be a valid ObjectId');
+    errors.push("vendor must be a valid ObjectId");
   }
-  if (description && (typeof description !== 'string' || description.length > 1000)) {
-    errors.push('description must be a string (max 1000 chars)');
+  if (
+    description &&
+    (typeof description !== "string" || description.length > 1000)
+  ) {
+    errors.push("description must be a string (max 1000 chars)");
   }
-  if (location && (typeof location !== 'string' || location.length > 100)) {
-    errors.push('location must be a string (max 100 chars)');
+  if (location && (typeof location !== "string" || location.length > 100)) {
+    errors.push("location must be a string (max 100 chars)");
   }
-  if (source && (typeof source !== 'string' || source.length > 200)) {
-    errors.push('source must be a string (max 200 chars)');
+  if (source && (typeof source !== "string" || source.length > 200)) {
+    errors.push("source must be a string (max 200 chars)");
   }
   if (variants && !Array.isArray(variants)) {
-    errors.push('variants must be an array');
+    errors.push("variants must be an array");
   } else if (variants) {
     variants.forEach((variant, index) => {
       const variantErrors = validateVariantInput(variant, includeQuantity);
       if (variantErrors.length > 0) {
-        errors.push(`Variant ${index + 1}: ${variantErrors.join(', ')}`);
+        errors.push(`Variant ${index + 1}: ${variantErrors.join(", ")}`);
       }
     });
   }
 
   if (errors.length > 0) {
-    throw new InventoryError(`Validation failed: ${errors.join(', ')}`);
+    throw new InventoryError(`Validation failed: ${errors.join(", ")}`);
   }
 };
 
@@ -142,13 +182,23 @@ const checkVendor = async (vendorId, companyId) => {
     companyId,
   });
   if (!vendor) {
-    throw new InventoryError('Vendor not found or inactive', 404);
+    throw new InventoryError("Vendor not found or inactive", 404);
   }
   return vendor;
 };
 
 // Utility function to create history entry
-const createHistoryEntry = async (action, performedBy, previousData, newData, reason = '', source = '', comments = '', variantId = null, relatedHistoryId = null) => {
+const createHistoryEntry = async (
+  action,
+  performedBy,
+  previousData,
+  newData,
+  reason = "",
+  source = "",
+  comments = "",
+  variantId = null,
+  relatedHistoryId = null
+) => {
   const changes = computeDelta(previousData, newData);
   const historyEntry = new IndexModel.History({
     action,
@@ -182,7 +232,16 @@ const createInventory = async (req, res) => {
     // Validate input
     validateCreateInput(data);
 
-    const { itemName, itemType, description, vendor, location, variants = [], reason, comments } = data;
+    const {
+      itemName,
+      itemType,
+      description,
+      vendor,
+      location,
+      variants = [],
+      reason,
+      comments,
+    } = data;
 
     // Check vendor
     await checkVendor(vendor, companyId);
@@ -196,11 +255,14 @@ const createInventory = async (req, res) => {
     });
 
     if (existingInventory) {
-      throw new InventoryError('Inventory item with this name already exists', 400);
+      throw new InventoryError(
+        "Inventory item with this name already exists",
+        400
+      );
     }
 
     // Generate unique sourceId if not provided
-    const sourceId = await generateUniqueSourceId('PURCHASE', companyId);
+    const sourceId = await generateUniqueSourceId("PURCHASE", companyId);
 
     // Generate unique SKUs for all variants
     // con
@@ -226,7 +288,9 @@ const createInventory = async (req, res) => {
       createdBy: userId,
       isActive: true,
       variants: variantData,
-      history: [{ action: 'created', performedBy: userId, createdAt: new Date() }],
+      history: [
+        { action: "created", performedBy: userId, createdAt: new Date() },
+      ],
     });
 
     // console.log("teh inventoryItem was is int : ", inventoryItem)
@@ -234,7 +298,7 @@ const createInventory = async (req, res) => {
 
     // Create detailed history entry
     await createHistoryEntry(
-      'created',
+      "created",
       userId,
       {},
       inventoryItem.toObject(),
@@ -247,7 +311,7 @@ const createInventory = async (req, res) => {
     const company = await IndexModel.Company.findOneAndUpdate(
       { companyId },
       {
-        $inc: { 'gain.inventory': 1 },
+        $inc: { "gain.inventory": 1 },
         $push: {
           history: {
             action: `Inventory created ${inventoryItem._id}`,
@@ -262,19 +326,22 @@ const createInventory = async (req, res) => {
 
     if (!company) {
       await IndexModel.Inventory.deleteOne({ _id: inventoryItem._id });
-      await IndexModel.History.deleteMany({ 'newData._id': inventoryItem._id });
-      throw new InventoryError('Company not found. Inventory creation rolled back.', 404);
+      await IndexModel.History.deleteMany({ "newData._id": inventoryItem._id });
+      throw new InventoryError(
+        "Company not found. Inventory creation rolled back.",
+        404
+      );
     }
     return res.status(201).json({
       success: true,
-      message: 'Inventory item created successfully',
+      message: "Inventory item created successfully",
       inventoryItem,
     });
   } catch (error) {
-    console.error('Error creating inventory item:', error);
+    console.error("Error creating inventory item:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -287,13 +354,19 @@ const addStock = async (req, res) => {
     const { variants, reason, source, comments } = req.body;
 
     if (!variants || !Array.isArray(variants) || variants.length === 0) {
-      throw new InventoryError('Variants array is required and must not be empty', 400);
+      throw new InventoryError(
+        "Variants array is required and must not be empty",
+        400
+      );
     }
-// console.log("the variants are : ", variants)
+    // console.log("the variants are : ", variants)
     variants.forEach((variant, index) => {
       const errors = validateVariantInput(variant);
       if (errors.length > 0) {
-        throw new InventoryError(`Validation failed: Variant ${index + 1}: ${errors.join(', ')}`, 400);
+        throw new InventoryError(
+          `Validation failed: Variant ${index + 1}: ${errors.join(", ")}`,
+          400
+        );
       }
     });
 
@@ -305,17 +378,22 @@ const addStock = async (req, res) => {
     });
 
     if (!inventoryItem) {
-      throw new InventoryError('Inventory item not found', 404);
+      throw new InventoryError("Inventory item not found", 404);
     }
 
     const prevData = inventoryItem.toObject();
 
     // Generate unique sourceId if not provided
-    const sourceId = source || await generateUniqueSourceId('PURCHASE', companyId);
+    const sourceId =
+      source || (await generateUniqueSourceId("PURCHASE", companyId));
 
     // Count new variants needing SKUs (those without provided sku)
     const newVariants = variants.filter((variant) => !variant.sku);
-    const skus = await generateSKU(inventoryItem.itemType, companyId, newVariants.length);
+    const skus = await generateSKU(
+      inventoryItem.itemType,
+      companyId,
+      newVariants.length
+    );
 
     let skuIndex = 0; // Track which SKU to assign from the batch
     const variantData = variants.map((variant) => ({
@@ -331,11 +409,18 @@ const addStock = async (req, res) => {
       );
 
       if (existingVariantIndex !== -1) {
-        updatedVariants[existingVariantIndex].quantity += newVariant.incomingQuantity;
-        updatedVariants[existingVariantIndex].incomingQuantity = newVariant.incomingQuantity;
-        updatedVariants[existingVariantIndex].price = newVariant.price || updatedVariants[existingVariantIndex].price;
-        updatedVariants[existingVariantIndex].costPrice = newVariant.costPrice || updatedVariants[existingVariantIndex].costPrice;
-        updatedVariants[existingVariantIndex].attributes = newVariant.attributes || updatedVariants[existingVariantIndex].attributes;
+        updatedVariants[existingVariantIndex].quantity +=
+          newVariant.incomingQuantity;
+        updatedVariants[existingVariantIndex].incomingQuantity =
+          newVariant.incomingQuantity;
+        updatedVariants[existingVariantIndex].price =
+          newVariant.price || updatedVariants[existingVariantIndex].price;
+        updatedVariants[existingVariantIndex].costPrice =
+          newVariant.costPrice ||
+          updatedVariants[existingVariantIndex].costPrice;
+        updatedVariants[existingVariantIndex].attributes =
+          newVariant.attributes ||
+          updatedVariants[existingVariantIndex].attributes;
         updatedVariants[existingVariantIndex].updatedAt = new Date();
       } else {
         updatedVariants.push({
@@ -351,7 +436,7 @@ const addStock = async (req, res) => {
     inventoryItem.updatedBy = userId;
     inventoryItem.updatedAt = new Date();
     inventoryItem.history.push({
-      action: 'stock_added',
+      action: "stock_added",
       performedBy: userId,
       createdAt: new Date(),
     });
@@ -359,7 +444,7 @@ const addStock = async (req, res) => {
     await inventoryItem.save();
 
     await createHistoryEntry(
-      'stock_added',
+      "stock_added",
       userId,
       prevData,
       inventoryItem.toObject(),
@@ -370,14 +455,14 @@ const addStock = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Stock added successfully',
+      message: "Stock added successfully",
       inventoryItem,
     });
   } catch (error) {
-    console.error('Error adding stock:', error);
+    console.error("Error adding stock:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -390,7 +475,16 @@ const updateInfo = async (req, res) => {
     const data = req.body;
 
     // Ignore stock-related fields
-    const { variants, quantity, incomingQuantity, totalVariants, reason, source, comments, ...otherFields } = data;
+    const {
+      variants,
+      quantity,
+      incomingQuantity,
+      totalVariants,
+      reason,
+      source,
+      comments,
+      ...otherFields
+    } = data;
 
     validateUpdateInput(otherFields, false);
 
@@ -402,19 +496,20 @@ const updateInfo = async (req, res) => {
     });
 
     if (!inventoryItem) {
-      throw new InventoryError('Inventory item not found', 404);
+      throw new InventoryError("Inventory item not found", 404);
     }
 
     const prevData = inventoryItem.toObject();
 
     // Generate unique sourceId if not provided
-    const sourceId = source || await generateUniqueSourceId('UPDATE', companyId);
+    const sourceId =
+      source || (await generateUniqueSourceId("UPDATE", companyId));
 
     Object.assign(inventoryItem, otherFields);
     inventoryItem.updatedBy = userId;
     inventoryItem.updatedAt = new Date();
     inventoryItem.history.push({
-      action: 'info_updated',
+      action: "info_updated",
       performedBy: userId,
       createdAt: new Date(),
     });
@@ -422,7 +517,7 @@ const updateInfo = async (req, res) => {
     await inventoryItem.save();
 
     await createHistoryEntry(
-      'info_updated',
+      "info_updated",
       userId,
       prevData,
       inventoryItem.toObject(),
@@ -433,14 +528,14 @@ const updateInfo = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Inventory info updated successfully',
+      message: "Inventory info updated successfully",
       inventoryItem,
     });
   } catch (error) {
-    console.error('Error updating inventory info:', error);
+    console.error("Error updating inventory info:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -457,36 +552,36 @@ const getAllInventoryItems = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     // Collect all vendorIds from inventory
-    const vendorIds = inventoryItems.map(item => item.vendor);
+    const vendorIds = inventoryItems.map((item) => item.vendor);
 
     const vendors = await IndexModel.Vendor.find({
       _id: { $in: vendorIds },
       companyId,
       deleted: false,
-    }).select('name email phone');
+    }).select("name email phone");
 
     // Convert vendors to map for quick lookup
     const vendorMap = {};
-    vendors.forEach(v => {
+    vendors.forEach((v) => {
       vendorMap[v._id.toString()] = v;
     });
 
     // Merge vendor info into inventory items
-    const data = inventoryItems.map(item => ({
+    const data = inventoryItems.map((item) => ({
       ...item.toObject(),
       vendor: vendorMap[item.vendor?.toString()] || null,
     }));
 
     return res.status(200).json({
       success: true,
-      message: 'Inventory items retrieved successfully',
+      message: "Inventory items retrieved successfully",
       inventoryItems: data,
     });
   } catch (error) {
-    console.error('Error retrieving inventory items:', error);
+    console.error("Error retrieving inventory items:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -494,7 +589,6 @@ const getAllInventoryItems = async (req, res) => {
 // Modified getInventoryItemById for clearer historySummary
 const getInventoryItemById = async (req, res) => {
   try {
-    
     const { companyId } = req.user;
     const { id } = req.params;
 
@@ -504,15 +598,18 @@ const getInventoryItemById = async (req, res) => {
       deleted: false,
     });
 
+    const user = await IndexModel.User.find({
+      companyId,
+    });
     if (!inventoryItem) {
-      throw new InventoryError('Inventory item not found', 404);
+      throw new InventoryError("Inventory item not found", 404);
     }
 
     // Fetch all related histories, sorted chronologically
     const histories = await IndexModel.History.find({
       $or: [
-        { 'previousData._id': inventoryItem._id },
-        { 'newData._id': inventoryItem._id },
+        { "previousData._id": inventoryItem._id },
+        { "newData._id": inventoryItem._id },
       ],
     }).sort({ createdAt: 1 });
 
@@ -525,12 +622,14 @@ const getInventoryItemById = async (req, res) => {
       // Compute variant-specific changes
       const variantChanges = [];
       if (h.newData?.variants && h.previousData?.variants) {
-        h.newData.variants.forEach(newV => {
-          const prevV = h.previousData.variants.find(pv => pv._id.toString() === newV._id.toString());
+        h.newData.variants.forEach((newV) => {
+          const prevV = h.previousData.variants.find(
+            (pv) => pv._id.toString() === newV._id.toString()
+          );
           const prevVarQty = prevV?.quantity || 0;
           const newVarQty = newV.quantity || 0;
           const varChange = newVarQty - prevVarQty;
-          if (varChange !== 0 || h.action === 'created') {
+          if (varChange !== 0 || h.action === "created") {
             variantChanges.push({
               variantName: newV.variantName,
               variantId: newV._id.toString(),
@@ -542,27 +641,43 @@ const getInventoryItemById = async (req, res) => {
         });
       }
 
-      let description = '';
-      if (h.action === 'created') {
+      let description = "";
+      if (h.action === "created") {
         description = `Initial stock set to ${newQty} units (${h.newData.variants
-          .map(v => `${v.variantName}: ${v.quantity}`)
-          .join(', ')})`;
-      } else if (h.action.includes('stock_added')) {
+          .map((v) => `${v.variantName}: ${v.quantity}`)
+          .join(", ")})`;
+      } else if (h.action.includes("stock_added")) {
         description = `Added stock: ${variantChanges
-          .map(vc => `${vc.change} units to ${vc.variantName} (from ${vc.previousQuantity} to ${vc.newQuantity})`)
-          .join(', ')}`;
-      } else if (h.action.includes('history_updated')) {
+          .map(
+            (vc) =>
+              `${vc.change} units to ${vc.variantName} (from ${vc.previousQuantity} to ${vc.newQuantity})`
+          )
+          .join(", ")}`;
+      } else if (h.action.includes("history_updated")) {
         description = `Updated history ${h._id.toString()}: ${variantChanges
-          .map(vc => `${vc.variantName} from ${vc.previousQuantity} to ${vc.newQuantity} (change ${vc.change >= 0 ? '+' : ''}${vc.change})`)
-          .join(', ')}`;
-      } else if (h.action.includes('Adjusted to maintain sequence')) {
-        description = `Propagated update from history ${h.newData.history.find(h => h.action.includes('Updated from history'))?.action.split(' ').pop() || 'unknown'}: Total quantity adjusted to ${newQty}`;
-      } else if (h.action.includes('deleted')) {
+          .map(
+            (vc) =>
+              `${vc.variantName} from ${vc.previousQuantity} to ${
+                vc.newQuantity
+              } (change ${vc.change >= 0 ? "+" : ""}${vc.change})`
+          )
+          .join(", ")}`;
+      } else if (h.action.includes("Adjusted to maintain sequence")) {
+        description = `Propagated update from history ${
+          h.newData.history
+            .find((h) => h.action.includes("Updated from history"))
+            ?.action.split(" ")
+            .pop() || "unknown"
+        }: Total quantity adjusted to ${newQty}`;
+      } else if (h.action.includes("deleted")) {
         description = `Item/Variant deleted (quantity at deletion: ${prevQty})`;
       } else {
         description = `Quantity changed from ${prevQty} to ${newQty} (${variantChanges
-          .map(vc => `${vc.variantName}: ${vc.previousQuantity} to ${vc.newQuantity}`)
-          .join(', ')})`;
+          .map(
+            (vc) =>
+              `${vc.variantName}: ${vc.previousQuantity} to ${vc.newQuantity}`
+          )
+          .join(", ")})`;
       }
 
       return {
@@ -571,9 +686,9 @@ const getInventoryItemById = async (req, res) => {
         performedBy: h.performedBy,
         createdAt: h.createdAt,
         description,
-        reason: h.reason || 'N/A',
-        source: h.source || 'N/A',
-        comments: h.comments || 'N/A',
+        reason: h.reason || "N/A",
+        source: h.source || "N/A",
+        comments: h.comments || "N/A",
         variantChanges, // Detailed changes per variant
         id: h._id.toString(),
       };
@@ -585,10 +700,10 @@ const getInventoryItemById = async (req, res) => {
       historySummary,
     });
   } catch (error) {
-    console.error('Error getting inventory item:', error);
+    console.error("Error getting inventory item:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -609,25 +724,30 @@ const updateInventoryItem = async (req, res) => {
     });
 
     if (!inventoryItem) {
-      throw new InventoryError('Inventory item not found or inactive', 404);
+      throw new InventoryError("Inventory item not found or inactive", 404);
     }
 
     const histories = await IndexModel.History.find({
-      'newData.id': inventoryId,
+      "newData.id": inventoryId,
     }).sort({ createdAt: 1 });
 
-    const targetHistory = histories.find(h => h._id.toString() === historyId);
+    const targetHistory = histories.find((h) => h._id.toString() === historyId);
     if (!targetHistory) {
-      throw new InventoryError('History record not found', 404);
+      throw new InventoryError("History record not found", 404);
     }
 
-    const targetIndex = histories.findIndex(h => h._id.toString() === historyId);
+    const targetIndex = histories.findIndex(
+      (h) => h._id.toString() === historyId
+    );
     if (targetIndex === -1) {
-      throw new InventoryError('History record not found in inventory history', 404);
+      throw new InventoryError(
+        "History record not found in inventory history",
+        404
+      );
     }
 
-    if (targetHistory.action.includes('deleted')) {
-      throw new InventoryError('Cannot update a deleted history record', 403);
+    if (targetHistory.action.includes("deleted")) {
+      throw new InventoryError("Cannot update a deleted history record", 403);
     }
 
     const prevData = inventoryItem.toObject();
@@ -635,49 +755,88 @@ const updateInventoryItem = async (req, res) => {
 
     if (variants) {
       validateVariantInput(variants, true);
-      variants.forEach(newVariant => {
+      variants.forEach((newVariant) => {
         const vid = newVariant.variantId;
         if (!vid) {
-          throw new InventoryError('variantId is required for variant updates', 400);
+          throw new InventoryError(
+            "variantId is required for variant updates",
+            400
+          );
         }
 
-        const targetVariant = targetHistory.newData.variants.find(v => v._id.toString() === vid);
+        const targetVariant = targetHistory.newData.variants.find(
+          (v) => v._id.toString() === vid
+        );
         if (!targetVariant) {
-          throw new InventoryError(`Variant ${vid} not found in this history record`, 404);
+          throw new InventoryError(
+            `Variant ${vid} not found in this history record`,
+            404
+          );
         }
 
         const oldIncoming = targetVariant.incomingQuantity || 0;
-        const newIncoming = newVariant.incomingQuantity !== undefined ? newVariant.incomingQuantity : oldIncoming;
+        const newIncoming =
+          newVariant.incomingQuantity !== undefined
+            ? newVariant.incomingQuantity
+            : oldIncoming;
         const vdiff = newIncoming - oldIncoming;
         variantDiffs[vid] = vdiff;
 
         if (targetHistory.newData.quantity + vdiff < 0) {
-          throw new InventoryError('Update would result in negative quantity', 400);
+          throw new InventoryError(
+            "Update would result in negative quantity",
+            400
+          );
         }
 
         targetVariant.incomingQuantity = newIncoming;
-        targetVariant.quantity = (targetHistory.previousData.variants.find(v => v._id.toString() === vid)?.quantity || 0) + newIncoming;
-        if (newVariant.price !== undefined) targetVariant.price = newVariant.price;
-        if (newVariant.costPrice !== undefined) targetVariant.costPrice = newVariant.costPrice;
-        if (newVariant.attributes) targetVariant.attributes = newVariant.attributes;
+        targetVariant.quantity =
+          (targetHistory.previousData.variants.find(
+            (v) => v._id.toString() === vid
+          )?.quantity || 0) + newIncoming;
+        if (newVariant.price !== undefined)
+          targetVariant.price = newVariant.price;
+        if (newVariant.costPrice !== undefined)
+          targetVariant.costPrice = newVariant.costPrice;
+        if (newVariant.attributes)
+          targetVariant.attributes = newVariant.attributes;
         if (newVariant.sku) targetVariant.sku = newVariant.sku;
         targetVariant.updatedAt = new Date();
       });
     }
 
     // Recalculate quantities
-    targetHistory.newData.quantity = targetHistory.newData.variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
-    targetHistory.newData.incomingQuantity = targetHistory.newData.variants.reduce((sum, v) => sum + (v.incomingQuantity || 0), 0);
+    targetHistory.newData.quantity = targetHistory.newData.variants.reduce(
+      (sum, v) => sum + (v.quantity || 0),
+      0
+    );
+    targetHistory.newData.incomingQuantity =
+      targetHistory.newData.variants.reduce(
+        (sum, v) => sum + (v.incomingQuantity || 0),
+        0
+      );
     targetHistory.newData.totalVariants = targetHistory.newData.variants.length;
 
     // Recalculate totalPrice and totalCostPrice
-    targetHistory.newData.totalPrice = targetHistory.newData.variants.reduce((sum, v) => sum + ((v.price || 0) * (v.quantity || 0)), 0);
-    targetHistory.newData.totalCostPrice = targetHistory.newData.variants.reduce((sum, v) => sum + ((v.costPrice || 0) * (v.quantity || 0)), 0);
+    targetHistory.newData.totalPrice = targetHistory.newData.variants.reduce(
+      (sum, v) => sum + (v.price || 0) * (v.quantity || 0),
+      0
+    );
+    targetHistory.newData.totalCostPrice =
+      targetHistory.newData.variants.reduce(
+        (sum, v) => sum + (v.costPrice || 0) * (v.quantity || 0),
+        0
+      );
 
-    targetHistory.action = `Inventory updated: qty ${targetHistory.previousData.quantity || 0} → ${targetHistory.newData.quantity}`;
+    targetHistory.action = `Inventory updated: qty ${
+      targetHistory.previousData.quantity || 0
+    } → ${targetHistory.newData.quantity}`;
     targetHistory.reason = reason || targetHistory.reason;
     targetHistory.source = sourceId;
-    targetHistory.changes = computeDelta(targetHistory.previousData, targetHistory.newData);
+    targetHistory.changes = computeDelta(
+      targetHistory.previousData,
+      targetHistory.newData
+    );
     targetHistory.updatedBy = userId;
     targetHistory.updatedAt = new Date();
     await targetHistory.save();
@@ -686,23 +845,53 @@ const updateInventoryItem = async (req, res) => {
     for (let i = targetIndex + 1; i < histories.length; i++) {
       const history = histories[i];
       for (const [vid, vdiff] of Object.entries(variantDiffs)) {
-        const prevV = history.previousData.variants.find(v => v._id.toString() === vid);
+        const prevV = history.previousData.variants.find(
+          (v) => v._id.toString() === vid
+        );
         if (prevV) prevV.quantity = (prevV.quantity || 0) + vdiff;
-        const newV = history.newData.variants.find(v => v._id.toString() === vid);
+        const newV = history.newData.variants.find(
+          (v) => v._id.toString() === vid
+        );
         if (newV) newV.quantity = (newV.quantity || 0) + vdiff;
       }
 
-      history.previousData.quantity = history.previousData.variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
-      history.newData.quantity = history.newData.variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
-      history.previousData.incomingQuantity = history.previousData.variants.reduce((sum, v) => sum + (v.incomingQuantity || 0), 0);
-      history.newData.incomingQuantity = history.newData.variants.reduce((sum, v) => sum + (v.incomingQuantity || 0), 0);
+      history.previousData.quantity = history.previousData.variants.reduce(
+        (sum, v) => sum + (v.quantity || 0),
+        0
+      );
+      history.newData.quantity = history.newData.variants.reduce(
+        (sum, v) => sum + (v.quantity || 0),
+        0
+      );
+      history.previousData.incomingQuantity =
+        history.previousData.variants.reduce(
+          (sum, v) => sum + (v.incomingQuantity || 0),
+          0
+        );
+      history.newData.incomingQuantity = history.newData.variants.reduce(
+        (sum, v) => sum + (v.incomingQuantity || 0),
+        0
+      );
       history.previousData.totalVariants = history.previousData.variants.length;
       history.newData.totalVariants = history.newData.variants.length;
       // Recalculate totalPrice and totalCostPrice for subsequent histories
-      history.previousData.totalPrice = history.previousData.variants.reduce((sum, v) => sum + ((v.price || 0) * (v.quantity || 0)), 0);
-      history.newData.totalPrice = history.newData.variants.reduce((sum, v) => sum + ((v.price || 0) * (v.quantity || 0)), 0);
-      history.previousData.totalCostPrice = history.previousData.variants.reduce((sum, v) => sum + ((v.costPrice || 0) * (v.quantity || 0)), 0);
-      history.newData.totalCostPrice = history.newData.variants.reduce((sum, v) => sum + ((v.costPrice || 0) * (v.quantity || 0)), 0);
+      history.previousData.totalPrice = history.previousData.variants.reduce(
+        (sum, v) => sum + (v.price || 0) * (v.quantity || 0),
+        0
+      );
+      history.newData.totalPrice = history.newData.variants.reduce(
+        (sum, v) => sum + (v.price || 0) * (v.quantity || 0),
+        0
+      );
+      history.previousData.totalCostPrice =
+        history.previousData.variants.reduce(
+          (sum, v) => sum + (v.costPrice || 0) * (v.quantity || 0),
+          0
+        );
+      history.newData.totalCostPrice = history.newData.variants.reduce(
+        (sum, v) => sum + (v.costPrice || 0) * (v.quantity || 0),
+        0
+      );
       history.changes = computeDelta(history.previousData, history.newData);
       history.action = `Propagated update from history ${historyId}`;
       history.updatedBy = userId;
@@ -717,7 +906,9 @@ const updateInventoryItem = async (req, res) => {
     inventoryItem.totalVariants = lastHistory.newData.totalVariants;
     inventoryItem.totalPrice = lastHistory.newData.totalPrice;
     inventoryItem.totalCostPrice = lastHistory.newData.totalCostPrice;
-    inventoryItem.variants = lastHistory.newData.variants.map(v => ({ ...v }));
+    inventoryItem.variants = lastHistory.newData.variants.map((v) => ({
+      ...v,
+    }));
     inventoryItem.updatedAt = new Date();
     inventoryItem.updatedBy = userId;
     inventoryItem.history.push({
@@ -729,7 +920,7 @@ const updateInventoryItem = async (req, res) => {
     await inventoryItem.save();
 
     await createHistoryEntry(
-      'history_updated',
+      "history_updated",
       userId,
       prevData,
       inventoryItem.toObject(),
@@ -742,14 +933,14 @@ const updateInventoryItem = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Inventory and history updated successfully',
+      message: "Inventory and history updated successfully",
       inventoryItem,
     });
   } catch (error) {
-    console.error('Error updating inventory:', error);
+    console.error("Error updating inventory:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -757,7 +948,7 @@ const updateInventoryItem = async (req, res) => {
 // // Soft delete an inventory item, variant, or history
 const deleteInventoryItem = async (req, res) => {
   try {
-    const { id } = req.params;          // inventoryId
+    const { id } = req.params; // inventoryId
     const { userId, companyId } = req.user;
 
     // 1. Find the inventory item
@@ -771,7 +962,7 @@ const deleteInventoryItem = async (req, res) => {
     if (!inventoryItem) {
       return res.status(404).json({
         success: false,
-        message: 'Inventory item not found or already deleted',
+        message: "Inventory item not found or already deleted",
       });
     }
 
@@ -790,18 +981,17 @@ const deleteInventoryItem = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Inventory item soft deleted successfully',
+      message: "Inventory item soft deleted successfully",
       data: inventoryItem,
     });
   } catch (error) {
-    console.error('Error soft-deleting inventory:', error);
+    console.error("Error soft-deleting inventory:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || 'Internal server error',
+      message: error.message || "Internal server error",
     });
   }
 };
-
 
 export default {
   createInventory,
