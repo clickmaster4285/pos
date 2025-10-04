@@ -43,8 +43,9 @@ export default function SignInPage() {
   };
 
   // Decide where to go based on role (default → /dashboard)
-  const getDashboardPath = (role) => {
+const getDashboardPath = (role, subRole) => {
   const r = String(role || '').toLowerCase();
+  const sr = String(subRole || '').toLowerCase();
 
   switch (r) {
     case 'superadmin':
@@ -52,7 +53,7 @@ export default function SignInPage() {
     case 'admin':
       return '/admin/dashboard';
     case 'staff':
-      return '/staff/dashboard';
+      return sr ? `/staff/${sr}/dashboard` : '/staff/dashboard';
     case 'user':
       return '/user/dashboard';
     default:
@@ -60,38 +61,45 @@ export default function SignInPage() {
   }
 };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage('');
 
-    try {
-      const raw = await login({ email, password }).unwrap();
-      const { token, user, success, requiresTwoFactor, tempToken } =
-        normalizeAuthResponse(raw);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErrorMessage('');
 
-      if (requiresTwoFactor && tempToken) {
-        router.push(`/two-factor-auth?tempToken=${tempToken}`);
-        return;
-      }
-      if (!success || !token) {
-        setErrorMessage(raw?.message || 'Login failed');
-        return;
-      }
+  try {
+    const raw = await login({ email, password }).unwrap();
+    const { token, user, success, requiresTwoFactor, tempToken } =
+      normalizeAuthResponse(raw);
 
-      // save token (your existing code) ...
-
-      // role-based redirect: default /dashboard, superadmin → /superadmin/dashboard
-      const destination = getDashboardPath(user?.role);
-      router.replace(destination); // or router.push(destination)
-    } catch (error) {
-      setErrorMessage(
-        error?.data?.message ||
-          error?.message ||
-          'An error occurred. Please try again later.'
-      );
-      console.error('Login error:', error);
+    if (requiresTwoFactor && tempToken) {
+      router.push(`/two-factor-auth?tempToken=${tempToken}`);
+      return;
     }
-  };
+    if (!success || !token) {
+      setErrorMessage(raw?.message || 'Login failed');
+      return;
+    }
+
+    // Persist auth (so Sidebar can read role & subRole later)
+    try {
+      sessionStorage.setItem('authUser', JSON.stringify(user));
+      localStorage.setItem('authUser', JSON.stringify(user)); // optional fallback
+      // If you also use a token cookie:
+      setCookie('authToken', token, { sameSite: 'lax' });
+    } catch {}
+
+    // Staff → /staff/<subRole>/dashboard
+    const destination = getDashboardPath(user?.role, user?.subRole);
+    router.replace(destination);
+  } catch (error) {
+    setErrorMessage(
+      error?.data?.message ||
+        error?.message ||
+        'An error occurred. Please try again later.'
+    );
+    console.error('Login error:', error);
+  }
+};
 
   // Rest of your JSX remains unchanged
   return (

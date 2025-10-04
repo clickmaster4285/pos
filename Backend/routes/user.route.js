@@ -1,43 +1,47 @@
 import express from 'express';
-import passport from "../middleware/passportAuth.middleware.js";
-import Indexcontroller from "../controllers/indexController.js";
-import { checkplan, checkPlanIsActive } from "../middleware/authMiddleware.js";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import passport from '../middleware/passportAuth.middleware.js';
+import Indexcontroller from '../controllers/indexController.js';
+import {
+  checkplan,
+  checkPlanIsActive,
+  checkPermissionsValidation,
+} from '../middleware/authMiddleware.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-  router.post(
-  "/create-staff",
-  passport.authenticate("jwt", { session: false }),
+router.post(
+  '/create-staff',
+  passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkplan("staffCreate"),
+  checkplan('staffCreate'),
   Indexcontroller.User.createStaff
 );
 
-  router.delete(
-  "/delete-staff/:id",
-  passport.authenticate("jwt", { session: false }),
+router.delete(
+  '/delete-staff/:id',
+  passport.authenticate('jwt', { session: false }),
   authenticateToken,
+  checkPermissionsValidation('staffDelete'),
   checkPlanIsActive,
   Indexcontroller.User.deleteStaff
 );
 
-  router.post(
-  "/create-user",
-  Indexcontroller.User.registerUser
-);
+router.post('/create-user', Indexcontroller.User.registerUser);
 
 router.get(
-  "/get-all-staff",
-  passport.authenticate("jwt", { session: false }),
+  '/get-all-staff',
+  passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('viewallstaff'),
   authenticateToken,
   Indexcontroller.User.getAllStaff
 );
 
 router.patch(
-  "/update-staff-byid/:id",
-  passport.authenticate("jwt", { session: false }),
+  '/update-staff-byid/:id',
+  passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('staffUpdate'),
   authenticateToken,
   Indexcontroller.User.updateStaff
 );

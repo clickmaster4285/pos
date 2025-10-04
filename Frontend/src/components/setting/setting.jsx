@@ -5,7 +5,7 @@ import {
   useGetCompanySettingsQuery,
   useUpdateCompanySettingsMutation,
 } from '@/features/settingsApi';
-import { Building2, Upload, Receipt, FileText, Save, Loader2, CheckCircle2, Eye, EyeOff, Download, Printer } from 'lucide-react';
+import { Building2, Upload, Receipt, FileText, Save, Loader2, CheckCircle2, Eye, EyeOff, Download, Printer, Phone, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,8 @@ const currencyOptions = [
 const fieldConfigs = {
   companySettings: [
     { key: 'companyName', label: 'Company Name', type: 'text', placeholder: 'Enter company name', icon: Building2 },
+    { key: 'contactPhone', label: 'Contact Phone', type: 'text', placeholder: 'Enter contact phone number', icon: Phone },
+    { key: 'address', label: 'Address', type: 'text', placeholder: 'Enter company address', icon: MapPin },
     { key: 'companyLogo', label: 'Company Logo', type: 'file', accept: 'image/*', description: 'PNG, JPG up to 2MB', icon: Upload },
   ],
   invoiceSettings: {
@@ -234,8 +236,7 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             {value ? (
               <div className="relative group">
                 <div className="h-24 w-24 rounded-xl border-2 border-border overflow-hidden bg-card shadow-sm">
-                    {console.log(`the imge are: ${API_URL}${value}`)}
-                  <img src={`https://localhost:8000/${value?.replace(/\\/g, "/")}`} alt="Company logo" className="h-full w-full object-cover" />
+                  <img src={`${API_URL}${value?.replace(/\\/g, "/")}`} alt="Company logo" className="h-full w-full object-cover" />
                 </div>
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center">
                   <Eye className="h-5 w-5 text-white" />
@@ -292,6 +293,8 @@ const SettingsPreview = ({ companySettings, invoiceSettings }) => {
           )}
           <div>
             <h3 className="font-semibold text-foreground">{companySettings.companyName || 'Your Company'}</h3>
+            <p className="text-xs text-muted-foreground">{companySettings.contactPhone || 'No phone number'}</p>
+            <p className="text-xs text-muted-foreground">{companySettings.address || 'No address'}</p>
             <p className="text-xs text-muted-foreground">Next Invoice: {invoiceSettings.format.prefix || 'INV-'}001</p>
           </div>
         </div>
@@ -323,6 +326,8 @@ const SettingsPreview = ({ companySettings, invoiceSettings }) => {
 export default function Settings({ companyId }) {
   const [companySettings, setCompanySettings] = useState({
     companyName: '',
+    contactPhone: '',
+    address: '',
     companyLogo: null,
   });
   const [invoiceSettings, setInvoiceSettings] = useState({
@@ -355,7 +360,12 @@ export default function Settings({ companyId }) {
             : data.invoiceSettings.currency.code,
         },
       });
-      setCompanySettings(data.companyInfo);
+      setCompanySettings({
+        companyName: data.companyInfo.companyName || '',
+        contactPhone: data.companyInfo.contactPhone || '',
+        address: data.companyInfo.address || '',
+        companyLogo: data.companyInfo.companyLogo || null,
+      });
     }
     if (error) {
       console.error('Failed to fetch settings:', error);
@@ -396,7 +406,7 @@ export default function Settings({ companyId }) {
         ...prev,
         currency: { ...prev.currency, customCode: value },
       }));
-    } else if (section === 'terms') {
+    } else if (section == 'terms') {
       const stringValue = typeof value === 'string' ? value : '';
       setInvoiceSettings((prev) => ({
         ...prev,
@@ -461,7 +471,7 @@ export default function Settings({ companyId }) {
                   <Building2 className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold  bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                     Company Settings
                   </h1>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -613,29 +623,6 @@ export default function Settings({ companyId }) {
                 invoiceSettings={invoiceSettings} 
               />
               
-              {/* <Card className="bg-muted/30 border-dashed">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Download className="h-4 w-4" />
-                    Quick Actions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start gap-2" size="sm">
-                    <FileText className="h-4 w-4" />
-                    Export Settings
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2" size="sm">
-                    <Printer className="h-4 w-4" />
-                    Print Configuration
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2" size="sm">
-                    <Eye className="h-4 w-4" />
-                    Preview Invoice
-                  </Button>
-                </CardContent>
-              </Card> */}
-
               <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-amber-200">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
@@ -645,9 +632,10 @@ export default function Settings({ companyId }) {
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-amber-700">
                   <p>• Save changes after each section for best results</p>
-                  <p>• Test invoice printing with diffe rent paper widths</p>
+                  <p>• Test invoice printing with different paper widths</p>
                   <p>• Keep terms and conditions clear and concise</p>
                   <p>• Use high-quality logos for professional appearance</p>
+                  <p>• Ensure contact phone and address are accurate</p>
                 </CardContent>
               </Card>
             </div>

@@ -248,7 +248,6 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
                             {history.action.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
-                        
                         <td className="p-3 font-medium">{history.performedBy}</td>
                         <td className="p-3 text-sm">{history.description || 'N/A'}</td>
                         <td className="p-3 text-sm">

@@ -96,6 +96,123 @@ const getAuthState = () => {
   }
 };
 
+
+
+// ---- Permission helpers ----
+const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
+const hasAny = (user, keys = []) => keys.some((k) => hasPerm(user, k));
+
+function buildStaffLinks(user) {
+  const subRoleLower = user?.subRole?.toLowerCase() || '';
+  const staffBase = subRoleLower
+    ? `/staff/${encodeURIComponent(subRoleLower)}`
+    : '/staff';
+
+  // Always visible for staff
+  const links = [
+    {
+      href: `${staffBase}/dashboard`,
+      label: 'Dashboard',
+      icon: iconMap['Dashboard'],
+    },
+  ];
+
+  // Map permissions → links
+
+  if (hasPerm(user, 'managePlans')) {
+    links.push({
+      href: `${staffBase}/plans`,
+      label: 'Plans',
+      icon: iconMap['Plans'],
+    });
+  }
+
+  if (hasPerm(user, 'manageVendors')) {
+    links.push({
+      href: `${staffBase}/vendors`,
+      label: 'Vendors',
+      icon: iconMap['Vendors'],
+    });
+  }
+
+  if (hasPerm(user, 'manageInventory')) {
+    links.push({
+      href: `${staffBase}/inventory`,
+      label: 'Inventory',
+      icon: iconMap['Inventory'],
+    });
+  }
+
+  // Billing: show if any billing-related permission is true
+  if (
+    hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])
+  ) {
+    links.push({
+      href: `${staffBase}/billing`,
+      label: 'Billing',
+      icon: iconMap['Billing'],
+    });
+  }
+
+  if (hasPerm(user, 'viewReports')) {
+    links.push({
+      href: `${staffBase}/reports`,
+      label: 'Reports',
+      icon: iconMap['Reports'],
+    });
+  }
+
+  // Staff management (if they can see or manage staff)
+  if (
+    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
+  ) {
+    links.push({
+      href: `${staffBase}/staff`,
+      label: 'Staff',
+      icon: iconMap['Staff'],
+    });
+  }
+
+  // Orders (example: show if they can manageAppointments OR assignTasks; tweak as you like)
+  if (user?.subRole?.toLowerCase() === 'receptionist') {
+    links.push({
+      href: `${staffBase}/orders`,
+      label: 'Orders',
+      icon: iconMap['Orders'],
+    });
+  }
+
+  // Settings: show if they have *any* permission at all (or make your own rule)
+  if (
+    hasAny(user, [
+      'manageVendors',
+      'manageInventory',
+      'addBilling',
+      'editBilling',
+      'deleteBilling',
+      'viewReports',
+      'viewallstaff',
+      'staffCreate',
+      'staffUpdate',
+      'staffDelete',
+      'manageAppointments',
+      'assignTasks',
+      'approveRequests',
+      'manageTeams',
+      'managePlans',
+    ])
+  ) {
+    links.push({
+      href: `${staffBase}/settings`,
+      label: 'Settings',
+      icon: iconMap['Settings'],
+    });
+  }
+
+  return links;
+}
+
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -118,8 +235,8 @@ export default function Sidebar() {
     setLoading(false);
   }, []);
 
-  const roleBasedLinks = useMemo(
-    () => ({
+  const roleBasedLinks = useMemo(() => {
+    return {
       superAdmin: [
         {
           href: '/superadmin/dashboard',
@@ -166,24 +283,21 @@ export default function Sidebar() {
         { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
         { href: '#', label: 'Attendance', icon: iconMap['Attendance'] },
         { href: '#', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
-        { href: '/admin/setting', label: 'Settings', icon: iconMap['Settings'] },
+        {
+          href: '/admin/setting',
+          label: 'Settings',
+          icon: iconMap['Settings'],
+        },
       ],
-      staff: [
-        { href: '#', label: 'Vendor Dashboard', icon: iconMap['Dashboard'] },
-        { href: '#', label: 'Orders', icon: iconMap['Orders'] },
-        { href: '#', label: 'Inventory', icon: iconMap['Inventory'] },
-        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-      ],
+      staff: buildStaffLinks(user),
       user: [
         { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
         { href: '#', label: 'Orders', icon: iconMap['Orders'] },
         { href: '#', label: 'Settings', icon: iconMap['Settings'] },
       ],
       guest: [],
-    }),
-    []
-  );
-
+    };
+  }, [user?.subRole, user?.role]);
   const mainLinks = useMemo(() => {
     if (loading || !user?.role) return roleBasedLinks.guest;
     return roleBasedLinks[user.role] || roleBasedLinks.guest;

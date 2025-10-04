@@ -261,21 +261,49 @@ const createInventory = async (req, res) => {
       );
     }
 
+    // Validate custom SKUs for uniqueness
+    const customSkus = variants
+      .filter((v) => v.customSku)
+      .map((v) => v.customSku.trim());
+    if (customSkus.length > 0) {
+      const existingSkus = await IndexModel.Inventory.find({
+        'variants.sku': { $in: customSkus },
+        companyId,
+        deleted: false,
+        isActive: true,
+      });
+      if (existingSkus.length > 0) {
+        const duplicateSkus = existingSkus
+          .flatMap((item) => item.variants.map((v) => v.sku))
+          .filter((sku) => customSkus.includes(sku));
+        throw new InventoryError(
+          `Custom SKUs already exist: ${duplicateSkus.join(', ')}`,
+          400
+        );
+      }
+    }
+
     // Generate unique sourceId if not provided
     const sourceId = await generateUniqueSourceId("PURCHASE", companyId);
 
-    // Generate unique SKUs for all variants
-    // con
-    const skus = await generateSKU(itemType, companyId, variants.length);
+    // Generate SKUs for variants without custom SKUs
+    const variantsNeedingSkus = variants.filter((v) => !v.customSku).length;
+    const generatedSkus = await generateSKU(itemType, companyId, variantsNeedingSkus);
 
     // Assign SKUs to variants
-    const variantData = variants.map((variant, index) => ({
-      ...variant,
-      sku: skus[index], // Assign unique SKU from the batch
-      quantity: variant.incomingQuantity || 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+    let skuIndex = 0;
+    const variantData = variants.map((variant) => {
+      const sku = variant.customSku
+        ? variant.customSku.trim()
+        : generatedSkus[skuIndex++];
+      return {
+        ...variant,
+        sku, // Use custom SKU if provided, else generated SKU
+        quantity: variant.incomingQuantity || 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    });
 
     // Create new inventory item
     const inventoryItem = new IndexModel.Inventory({
@@ -293,7 +321,6 @@ const createInventory = async (req, res) => {
       ],
     });
 
-    // console.log("teh inventoryItem was is int : ", inventoryItem)
     await inventoryItem.save();
 
     // Create detailed history entry
@@ -332,6 +359,7 @@ const createInventory = async (req, res) => {
         404
       );
     }
+
     return res.status(201).json({
       success: true,
       message: "Inventory item created successfully",
@@ -353,13 +381,15 @@ const addStock = async (req, res) => {
     const { id } = req.params;
     const { variants, reason, source, comments } = req.body;
 
+    // Validate input
     if (!variants || !Array.isArray(variants) || variants.length === 0) {
       throw new InventoryError(
         "Variants array is required and must not be empty",
         400
       );
     }
-    // console.log("the variants are : ", variants)
+
+    // Validate each variant's input
     variants.forEach((variant, index) => {
       const errors = validateVariantInput(variant);
       if (errors.length > 0) {
@@ -368,8 +398,16 @@ const addStock = async (req, res) => {
           400
         );
       }
+      // Ensure customSku is only provided for new variants
+      if (variant.customSku && variant.sku) {
+        throw new InventoryError(
+          `Variant ${index + 1}: Cannot provide both customSku and sku`,
+          400
+        );
+      }
     });
 
+    // Find the inventory item
     const inventoryItem = await IndexModel.Inventory.findOne({
       _id: id,
       isActive: true,
@@ -381,48 +419,106 @@ const addStock = async (req, res) => {
       throw new InventoryError("Inventory item not found", 404);
     }
 
+    // Validate custom SKUs for uniqueness
+    const customSkus = variants
+      .filter((v) => v.customSku)
+      .map((v) => v.customSku.trim());
+    if (customSkus.length > 0) {
+      const existingSkus = await IndexModel.Inventory.find({
+        'variants.sku': { $in: customSkus },
+        companyId,
+        deleted: false,
+        isActive: true,
+      });
+      if (existingSkus.length > 0) {
+        const duplicateSkus = existingSkus
+          .flatMap((item) => item.variants.map((v) => v.sku))
+          .filter((sku) => customSkus.includes(sku));
+        throw new InventoryError(
+          `Custom SKUs already exist: ${duplicateSkus.join(', ')}`,
+          400
+        );
+      }
+    }
+
+    // Store previous data for history
     const prevData = inventoryItem.toObject();
 
     // Generate unique sourceId if not provided
     const sourceId =
       source || (await generateUniqueSourceId("PURCHASE", companyId));
 
-    // Count new variants needing SKUs (those without provided sku)
-    const newVariants = variants.filter((variant) => !variant.sku);
+    // Identify new variants (those not matching existing variant names)
+    const existingVariantNames = inventoryItem.variants.map((v) =>
+      String(v.variantName || '').trim().toLowerCase()
+    );
+    const newVariants = variants.filter(
+      (v) => !existingVariantNames.includes(String(v.variantName || '').trim().toLowerCase())
+    );
+
+    // Generate SKUs for new variants without custom SKUs
+    const variantsNeedingSkus = newVariants.filter((v) => !v.customSku).length;
     const skus = await generateSKU(
       inventoryItem.itemType,
       companyId,
-      newVariants.length
+      variantsNeedingSkus
     );
 
-    let skuIndex = 0; // Track which SKU to assign from the batch
-    const variantData = variants.map((variant) => ({
-      ...variant,
-      sku: variant.sku || skus[skuIndex++], // Use provided SKU or next from batch
-    }));
+    // Map variants to final data
+    let skuIndex = 0;
+    const variantData = variants.map((variant) => {
+      const existingVariant = inventoryItem.variants.find(
+        (v) => String(v.variantName || '').trim().toLowerCase() === String(variant.variantName || '').trim().toLowerCase()
+      );
 
+      const base = {
+        variantName: String(variant.variantName || '').trim(),
+        incomingQuantity: Number(variant.incomingQuantity),
+        price: Number(variant.price),
+        costPrice: Number(variant.costPrice),
+        returnUnder: Number(variant.returnUnder),
+        attributes: variant.attributes || {},
+      };
+
+      if (existingVariant) {
+        // Existing variant: retain its SKU
+        if (variant.customSku) {
+          throw new InventoryError(
+            `Cannot modify SKU for existing variant: ${variant.variantName}`,
+            400
+          );
+        }
+        base.sku = existingVariant.sku;
+      } else {
+        // New variant: use custom SKU or generated SKU
+        base.sku = variant.customSku ? variant.customSku.trim() : skus[skuIndex++];
+      }
+
+      return base;
+    });
+
+    // Update or add variants
     const updatedVariants = [...inventoryItem.variants];
-
     variantData.forEach((newVariant) => {
       const existingVariantIndex = updatedVariants.findIndex(
-        (v) => v.variantName === newVariant.variantName
+        (v) => String(v.variantName || '').trim().toLowerCase() === String(newVariant.variantName || '').trim().toLowerCase()
       );
 
       if (existingVariantIndex !== -1) {
-        updatedVariants[existingVariantIndex].quantity +=
-          newVariant.incomingQuantity;
-        updatedVariants[existingVariantIndex].incomingQuantity =
-          newVariant.incomingQuantity;
+        // Update existing variant
+        updatedVariants[existingVariantIndex].quantity += newVariant.incomingQuantity;
+        updatedVariants[existingVariantIndex].incomingQuantity = newVariant.incomingQuantity;
         updatedVariants[existingVariantIndex].price =
           newVariant.price || updatedVariants[existingVariantIndex].price;
         updatedVariants[existingVariantIndex].costPrice =
-          newVariant.costPrice ||
-          updatedVariants[existingVariantIndex].costPrice;
+          newVariant.costPrice || updatedVariants[existingVariantIndex].costPrice;
+        updatedVariants[existingVariantIndex].returnUnder =
+          newVariant.returnUnder || updatedVariants[existingVariantIndex].returnUnder;
         updatedVariants[existingVariantIndex].attributes =
-          newVariant.attributes ||
-          updatedVariants[existingVariantIndex].attributes;
+          newVariant.attributes || updatedVariants[existingVariantIndex].attributes;
         updatedVariants[existingVariantIndex].updatedAt = new Date();
       } else {
+        // Add new variant
         updatedVariants.push({
           ...newVariant,
           quantity: newVariant.incomingQuantity,
@@ -432,6 +528,7 @@ const addStock = async (req, res) => {
       }
     });
 
+    // Update inventory item
     inventoryItem.variants = updatedVariants;
     inventoryItem.updatedBy = userId;
     inventoryItem.updatedAt = new Date();
@@ -443,12 +540,13 @@ const addStock = async (req, res) => {
 
     await inventoryItem.save();
 
+    // Create history entry
     await createHistoryEntry(
       "stock_added",
       userId,
       prevData,
       inventoryItem.toObject(),
-      reason,
+      reason || "Stock receiving",
       sourceId,
       comments
     );

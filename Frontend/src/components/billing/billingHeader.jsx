@@ -47,10 +47,10 @@ import {
   Loader,
   Package,
 } from 'lucide-react';
-
+import BillingSummaryPDF from './BillingSummaryPDF'; // Import the BillingSummaryPDF component
 export function Header({ onCreate }) {
   return (
-    <header className=" bg-card">
+    <header className="bg-card">
       <div className="mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -61,13 +61,16 @@ export function Header({ onCreate }) {
               View all bills and create new ones
             </p>
           </div>
-          <Button
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={onCreate}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Bill
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={onCreate}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Bill
+            </Button>
+            <BillingSummaryPDF /> {/* Rendered as a standalone component */}
+          </div>
         </div>
       </div>
     </header>

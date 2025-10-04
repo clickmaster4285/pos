@@ -33,7 +33,7 @@ export default function CreateInventoryModal({
   const [reason, setReason] = useState('');
   const [comments, setComments] = useState('');
 
-  // Variants
+  // Variants with SKU support
   const [variants, setVariants] = useState([
     {
       variantName: '',
@@ -42,6 +42,8 @@ export default function CreateInventoryModal({
       costPrice: '',
       returnUnder: 7,
       attributes: { size: '', material: '' },
+      customSku: '', // New field for custom SKU
+      showCustomSku: false, // Toggle for SKU input field
     },
   ]);
 
@@ -60,6 +62,8 @@ export default function CreateInventoryModal({
         costPrice: '',
         returnUnder: 7,
         attributes: { size: '', material: '' },
+        customSku: '',
+        showCustomSku: false,
       },
       ...v,
     ]);
@@ -85,6 +89,14 @@ export default function CreateInventoryModal({
     );
   };
 
+  const toggleCustomSku = (idx) => {
+    setVariants((v) =>
+      v.map((row, i) =>
+        i === idx ? { ...row, showCustomSku: !row.showCustomSku } : row
+      )
+    );
+  };
+
   const resetForm = () => {
     setItemName('');
     setItemType('Part');
@@ -101,6 +113,8 @@ export default function CreateInventoryModal({
         costPrice: '',
         returnUnder: 7,
         attributes: { size: '', material: '' },
+        customSku: '',
+        showCustomSku: false,
       },
     ]);
     setErrorMsg('');
@@ -120,7 +134,7 @@ export default function CreateInventoryModal({
       itemName: itemName.trim(),
       itemType,
       description: description.trim(),
-      vendor: vendorId, // send only the _id
+      vendor: vendorId,
       location: location.trim(),
       reason: reason.trim(),
       comments: comments.trim(),
@@ -130,6 +144,7 @@ export default function CreateInventoryModal({
         price: Number(v.price || 0),
         costPrice: Number(v.costPrice || 0),
         returnUnder: Number(v.returnUnder || 0),
+        customSku: v.customSku ? String(v.customSku).trim() : undefined, // Include custom SKU if provided
         attributes: {
           ...(v.attributes?.size ? { size: v.attributes.size } : {}),
           ...(v.attributes?.material
@@ -150,15 +165,13 @@ export default function CreateInventoryModal({
         return setErrorMsg('Variant price must be a positive number');
       if (!Number.isFinite(v.costPrice) || v.costPrice < 0)
         return setErrorMsg('Variant cost must be zero or positive');
+      if (v.customSku && !v.customSku.trim())
+        return setErrorMsg('Custom SKU cannot be empty if provided');
     }
 
     try {
-      // Call backend: POST /api/inventory/create-inventory
       const res = await createInventoryItem(payload).unwrap();
-
-      // If your backend returns the created record, pass it up
       onCreated?.(res?.data || res || payload);
-
       resetForm();
       onClose?.();
     } catch (err) {
@@ -177,170 +190,168 @@ export default function CreateInventoryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-3xl rounded-xl border bg-background p-4 shadow-xl max-h-[85vh] overflow-y-auto">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Create Inventory Item</h2>
+          <Button variant="outline" onClick={onClose}>
+            <X size={20} />
+          </Button>
+        </div>
 
-      {/* Modal panel */}
-      <div
-        className="relative z-10 w-full max-w-3xl rounded-xl border bg-background p-4 shadow-xl
-                  max-h-[85vh] overflow-y-auto"
-      >
-        {/* Modal */}
-        <div className="relative z-10 w-full max-w-3xl rounded-xl border bg-background p-4 shadow-xl">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Create Inventory Item</h2>
-            <Button variant="outline" onClick={onClose}>
-              <X size={20} />
-            </Button>
+        {errorMsg ? (
+          <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+            {errorMsg}
+          </div>
+        ) : null}
+
+        {!vendorOptions.length ? (
+          <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-900">
+            No vendors found. Add a vendor first or refresh this page.
+          </div>
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Item Name
+              </label>
+              <input
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                placeholder="Brake Pad Set"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Item Type
+              </label>
+              <select
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value)}
+              >
+                <option value="Part">Part</option>
+                <option value="Whole">Whole</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Description
+              </label>
+              <textarea
+                className="min-h-[72px] w-full rounded-md border bg-background px-3 py-2 text-sm"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="High-quality brake pads suitable for multiple vehicle models"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Vendor
+              </label>
+              <select
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={vendorId}
+                onChange={(e) => setVendorId(e.target.value)}
+              >
+                <option value="">Select a vendor</option>
+                {vendorOptions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} {v.email ? `• ${v.email}` : ''}{' '}
+                    {v.phone ? `• ${v.phone}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              {selectedVendor ? (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  <div>
+                    <span className="font-medium">Selected:</span>{' '}
+                    {selectedVendor.name}
+                  </div>
+                  {selectedVendor.email ? (
+                    <div>Email: {selectedVendor.email}</div>
+                  ) : null}
+                  {selectedVendor.phone ? (
+                    <div>Phone: {selectedVendor.phone}</div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Location
+              </label>
+              <input
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Warehouse A - Shelf 12"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Reason
+              </label>
+              <input
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="New stock purchase"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Comments
+              </label>
+              <input
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                placeholder="Initial stock entry from vendor contract"
+              />
+            </div>
           </div>
 
-          {errorMsg ? (
-            <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-2 text-sm text-red-700">
-              {errorMsg}
+          <div className="rounded-lg border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-medium">Variants</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addVariant}
+              >
+                Add variant
+              </Button>
             </div>
-          ) : null}
 
-          {!vendorOptions.length ? (
-            <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-sm text-yellow-900">
-              No vendors found. Add a vendor first or refresh this page.
-            </div>
-          ) : null}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Top fields */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Item Name
-                </label>
-                <input
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  placeholder="Brake Pad Set"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Item Type
-                </label>
-                <select
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={itemType}
-                  onChange={(e) => setItemType(e.target.value)}
-                >
-                  <option value="Part">Part</option>
-                  <option value="Whole">Whole</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Description
-                </label>
-                <textarea
-                  className="min-h-[72px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="High-quality brake pads suitable for multiple vehicle models"
-                />
-              </div>
-
-              {/* Vendor dropdown */}
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Vendor
-                </label>
-                <select
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={vendorId}
-                  onChange={(e) => setVendorId(e.target.value)}
-                >
-                  <option value="">Select a vendor</option>
-                  {vendorOptions.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} {v.email ? `• ${v.email}` : ''}{' '}
-                      {v.phone ? `• ${v.phone}` : ''}
-                    </option>
-                  ))}
-                </select>
-
-                {selectedVendor ? (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Selected:</span>{' '}
-                      {selectedVendor.name}
+            <div className="space-y-4">
+              {variants.map((v, idx) => (
+                <div key={idx} className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-xs font-medium">
+                      Variant #{idx + 1}
                     </div>
-                    {selectedVendor.email ? (
-                      <div>Email: {selectedVendor.email}</div>
-                    ) : null}
-                    {selectedVendor.phone ? (
-                      <div>Phone: {selectedVendor.phone}</div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Location
-                </label>
-                <input
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Warehouse A - Shelf 12"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Reason
-                </label>
-                <input
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="New stock purchase"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
-                  Comments
-                </label>
-                <input
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  placeholder="Initial stock entry from vendor contract"
-                />
-              </div>
-            </div>
-
-            {/* Variants */}
-            <div className="rounded-lg border p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-medium">Variants</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addVariant}
-                >
-                  Add variant
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {variants.map((v, idx) => (
-                  <div key={idx} className="rounded-md border p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="text-xs font-medium">
-                        Variant #{idx + 1}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleCustomSku(idx)}
+                      >
+                        {v.showCustomSku ? 'Hide Custom SKU' : 'Custom SKU'}
+                      </Button>
                       {variants.length > 1 && (
                         <Button
                           type="button"
@@ -352,138 +363,148 @@ export default function CreateInventoryModal({
                         </Button>
                       )}
                     </div>
+                  </div>
 
-                    <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="md:col-span-3">
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Variant Name
+                      </label>
+                      <input
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.variantName}
+                        onChange={(e) =>
+                          updateVariant(idx, 'variantName', e.target.value)
+                        }
+                        placeholder="Front Brake Pad - Medium"
+                      />
+                    </div>
+
+                    {v.showCustomSku && (
                       <div className="md:col-span-3">
                         <label className="mb-1 block text-xs text-muted-foreground">
-                          Variant Name
+                          Custom SKU
                         </label>
                         <input
                           className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.variantName}
+                          value={v.customSku}
                           onChange={(e) =>
-                            updateVariant(idx, 'variantName', e.target.value)
+                            updateVariant(idx, 'customSku', e.target.value)
                           }
-                          placeholder="Front Brake Pad - Medium"
+                          placeholder="Enter unique SKU (e.g., SKU-123)"
                         />
                       </div>
+                    )}
 
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Incoming Qty
-                        </label>
-                        <input
-                          type="number"
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.incomingQuantity}
-                          onChange={(e) =>
-                            updateVariant(
-                              idx,
-                              'incomingQuantity',
-                              e.target.value
-                            )
-                          }
-                          placeholder="50"
-                          min={0}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Cost Price
-                        </label>
-                        <input
-                          type="number"
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.costPrice}
-                          onChange={(e) =>
-                            updateVariant(idx, 'costPrice', e.target.value)
-                          }
-                          placeholder="2000"
-                          min={0}
-                        />
-                      </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Incoming Qty
+                      </label>
+                      <input
+                        type="number"
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.incomingQuantity}
+                        onChange={(e) =>
+                          updateVariant(idx, 'incomingQuantity', e.target.value)
+                        }
+                        placeholder="50"
+                        min={0}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Cost Price
+                      </label>
+                      <input
+                        type="number"
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.costPrice}
+                        onChange={(e) =>
+                          updateVariant(idx, 'costPrice', e.target.value)
+                        }
+                        placeholder="2000"
+                        min={0}
+                      />
+                    </div>
 
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Price
-                        </label>
-                        <input
-                          type="number"
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.price}
-                          onChange={(e) =>
-                            updateVariant(idx, 'price', e.target.value)
-                          }
-                          placeholder="2500"
-                          min={0}
-                        />
-                      </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Price
+                      </label>
+                      <input
+                        type="number"
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.price}
+                        onChange={(e) =>
+                          updateVariant(idx, 'price', e.target.value)
+                        }
+                        placeholder="2500"
+                        min={0}
+                      />
+                    </div>
 
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Return Under (days)
+                      </label>
+                      <input
+                        type="number"
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.returnUnder}
+                        onChange={(e) =>
+                          updateVariant(idx, 'returnUnder', e.target.value)
+                        }
+                        placeholder="7"
+                        min={0}
+                      />
+                    </div>
 
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Return Under (days)
-                        </label>
-                        <input
-                          type="number"
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.returnUnder}
-                          onChange={(e) =>
-                            updateVariant(idx, 'returnUnder', e.target.value)
-                          }
-                          placeholder="7"
-                          min={0}
-                        />
-                      </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Attribute: Size
+                      </label>
+                      <input
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.attributes?.size || ''}
+                        onChange={(e) =>
+                          updateVariantAttr(idx, 'size', e.target.value)
+                        }
+                        placeholder="Medium"
+                      />
+                    </div>
 
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Attribute: Size
-                        </label>
-                        <input
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.attributes?.size || ''}
-                          onChange={(e) =>
-                            updateVariantAttr(idx, 'size', e.target.value)
-                          }
-                          placeholder="Medium"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block text-xs text-muted-foreground">
-                          Attribute: Material
-                        </label>
-                        <input
-                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                          value={v.attributes?.material || ''}
-                          onChange={(e) =>
-                            updateVariantAttr(idx, 'material', e.target.value)
-                          }
-                          placeholder="Ceramic"
-                        />
-                      </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Attribute: Material
+                      </label>
+                      <input
+                        className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                        value={v.attributes?.material || ''}
+                        onChange={(e) =>
+                          updateVariantAttr(idx, 'material', e.target.value)
+                        }
+                        placeholder="Ceramic"
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitting || !vendorOptions.length}
-              >
-                {submitting ? 'Creating…' : 'Create Item'}
-              </Button>
-            </div>
-          </form>
-        </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting || !vendorOptions.length}
+            >
+              {submitting ? 'Creating…' : 'Create Item'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
-}
+} 

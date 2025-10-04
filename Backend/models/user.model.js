@@ -52,6 +52,7 @@ const userSchema = new mongoose.Schema({
     editBilling: { type: Boolean, default: false },
     deleteBilling: { type: Boolean, default: false },
     addBilling: { type: Boolean, default: false },
+    viewBilling: { type: Boolean, default: false },
   },
   phone: {
     type: String,

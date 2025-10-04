@@ -272,7 +272,7 @@ function renderSummarySection(doc, config, items) {
   // Title
   doc.setFontSize(fonts.header || 14);
   // doc.setFont("helvetica", "bold");
-  doc.text("📊 Summary", margins.x, finalY);
+  doc.text("Summary", margins.x, finalY);
 
   // Prepare summary lines
   const summaryLines = [

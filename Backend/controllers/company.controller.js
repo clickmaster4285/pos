@@ -95,6 +95,7 @@ const createCompany = async (req, res) => {
         editBilling: true,
         deleteBilling: true,
         addBilling: true,
+        viewBilling: true,
       },
       history: [
         {
@@ -294,12 +295,9 @@ const verifyCompany_Admin = async (req, res) => {
 };
 
 const updateCompanySettings = async (req, res) => {
-  console.log("the logoUrl is : ", req.file)
   try {
     const companyId = req.user.companyId;
     let updateData = req.body;
-
-    // console.log("raw updateData:", updateData);
 
     // Parse stringified JSON if needed
     if (updateData.settings && typeof updateData.settings === "string") {
@@ -309,8 +307,6 @@ const updateCompanySettings = async (req, res) => {
         return res.status(400).json({ error: "Invalid settings JSON" });
       }
     }
-
-    // console.log("parsed updateData:", updateData);
 
     // Validate input
     if (!companyId) {
@@ -345,18 +341,34 @@ const updateCompanySettings = async (req, res) => {
         .json({ error: "Tax rate (card) must be between 0 and 100" });
     }
 
+    // Validate contactPhone (basic phone number format)
+    if (updateData.companySettings?.contactPhone) {
+      const phoneRegex = /^\+?[\d\s-]{7,15}$/;
+      if (!phoneRegex.test(updateData.companySettings.contactPhone)) {
+        return res.status(400).json({ error: "Invalid contact phone format" });
+      }
+    }
+
+    // Validate address (basic check for non-empty string)
+    if (updateData.companySettings?.address && typeof updateData.companySettings.address !== 'string') {
+      return res.status(400).json({ error: "Address must be a valid string" });
+    }
+
     // Handle logo (optional upload)
-    let logoUrl = updateData.logoPreview || "";
+    let logoUrl = updateData.companySettings?.logoPreview || "";
     if (req.file) {
       logoUrl = `/uploads/company/${req.file.filename}`;
     }
+
     // Update company
     const updatedCompany = await IndexModel.Company.findOneAndUpdate(
       { companyId, deleted: false, isActive: true },
       {
         $set: {
           invoiceSettings: updateData.invoiceSettings || {},
-          name: updateData.companyName,
+          name: updateData.companySettings.companyName,
+          contactPhone: updateData.companySettings.contactPhone || '',
+          address: updateData.companySettings.address || '',
           companyLogo: logoUrl,
         },
       },
@@ -372,7 +384,8 @@ const updateCompanySettings = async (req, res) => {
       message: "Settings updated successfully",
       companySettings: {
         companyName: updatedCompany.name,
-        terms: updatedCompany.terms,
+        contactPhone: updatedCompany.contactPhone,
+        address: updatedCompany.address,
         companyLogo: updatedCompany.companyLogo,
       },
       invoiceSettings: updatedCompany.invoiceSettings,

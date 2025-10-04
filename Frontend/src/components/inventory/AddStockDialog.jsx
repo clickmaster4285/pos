@@ -13,8 +13,6 @@ import {
 } from 'lucide-react';
 import { useAddStockMutation } from '@/features/inventoryApi';
 
-/* ========================= AddStockDialog ========================= */
-
 export function AddStockDialog({ open, onClose, item }) {
   const EMPTY_ROW = {
     variantName: '',
@@ -23,7 +21,9 @@ export function AddStockDialog({ open, onClose, item }) {
     costPrice: '',
     returnUnder: 7,
     attributes: { size: '', material: '' },
-    isCustom: true, // Track if custom variant is selected
+    isCustom: true,
+    customSku: '', // New field for custom SKU
+    showCustomSku: false, // Toggle for SKU input field
   };
 
   const [rows, setRows] = useState([EMPTY_ROW]);
@@ -38,7 +38,7 @@ export function AddStockDialog({ open, onClose, item }) {
       const key = String(v.variantName || '')
         .trim()
         .toLowerCase();
-      if (key) map[key] = v; // keep the whole variant (sku, price, etc.)
+      if (key) map[key] = v;
     });
     return map;
   }, [item.variants]);
@@ -76,6 +76,13 @@ export function AddStockDialog({ open, onClose, item }) {
       )
     );
 
+  const toggleCustomSku = (idx) =>
+    setRows((r) =>
+      r.map((row, i) =>
+        i === idx ? { ...row, showCustomSku: !row.showCustomSku } : row
+      )
+    );
+
   const handleVariantChange = (idx, value) => {
     const isCustom = value === 'custom';
     const selectedVariant = isCustom
@@ -88,7 +95,9 @@ export function AddStockDialog({ open, onClose, item }) {
         const newRow = {
           ...row,
           variantName: isCustom ? '' : value,
-          isCustom, // Track custom selection
+          isCustom,
+          customSku: isCustom ? row.customSku : '', // Reset custom SKU for existing variants
+          showCustomSku: isCustom ? row.showCustomSku : false, // Hide SKU field for existing variants
         };
 
         if (selectedVariant) {
@@ -126,6 +135,8 @@ export function AddStockDialog({ open, onClose, item }) {
       const ru = Number(v.returnUnder);
       if (!Number.isFinite(ru) || ru < 0)
         return `Row ${i + 1}: returnUnder must be ≥ 0`;
+      if (v.isCustom && v.showCustomSku && !v.customSku.trim())
+        return `Row ${i + 1}: custom SKU cannot be empty if provided`;
     }
     return '';
   };
@@ -157,7 +168,9 @@ export function AddStockDialog({ open, onClose, item }) {
         };
 
         if (match && match.sku) {
-          base.sku = match.sku;
+          base.sku = match.sku; // Use existing SKU for existing variants
+        } else if (v.isCustom && v.customSku) {
+          base.customSku = v.customSku.trim(); // Include custom SKU for new variants
         }
 
         return base;
@@ -179,12 +192,10 @@ export function AddStockDialog({ open, onClose, item }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/40"
         onClick={() => onClose?.()}
       />
-      {/* modal */}
       <div className="relative z-10 w-full max-w-3xl rounded-xl border bg-background p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Add Stock — {item.itemName}</h2>
@@ -201,7 +212,6 @@ export function AddStockDialog({ open, onClose, item }) {
         ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* rows */}
           <div className="rounded-lg border p-3">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-medium">Variants</div>
@@ -220,16 +230,28 @@ export function AddStockDialog({ open, onClose, item }) {
                 <div key={idx} className="rounded-md border p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="text-xs font-medium">Row #{idx + 1}</div>
-                    {rows.length > 1 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => removeRow(idx)}
-                      >
-                        Remove
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {v.isCustom && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleCustomSku(idx)}
+                        >
+                          {v.showCustomSku ? 'Hide Custom SKU' : 'Custom SKU'}
+                        </Button>
+                      )}
+                      {rows.length > 1 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => removeRow(idx)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-3">
@@ -261,6 +283,20 @@ export function AddStockDialog({ open, onClose, item }) {
                       )}
                     </div>
 
+                    {v.isCustom && v.showCustomSku && (
+                      <div className="md:col-span-3">
+                        <label className="mb-1 block text-xs text-muted-foreground">
+                          Custom SKU
+                        </label>
+                        <input
+                          className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                          value={v.customSku}
+                          onChange={(e) => setRow(idx, { customSku: e.target.value })}
+                          placeholder="Enter unique SKU (e.g., SKU-123)"
+                        />
+                      </div>
+                    )}
+
                     <NumField
                       label="Incoming qty"
                       value={v.incomingQuantity}
@@ -268,18 +304,18 @@ export function AddStockDialog({ open, onClose, item }) {
                       placeholder="20"
                       min={0}
                     />
+                      <NumField
+                        label="Cost price"
+                        value={v.costPrice}
+                        onChange={(val) => setRow(idx, { costPrice: val })}
+                        placeholder="2000"
+                        min={0}
+                      />
                     <NumField
                       label="Price"
                       value={v.price}
                       onChange={(val) => setRow(idx, { price: val })}
                       placeholder="2500"
-                      min={0}
-                    />
-                    <NumField
-                      label="Cost price"
-                      value={v.costPrice}
-                      onChange={(val) => setRow(idx, { costPrice: val })}
-                      placeholder="2000"
                       min={0}
                     />
                     <NumField
@@ -308,7 +344,6 @@ export function AddStockDialog({ open, onClose, item }) {
             </div>
           </div>
 
-          {/* reason/comments */}
           <div className="grid gap-3 md:grid-cols-2">
             <TextField
               label="Reason"

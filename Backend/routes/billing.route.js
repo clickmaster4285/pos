@@ -18,6 +18,7 @@ router.post(
 router.get(
   '/get-all-bills',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('viewBilling'),
   authenticateToken,
   // checkOrderValidation,
   Indexcontroller.Bill.getBills

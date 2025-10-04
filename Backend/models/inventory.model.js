@@ -13,7 +13,7 @@ const VariantSchema = new Schema({
     trim: true,
     unique: true,
   },
-  incomingQuantity: {
+  incomingQuantity: { 
     type: Number,
     required: [true, "Variant incoming quantity is required"],
     min: [0, "Variant incoming quantity cannot be negative"],
