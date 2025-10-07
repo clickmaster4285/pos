@@ -1,31 +1,49 @@
+import events from "events";
 import ZKLib from "zklib-js";
 import IndexModel from "../models/indexModel.js";
 import { NotFoundError, InternalServerError } from "../utils/errors.js";
 
+// Increase default listener limit to avoid warnings from ZKLib internal sockets
+events.EventEmitter.defaultMaxListeners = 30;
+
 class ZKDeviceService {
   constructor() {
     this.connections = new Map();
-    this.maxRetries = 3;
-    this.retryDelay = 1000; // 1 second base delay
+    this.realtimeListeners = new Map();
+    this.maxRetries = 5;
+    this.retryDelay = 2000;
   }
 
-  async createZKUser({ name, userId, zkUserId, deviceId, role }) {
+  
+  // -------------------- CREATE TO ZK --------------------
+  async createZKUser({ name, userId, zkUserId, deviceId, role, companyId }) {
     const device = await IndexModel.AttendanceDevice.findById(deviceId);
     if (!device) throw new NotFoundError(`Device ${deviceId} not found`);
-    const { deviceIp, devicePort } = device;
 
+    const { deviceIp, devicePort } = device;
     const zk = new ZKLib(deviceIp, devicePort, 10000, 4000);
 
     try {
       await zk.createSocket();
       const deviceRole = role === "admin" ? 14 : 0;
-      const userIdzk = await zk.setUser(parseInt(zkUserId), userId, name.slice(0, 24), "", deviceRole, userId);
-      console.log("ZK create user success:", userIdzk);
+
+      // Encode companyId and deviceId in cardNumber
+      const cardNumber = `${companyId}_${deviceId}`;
+
+      await zk.setUser(
+        parseInt(zkUserId), // UID
+        userId, // userId string
+        name.slice(0, 24), // name
+        "", // password
+        deviceRole, // role
+        cardNumber // store companyId + deviceId
+      );
+
       await zk.disconnect();
-      return zkUserId;
+      return { zkUserId, deviceId, userId, companyId };
     } catch (err) {
       console.error("ZK create user error:", err);
-      throw new InternalServerError(`Failed to create user on device ${deviceId}: ${err.message}`);
+      throw new InternalServerError(`Failed to create user on device ${deviceId}: ${err}`);
     }
   }
 
@@ -46,25 +64,25 @@ class ZKDeviceService {
     }
   }
 
+  // -------------------- DEVICE CONNECTION --------------------
+
   async connectToDevice(deviceId, retries = 0) {
     try {
       const device = await IndexModel.AttendanceDevice.findById(deviceId);
       if (!device) throw new NotFoundError("Device not found");
 
-      if (
-        this.connections.has(deviceId) &&
-        this.connections.get(deviceId).isConnected
-      ) {
+      // ✅ Avoid reconnecting to already connected device
+      if (this.connections.has(deviceId) && this.connections.get(deviceId).isConnected) {
+        console.log(`⚠️ Already connected to device ${device.deviceIp}`);
         return this.connections.get(deviceId);
       }
 
-      const zkInstance = new ZKLib(
-        device.deviceIp,
-        device.devicePort,
-        10000,
-        4000
-      );
+      const zkInstance = new ZKLib(device.deviceIp, device.devicePort, 10000, 4000);
       await zkInstance.createSocket();
+
+      // 🧹 Prevent duplicate event listeners on the same socket
+      if (zkInstance.socket) zkInstance.socket.removeAllListeners("data");
+
       const deviceInfo = await zkInstance.getInfo();
 
       const connection = {
@@ -74,6 +92,7 @@ class ZKDeviceService {
         lastActivity: new Date(),
         deviceInfo,
       };
+
       this.connections.set(deviceId, connection);
 
       await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
@@ -81,423 +100,177 @@ class ZKDeviceService {
         lastSync: new Date(),
       });
 
+      console.log(`✅ Connected to device ${deviceId} (${device.deviceIp})`);
       return connection;
     } catch (error) {
       if (retries < this.maxRetries) {
         const delay = this.retryDelay * 2 ** retries;
-
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        console.log(`🔄 Retry connecting to ${deviceId} in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
         return this.connectToDevice(deviceId, retries + 1);
       }
+
       await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
         status: "disconnected",
       });
-      throw new InternalServerError(
-        `Failed to connect to device: ${error.message}`
-      );
+
+      throw new InternalServerError(`Failed to connect to device: ${error.message}`);
     }
   }
 
   async disconnectFromDevice(deviceId) {
-    try {
-      const connection = this.connections.get(deviceId);
-      if (connection && connection.zkInstance) {
-        await connection.zkInstance.disconnect();
-        this.connections.delete(deviceId);
-        await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
-          status: "disconnected",
-          lastSync: new Date(),
-        });
-      }
-    } catch (error) {
-      throw new InternalServerError(
-        `Failed to disconnect from device: ${error.message}`
-      );
+    const conn = this.connections.get(deviceId);
+    if (conn && conn.zkInstance) {
+      await conn.zkInstance.disconnect();
+      this.connections.delete(deviceId);
+      console.log(`🛑 Disconnected from device ${deviceId}`);
     }
   }
 
-  async syncUsersToDevice(deviceId, companyId) {
-    let connection;
+  // -------------------- REALTIME LISTENER (polling) --------------------
+
+  async listenForRealTimeAttendance(deviceId) {
     try {
-      connection = await this.connectToDevice(deviceId);
-      const device = await IndexModel.AttendanceDevice.findById(deviceId);
-      if (!device) throw new NotFoundError("Device not found");
+      console.log(`🔄 Starting real-time attendance listener for device ${deviceId}`);
+      const connection = await this.connectToDevice(deviceId);
+      const { zkInstance } = connection;
 
-      // Get device info to check user capacity
-      const deviceInfo = await connection.zkInstance.getInfo();
-      const maxUserCapacity = deviceInfo.users; // Adjust based on device specs
-
-      const users = await IndexModel.User.find({
-        companyId,
-        role: "staff",
-        deleted: false,
-        isActive: true,
-      });
-
-      if (users.length > maxUserCapacity) {
-        throw new InternalServerError(
-          `User count exceeds device capacity of ${maxUserCapacity}`
-        );
+      if (this.realtimeListeners.has(deviceId)) {
+        console.log(`⚠️ Listener already running for ${deviceId}`);
+        return;
       }
 
-      let syncedCount = 0;
-      let failedCount = 0;
-      const failedUsers = [];
-
-      // Get existing users on the device
-      const deviceUsers = await connection.zkInstance.getUsers();
-      const deviceUserIds = new Set(
-        deviceUsers.data.map((u) => u.uid.toString())
-      );
-
-      for (const user of users) {
+      // Poll every 5 seconds (stable interval)
+      const interval = setInterval(async () => {
         try {
-          // Assign zkUserId if not available
-          if (!user.zkUserId) {
-            const lastUser = await IndexModel.User.findOne({
-              zkUserId: { $regex: "^[0-9]+$" },
-            }).sort({ zkUserId: -1 });
-            let newZkUserId =
-              lastUser && lastUser.zkUserId
-                ? parseInt(lastUser.zkUserId) + 1
-                : 1;
+          const logs = await zkInstance.getAttendances();
 
-            // Ensure zkUserId is unique on the device
-            while (deviceUserIds.has(newZkUserId.toString())) {
-              newZkUserId++;
+          if (logs?.data?.length) {
+            console.log(`📥 ${logs.data.length} logs received from device ${deviceId}`);
+
+            for (const log of logs.data) {
+              await this.processRealTimeAttendance(deviceId, log);
             }
-            user.zkUserId = newZkUserId.toString();
-            await user.save();
-          }
 
-          // Validate zkUserId
-          const zkUserIdNum = parseInt(user.zkUserId);
-          if (zkUserIdNum < 1 || zkUserIdNum > 65535) {
-            failedCount++;
-            failedUsers.push({
-              userId: user.userId,
-              name: user.name,
-              reason: "Invalid zkUserId",
-            });
-            continue;
+            // ✅ Clear logs after saving (optional: can skip for testing)
+            await zkInstance.clearAttendanceLog();
           }
-
-          // Check for conflict and resolve
-          if (deviceUserIds.has(user.zkUserId)) {
-            // Verify if the existing device user matches the database user
-            const deviceUser = deviceUsers.data.find(
-              (u) => u.uid.toString() === user.zkUserId
-            );
-            if (
-              deviceUser &&
-              deviceUser.name === user.name.slice(0, 24) &&
-              deviceUser.userId === user.userId &&
-              deviceUser.role === (user.role === "admin" ? 14 : 0) &&
-              deviceUser.cardNo === (user.cardNumber || user.userId || "0")
-            ) {
-              user.isSynced = true;
-              await user.save();
-              syncedCount++;
-              continue;
-            } else {
-              // Resolve conflict by reassigning zkUserId
-              const lastUser = await IndexModel.User.findOne({
-                zkUserId: { $regex: "^[0-9]+$" },
-              }).sort({ zkUserId: -1 });
-              let newZkUserId =
-                lastUser && lastUser.zkUserId
-                  ? parseInt(lastUser.zkUserId) + 1
-                  : 1;
-              while (deviceUserIds.has(newZkUserId.toString())) {
-                newZkUserId++;
-              }
-              user.zkUserId = newZkUserId.toString();
-              await user.save();
-            }
-          }
-
-          // Ensure all fields are saved in MongoDB
-          if (!user.department) {
-            user.department = "Not Assigned"; // Default value if department is missing
-          }
-          if (!user.cardNumber) {
-            user.cardNumber = user.userId; // Use userId as cardNumber if not provided
-          }
-          if (!user.userId) {
-            user.userId = `USER${user.zkUserId}`; // Generate userId if missing
-          }
-          await user.save();
-
-          // Map role to ZK device role (0 = normal user, 14 = admin)
-          const deviceRole = user.role === "admin" ? 14 : 0;
-
-          // Set user on the device
-          await connection.zkInstance.setUser(
-            zkUserIdNum, // UID
-            user.userId, // User ID (using userId instead of zkUserId for device userId)
-            user.name.slice(0, 24), // Name (limited to 24 chars per device specs)
-            "", // Password
-            deviceRole, // Role (0 = normal user, 14 = admin)
-            user.cardNumber // Card number
-          );
-
-          // Verify user was added
-          const updatedUsers = await connection.zkInstance.getUsers();
-          const userExists = updatedUsers.data.some(
-            (u) =>
-              u.uid.toString() === user.zkUserId &&
-              u.userId === user.userId &&
-              u.name === user.name.slice(0, 24) &&
-              u.role === deviceRole &&
-              u.cardNo === user.cardNumber
-          );
-
-          if (userExists) {
-            user.isSynced = true;
-            await user.save();
-            deviceUserIds.add(user.zkUserId); // Update local set to prevent conflicts
-            syncedCount++;
-          } else {
-            failedCount++;
-            failedUsers.push({
-              userId: user.userId,
-              name: user.name,
-              reason: "User not found after sync",
-            });
-          }
-        } catch (error) {
-          failedCount++;
-          failedUsers.push({
-            userId: user.userId,
-            name: user.name,
-            reason: error.message,
-          });
+        } catch (err) {
+          console.error(`❌ Polling error on ${deviceId}:`, err.message);
+          await this.handleDeviceError(deviceId, err);
         }
-      }
+      }, 5000);
 
-      // Update device status
-      await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
-        lastSync: new Date(),
-        status: failedCount === 0 ? "connected" : "partially_synced",
-      });
-
-      return {
-        success: failedCount === 0,
-        synced: syncedCount,
-        failed: failedCount,
-        total: users.length,
-        failedUsers,
-      };
+      this.realtimeListeners.set(deviceId, { interval, zkInstance });
+      console.log(`✅ Real-time attendance listener ACTIVE for ${deviceId}`);
     } catch (error) {
-      throw new InternalServerError(`Sync failed: ${error.message}`);
-    } finally {
-      if (connection) await this.disconnectFromDevice(deviceId);
+      console.error(`❌ Failed to start listener for ${deviceId}:`, error.message);
+      await this.attemptReconnection(deviceId);
     }
   }
 
-  async syncUsersToDeviceAttendanceOnly(deviceId, companyId) {
-    let connection;
-    try {
-      connection = await this.connectToDevice(deviceId);
-      const deviceUsers = await connection.zkInstance.getUsers();
-      const deviceUserIds = new Set(
-        deviceUsers.data.map((u) => u.uid.toString())
-      );
+  async stopRealTimeAttendance(deviceId) {
+    const listener = this.realtimeListeners.get(deviceId);
+    if (listener) {
+      clearInterval(listener.interval);
+      this.realtimeListeners.delete(deviceId);
+      console.log(`🛑 Stopped real-time listener for ${deviceId}`);
+    }
+    await this.disconnectFromDevice(deviceId);
+  }
 
-      const mongoUsers = await IndexModel.User.find({
-        companyId,
+  // -------------------- ATTENDANCE PROCESSING --------------------
+
+  async processRealTimeAttendance(deviceId, attendance) {
+    try {
+      const device = await IndexModel.AttendanceDevice.findById(deviceId);
+      if (!device) return console.error(`❌ Device ${deviceId} not found`);
+console.log("the attendance log is", attendance);
+      // Find user by zkUserId + company
+      const user = await IndexModel.User.findOne({
+        userId: attendance.deviceUserId.toString(),
+        companyId: device.companyId,
         deleted: false,
-        isActive: true,
-      });
-      let syncedCount = 0;
-      let failedCount = 0;
-
-      for (const user of mongoUsers) {
-        if (!user.zkUserId) {
-          // Assign zkUserId if not available
-          const lastUser = await IndexModel.User.findOne({
-            zkUserId: { $regex: "^[0-9]+$" },
-          }).sort({ zkUserId: -1 });
-          user.zkUserId =
-            lastUser && lastUser.zkUserId
-              ? (parseInt(lastUser.zkUserId) + 1).toString()
-              : "1";
-          await user.save();
-        }
-        if (deviceUserIds.has(user.zkUserId)) {
-          syncedCount++;
-        } else {
-          failedCount++;
-        }
-      }
-
-      await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
-        lastSync: new Date(),
-        status: failedCount === 0 ? "connected" : "disconnected",
       });
 
-      return {
-        success: true,
-        synced: syncedCount,
-        failed: failedCount,
-        total: mongoUsers.length,
-      };
-    } catch (error) {
-      throw new InternalServerError(
-        `User verification failed: ${error.message}`
-      );
-    } finally {
-      if (connection) await this.disconnectFromDevice(deviceId);
-    }
-  }
-
-  async initializeFingerprint(deviceId, userId) {
-    let connection;
-    try {
-      connection = await this.connectToDevice(deviceId);
-      const user = await IndexModel.User.findOne({ userId });
-      if (!user) throw new NotFoundError("User not found");
-      if (!user.zkUserId) {
-        // Assign zkUserId if not available
-        const lastUser = await IndexModel.User.findOne({
-          zkUserId: { $regex: "^[0-9]+$" },
-        }).sort({ zkUserId: -1 });
-        user.zkUserId =
-          lastUser && lastUser.zkUserId
-            ? (parseInt(lastUser.zkUserId) + 1).toString()
-            : "1";
-        await user.save();
+      if (!user) {
+        console.warn(`⚠️ No matching user for zkUserId ${attendance.deviceUserId}`);
+        return;
       }
 
-      // Map role to ZK device role
-      const deviceRole = user.role === "admin" ? 14 : 0;
-      const cardNumber = user.cardNumber || user.userId || "0";
-
-      await connection.zkInstance.setUser(
-        parseInt(user.zkUserId),
-        user.userId,
-        user.name.slice(0, 24),
-        "",
-        deviceRole,
-        cardNumber
-      );
-
-      return {
-        success: true,
-        message: `Fingerprint enrollment ready for user ${user.name} on device ${deviceId}`,
+      const checkTime = new Date(attendance.recordTime);
+console.log("the check time is", checkTime);
+      // ✅ Prevent duplicates: skip if already saved
+      const existing = await IndexModel.Attendance.findOne({
         userId: user.userId,
-        zkUserId: user.zkUserId,
-        userName: user.name,
-      };
-    } catch (error) {
-      throw new InternalServerError(
-        `Fingerprint enrollment failed: ${error.message}`
-      );
-    } finally {
-      if (connection) await this.disconnectFromDevice(deviceId);
-    }
-  }
-
-  async syncAttendanceData(deviceId, companyId) {
-    let connection;
-    try {
-      connection = await this.connectToDevice(deviceId);
-      const logs = await connection.zkInstance.getAttendances();
-      let processedCount = 0;
-      let newRecords = 0;
-      const newAttendances = [];
-      for (const log of logs.data) {
-        const user = await IndexModel.User.findOne({
-          zkUserId: log.deviceUserId.toString(),
-          companyId,
-          deleted: false,
-        });
-        if (user) {
-          const existingAttendance = await IndexModel.Attendance.findOne({
-            userId: user.userId,
-            zkUserId: user.zkUserId,
-            deviceId,
-            checkTime: new Date(log.timestamp * 1000),
-          });
-
-          if (!existingAttendance) {
-            const attendanceType = await this.determineAttendanceType(
-              user.userId,
-              new Date(log.timestamp * 1000)
-            );
-            newAttendances.push({
-              userId: user.userId,
-              zkUserId: user.zkUserId,
-              deviceId,
-              companyId,
-              checkTime: new Date(log.timestamp * 1000),
-              type: attendanceType,
-              verificationMode: "fingerprint",
-            });
-            newRecords++;
-          }
-          processedCount++;
-        }
-      }
-
-      if (newAttendances.length > 0) {
-        await IndexModel.Attendance.insertMany(newAttendances);
-      }
-
-      await connection.zkInstance.clearAttendanceLog();
-      await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
-        lastSync: new Date(),
-        status: "connected",
+        checkTime: checkTime.toISOString(),
       });
+      if (existing) return;
 
-      return {
-        success: true,
-        processed: processedCount,
-        newRecords,
-        totalLogs: logs.data.length,
+      const type = await this.determineAttendanceType(user.userId, checkTime.toISOString());
+
+      const attendanceData = {
+        userId: user.userId,
+        // zkUserId: user.zkUserId,
+        companyId: device.companyId,
+        deviceId,
+        checkTime: checkTime.toISOString(),
+        type,
+        verificationMode: "fingerprint",
       };
-    } catch (error) {
-      throw new InternalServerError(`Attendance sync failed: ${error.message}`);
-    } finally {
-      if (connection) await this.disconnectFromDevice(deviceId);
+
+      await IndexModel.Attendance.create(attendanceData);
+
+      console.log(`✅ ${user.name} ${type.toUpperCase()} recorded at ${checkTime}`);
+    } catch (err) {
+      console.error(`❌ Error saving attendance:`, err.message);
     }
   }
+
+  // -------------------- ERROR HANDLING --------------------
+
+  async handleDeviceError(deviceId, error) {
+    await IndexModel.AttendanceDevice.findByIdAndUpdate(deviceId, {
+      status: "disconnected",
+      lastError: error.message,
+    });
+    console.error(`❌ Device ${deviceId} error: ${error.message}`);
+    await this.attemptReconnection(deviceId);
+  }
+
+  async attemptReconnection(deviceId, retry = 0) {
+    if (retry >= this.maxRetries) {
+      console.error(`❌ Max reconnection attempts for ${deviceId}`);
+      return;
+    }
+    const delay = this.retryDelay * 2 ** retry;
+    console.log(`🔁 Reconnecting to ${deviceId} in ${delay}ms`);
+    setTimeout(async () => {
+      try {
+        await this.listenForRealTimeAttendance(deviceId);
+        console.log(`✅ Successfully reconnected to ${deviceId}`);
+      } catch (err) {
+        await this.attemptReconnection(deviceId, retry + 1);
+      }
+    }, delay);
+  }
+
+  // -------------------- CHECKIN / CHECKOUT LOGIC --------------------
 
   async determineAttendanceType(userId, checkTime) {
-    const startOfDay = new Date(checkTime);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(checkTime);
-    endOfDay.setHours(23, 59, 59, 999);
+    const start = new Date(checkTime);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(checkTime);
+    end.setHours(23, 59, 59, 999);
 
-    const todayAttendances = await IndexModel.Attendance.find({
+    const todayLogs = await IndexModel.Attendance.find({
       userId,
-      checkTime: { $gte: startOfDay, $lte: endOfDay },
+      checkTime: { $gte: start, $lte: end },
     }).sort({ checkTime: 1 });
 
-    return todayAttendances.length === 0 ||
-      todayAttendances[todayAttendances.length - 1].type === "checkout"
-      ? "checkin"
-      : "checkout";
-  }
-
-  async testDeviceConnection(deviceId) {
-    let connection;
-    try {
-      connection = await this.connectToDevice(deviceId);
-      const info = await connection.zkInstance.getInfo();
-      return {
-        success: true,
-        deviceInfo: info,
-        message: "Device connection test successful",
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Device connection test failed: ${error.message}`,
-      };
-    } finally {
-      if (connection) await this.disconnectFromDevice(deviceId);
-    }
+    if (todayLogs.length === 0) return "checkin";
+    const lastType = todayLogs[todayLogs.length - 1].type;
+    return lastType === "checkin" ? "checkout" : "checkin";
   }
 }
 

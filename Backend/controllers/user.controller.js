@@ -54,7 +54,7 @@ const createStaff = async (req, res) => {
           if (!device) {
             throw new Error(`Device ${deviceId} not found`);
           }
-          await ZKDeviceService.createZKUser({ name, userId, zkUserId, deviceId, role: subRole });
+          await ZKDeviceService.createZKUser({ name, userId, zkUserId, deviceId, role: subRole, companyId: req.user });
           syncedDevices.push(deviceId);
         }
       }

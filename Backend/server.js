@@ -16,7 +16,7 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import IndexModel from "./models/indexModel.js";
-
+import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +64,37 @@ app.get("/health", (req, res) => {
 app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
 app.use("/api", apiRouter);
 
+// Automatically start real-time listeners for all devices
+const startRealTimeListeners = async () => {
+  try {
+    console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
+    
+    const devices = await IndexModel.AttendanceDevice.find({ 
+      deleted: false 
+    });
+
+    let successful = 0;
+    let failed = 0;
+
+    for (const device of devices) {
+      try {
+        await ZKDeviceService.listenForRealTimeAttendance(device._id);
+        successful++;
+        console.log(`✅ Listening: ${device.deviceName} (${device.deviceIp})`);
+      } catch (error) {
+        failed++;
+        console.error(`❌ Failed: ${device.deviceName} - ${error.message}`);
+      }
+    }
+
+    console.log(`📊 Real-time listeners: ${successful} successful, ${failed} failed`);
+
+  } catch (error) {
+    console.error("❌ Failed to start real-time listeners:", error.message);
+  }
+};
+
+
 if (NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "public")));
   app.get("*", (req, res) => {
@@ -91,12 +122,11 @@ if (fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH)) {
 }
 
 server.listen(PORT, HOST, () => {
-  const scheme =
-    fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? "https" : "http";
-  console.log(
-    `🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`
-  );
+  const scheme = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? "https" : "http";
+  console.log(`🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`);
+  startRealTimeListeners();
 });
+
 cron.schedule("* * * * *", async () => {
   try {
     const now = Date.now();
@@ -112,7 +142,6 @@ cron.schedule("* * * * *", async () => {
         await IndexModel.Company.deleteOne({ _id: company._id });
         console.log(`Deleted unverified company: ${company.companyId}`);
       }
-
       await IndexModel.User.deleteOne({ _id: admin._id });
       console.log(`Deleted unverified admin: ${admin.userId}`);
     }
@@ -206,6 +235,7 @@ cron.schedule("0 0 * * *", async () => {
     console.error("Cron job error (clear sessions):", err);
   }
 });
+
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Rejection:", err);
   server.close(() => process.exit(1));

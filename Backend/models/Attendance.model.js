@@ -3,10 +3,10 @@ import mongoose, { Schema } from "mongoose";
 const AttendanceSchema = new Schema(
   {
     userId: { type: String, required: true, index: true }, // Reference to User model (alphanumeric userId)
-    zkUserId: { type: String, required: true }, // Numeric ID for ZK device
-    deviceId: { type: Schema.Types.ObjectId, ref: "AttendanceDevice", required: true },
-    companyId: { type: String, required: true, index: true },
-    checkTime: { type: Date, required: true },
+    zkUserId: { type: String }, // Numeric ID for ZK device
+    deviceId: { type: String },
+    companyId: { type: String, },
+    checkTime: { type: Date, default: Date.now, required: true },
     type: { type: String, enum: ["checkin", "checkout"], required: true },
     verificationMode: {
       type: String,
