@@ -346,6 +346,9 @@ const registerUser = async (req, res) => {
   }
 };
 
+
+
+
 export default {
   login,
   logout,

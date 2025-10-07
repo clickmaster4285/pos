@@ -7,6 +7,10 @@ import Inventory from "./inventory.controller.js";
 import Order from "./order.controller.js";
 import AddressBook from "./addressBook.controller.js";
 import Bill from "./billing.controller.js";
+import ActiveLog from "./activeLog.controller.js";
+import StaffSalary from "./staffSalary.controller.js";
+import Attendance from './attendanceUser.controller.js';
+import AttendanceDevice from './attendanceDevice.controller.js';
 
 export default {
   Company,
@@ -18,4 +22,8 @@ export default {
   Order,
   AddressBook,
   Bill,
+  ActiveLog,
+  StaffSalary,
+    Attendance,
+  AttendanceDevice,
 };

@@ -31,6 +31,7 @@ const StaffCard = ({
   permissionLabels,
   updatePermission,
   deletePermission,
+  onRowClick,
 }) => {
   const router = useRouter();
   return (
@@ -38,7 +39,10 @@ const StaffCard = ({
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
-            <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+            <Avatar
+              className="h-14 w-14 ring-2 ring-primary/20"
+              onClick={() => onRowClick?.(member)}
+            >
               <AvatarFallback
                 className={`text-white font-semibold ${getRoleColor(
                   member.subRole
@@ -47,7 +51,7 @@ const StaffCard = ({
                 {getInitials(member.name)}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div onClick={() => onRowClick?.(member)}>
               <h3 className="text-xl font-semibold text-foreground">
                 {member.name}
               </h3>
@@ -103,7 +107,7 @@ const StaffCard = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-3">
+        <div className="space-y-3" onClick={() => onRowClick?.(member)}>
           <div className="flex items-center text-sm text-muted-foreground">
             <Mail className="mr-2 h-4 w-4 text-secondary-foreground" />
             {member.email}
@@ -118,7 +122,7 @@ const StaffCard = ({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" onClick={() => onRowClick?.(member)}>
           <Label className="text-xs font-medium text-foreground">
             Key Permissions
           </Label>

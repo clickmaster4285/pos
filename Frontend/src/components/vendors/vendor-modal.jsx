@@ -31,7 +31,7 @@ const categories = [
   'Suspension',
 ];
 const statuses = ['Active', 'Inactive', 'Pending'];
-const paymentTypes = ['Cash', 'EasyPeisa', 'Bank', 'Other'];
+const paymentTypes = ['Cash', 'EasyPaisa', 'Bank', 'Other'];
 
 export function VendorModal({ isOpen, onClose, onSave, vendor, mode }) {
   const [formData, setFormData] = useState({

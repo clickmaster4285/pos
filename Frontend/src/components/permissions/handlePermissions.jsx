@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useContext } from 'react';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Toaster, toast } from 'sonner';
+
 import {
   useGetAllStaffQuery,
   useUpdateStaffMutation,
 } from '@/features/staffApi';
+
+import { useGetAllActivityQuery } from '@/features/activeLogApi';
 
 import { ActivityLog } from '@/components/permissions/ActiveLog';
 import {
@@ -20,10 +23,38 @@ import UserDetailsSheet from './UserDetailsSheet';
 import PermissionDialog from './PermissionDialog';
 
 import { humanize, normalizeAction, getUserId } from './helpers';
+import { AuthContext } from '@/components/auth/SecureAuthProvider';
 
-export  function HandlePermissions() {
+/* --------------------------- helpers --------------------------- */
+const shortId = (id) => (id ? String(id).slice(-6) : '—');
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+
+const normalizeActionFromText = (raw = '') => {
+  const t = String(raw).toLowerCase();
+  if (t.includes('permission')) return 'permission_changed';
+  if (t.includes('deleted') || t.includes('removed') || t.includes('archiv'))
+    return 'deleted';
+  if (t.includes('created') || t.startsWith('created')) return 'created';
+  return 'updated';
+};
+
+const prettyEntity = (e) => {
+  const k = String(e || '').toLowerCase();
+  if (k === 'user' || k === 'staff') return 'User';
+  if (k === 'vendor') return 'Vendor';
+  if (k === 'bill') return 'Bill';
+  if (k === 'order') return 'Order';
+  if (k === 'inventory') return 'Inventory';
+  if (k === 'company') return 'Company';
+  return cap(k || 'Item');
+};
+/* -------------------------------------------------------------- */
+
+export function HandlePermissions() {
   const { data: staff = [], isLoading } = useGetAllStaffQuery();
   const [updateStaff] = useUpdateStaffMutation();
+
+  const { user: authUser } = useContext(AuthContext) || {};
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,9 +62,91 @@ export  function HandlePermissions() {
   const [permissionFilter, setPermissionFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsUser, setDetailsUser] = useState(null);
+  const [detailsInitialTab, setDetailsInitialTab] = useState('profile');
+
+  // open History directly
+  const openHistory = (user) => {
+    setDetailsUser(user);
+    setDetailsInitialTab('history');
+    setDetailsOpen(true);
+  };
+
+  /* ------------------- ID -> Name lookup (users) ------------------- */
+  const idToName = useMemo(() => {
+    const map = new Map();
+    const add = (u) => {
+      if (!u) return;
+      const label = u?.name || u?.email || u?.userId || 'admin';
+      if (u?.userId) map.set(String(u.userId), label); // platform userId
+      if (u?._id) map.set(String(u._id), label); // mongo id
+    };
+    (Array.isArray(staff) ? staff : []).forEach(add);
+    add(authUser);
+    return map;
+  }, [staff, authUser]);
+
+  const nameFor = (id) => idToName.get(String(id)) || 'admin';
+
+  /* ------------------- Staff-based activity (fallback) ------------------- */
+  const activityLog = useMemo(() => {
+    const logs = (staff || []).flatMap((u) =>
+      (u?.history || []).map((h, idx) => ({
+        id: `${getUserId(u)}-${idx}`,
+        userId: getUserId(u),
+        userName: nameFor(getUserId(u)),
+        action: normalizeAction(h?.action || ''),
+        target: u?.name || u?.email || '—',
+        timestamp:
+          h?.createdAt ||
+          u?.updatedAt ||
+          u?.createdAt ||
+          new Date().toISOString(),
+        details: h?.action || 'Updated',
+      }))
+    );
+    return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [staff, nameFor]);
+
+  /* ------------------- Server activity (preferred) ------------------- */
+  const { data: activityRes, isFetching: isFetchingActivity } =
+    useGetAllActivityQuery(
+      { companyId: authUser?.companyId || 'CMNO2VU8' },
+      {
+        refetchOnMountOrArgChange: true,
+        refetchOnFocus: true,
+        refetchOnReconnect: true,
+        pollingInterval: 30000, // auto-refresh
+      }
+    );
+
+  const apiLogs = useMemo(() => {
+    const raw = activityRes?.data || [];
+    const mapped = raw.map((e, i) => {
+      const action = normalizeActionFromText(e.action);
+      const entityLabel = prettyEntity(e.entity);
+      const idStr = String(e.entityId || '');
+      const itemLabel = e.entityName || `${entityLabel} #${shortId(idStr)}`;
+      const target = `${entityLabel} → ${itemLabel}`;
+      const rawActorId = e.performedBy || e.createdBy || 'unknown';
+      const actorName = e.actorName || nameFor(rawActorId);
+
+      return {
+        id: `${e.entity}-${e.entityId}-${e.at}-${i}`,
+        userId: rawActorId,
+        userName: actorName || 'admin',
+        action,
+        target,
+        timestamp: e.at || e.createdAt || new Date().toISOString(),
+        details: e.action || '',
+      };
+    });
+
+    return mapped.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [activityRes, nameFor]);
+
+  const logsToShow = apiLogs.length ? apiLogs : activityLog;
 
   // Build permission labels dynamically (fallback if none)
   const permissionLabels = useMemo(() => {
@@ -60,26 +173,6 @@ export  function HandlePermissions() {
       return Object.fromEntries(fallback.map((k) => [k, humanize(k)]));
     }
     return Object.fromEntries(keys.map((k) => [k, humanize(k)]));
-  }, [staff]);
-
-  // Activity log
-  const activityLog = useMemo(() => {
-    const logs = (staff || []).flatMap((u) =>
-      (u?.history || []).map((h, idx) => ({
-        id: `${getUserId(u)}-${idx}`,
-        userId: getUserId(u),
-        userName: u?.name || u?.email || u?.userId || 'User',
-        action: normalizeAction(h?.action || ''),
-        target: u?.name || u?.email || '—',
-        timestamp:
-          h?.createdAt ||
-          u?.updatedAt ||
-          u?.createdAt ||
-          new Date().toISOString(),
-        details: h?.action || 'Updated',
-      }))
-    );
-    return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   }, [staff]);
 
   // Filtered list
@@ -112,23 +205,9 @@ export  function HandlePermissions() {
   const openDetails = (user) => {
     setDetailsUser(user);
     setDetailsOpen(true);
+    setDetailsInitialTab('profile');
   };
 
-  // const handleTogglePermission = async (userId, key, current, allPerms) => {
-  //   try {
-  //     const nextPermissions = { ...(allPerms || {}), [key]: !current };
-  //     await updateStaff({ id: userId, permissions: nextPermissions }).unwrap();
-  //     toast.success('Permission Updated', { description: 'Saved to server' });
-  //   } catch (err) {
-  //     console.error('Permission update failed:', err);
-  //     toast.error('Update failed', {
-  //       description:
-  //         err?.data?.message || err?.message || 'Could not update permission.',
-  //     });
-  //   }
-  // };
-
-  // Call shape matches your API: updateStaff({ _id, ...staffData })
   const handleTogglePermission = async (
     userId,
     key,
@@ -136,10 +215,8 @@ export  function HandlePermissions() {
     allPerms = {},
     user
   ) => {
-    // Build the next permissions object
     const nextPermissions = { ...allPerms, [key]: !current };
 
-    // (optional) optimistic UI
     const isSelected = selectedUser && getUserId(selectedUser) === userId;
     const isDetails = detailsUser && getUserId(detailsUser) === userId;
     if (isSelected)
@@ -148,7 +225,6 @@ export  function HandlePermissions() {
       setDetailsUser((prev) => ({ ...prev, permissions: nextPermissions }));
 
     try {
-      // IMPORTANT: permissions must be nested, don't spread into root
       await updateStaff({ _id: userId, permissions: nextPermissions }).unwrap();
       toast.success('Permission Updated', {
         description: `${key} → ${
@@ -156,10 +232,8 @@ export  function HandlePermissions() {
         }`,
       });
     } catch (err) {
-      // revert optimistic UI on failure
       if (isSelected) setSelectedUser(user);
       if (isDetails) setDetailsUser(user);
-      console.error('Permission update failed:', err);
       toast.error('Update failed', {
         description:
           err?.data?.message || err?.message || 'Could not update permission.',
@@ -199,13 +273,14 @@ export  function HandlePermissions() {
               filteredUsers={filteredUsers}
               onOpenUser={openUserDialog}
               onShowDetails={openDetails}
+              onShowHistory={openHistory}
             />
           </Card>
         </div>
 
         {/* Activity Log */}
         <div className="lg:col-span-1">
-          <ActivityLog logs={activityLog} />
+          <ActivityLog logs={logsToShow} isLoading={isFetchingActivity} />
         </div>
       </div>
 
@@ -228,6 +303,8 @@ export  function HandlePermissions() {
           setDetailsOpen(false);
           openUserDialog(u);
         }}
+        companyId={authUser?.companyId || 'CMNO2VU8'}
+        initialTab={detailsInitialTab}
       />
     </div>
   );

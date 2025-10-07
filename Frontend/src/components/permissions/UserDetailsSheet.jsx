@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useGetActivityByUserQuery } from '@/features/activeLogApi';
+
 import {
   Sheet,
   SheetContent,
@@ -18,7 +20,7 @@ import {
   XCircle,
   User,
   Shield,
-  History,
+  History as HistoryIcon,
   Mail,
   Phone,
   MapPin,
@@ -30,6 +32,7 @@ import {
 } from 'lucide-react';
 import { getUserId, isUserActive } from './helpers';
 
+/* ---------- misc ---------- */
 const BoolBadge = ({ on }) =>
   on ? (
     <Badge className="bg-green-500/20 text-green-800 border-green-300 dark:bg-green-500/20 dark:text-green-300">
@@ -55,12 +58,31 @@ const Field = ({ label, value, icon: Icon }) => (
   </div>
 );
 
+const prettyEntity = (e) => {
+  const k = String(e || '').toLowerCase();
+  if (k === 'user' || k === 'staff') return 'User';
+  if (k === 'vendor') return 'Vendor';
+  if (k === 'bill') return 'Bill';
+  if (k === 'order') return 'Order';
+  if (k === 'inventory') return 'Inventory';
+  if (k === 'company') return 'Company';
+  return k ? k[0].toUpperCase() + k.slice(1) : 'Item';
+};
+const shortId = (id) => (id ? String(id).slice(-6) : '—');
+const normalizeActionFromText = (raw = '') => {
+  const t = String(raw).toLowerCase();
+  if (t.includes('permission')) return 'permission_changed';
+  if (t.includes('deleted') || t.includes('removed') || t.includes('archiv'))
+    return 'deleted';
+  if (t.includes('created') || t.startsWith('created')) return 'created';
+  return 'updated';
+};
+
+/* ---------- sections ---------- */
 const ProfileSection = ({ user }) => {
   const userId = getUserId(user);
-
   return (
     <div className="space-y-6">
-      {/* Profile Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -105,7 +127,6 @@ const ProfileSection = ({ user }) => {
 
 const PermissionsSection = ({ user, permissionLabels, onManage }) => {
   const perms = user?.permissions || {};
-
   return (
     <div className="space-y-6">
       <Card>
@@ -138,7 +159,6 @@ const PermissionsSection = ({ user, permissionLabels, onManage }) => {
         </CardContent>
       </Card>
 
-      {/* Permission Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Permission Summary</CardTitle>
@@ -164,63 +184,115 @@ const PermissionsSection = ({ user, permissionLabels, onManage }) => {
   );
 };
 
-const HistorySection = ({ user }) => {
-  const history = user?.history || [];
+const HistorySection = ({ user, companyId }) => {
+  const userMongoId = user?._id;
+  const skip = !userMongoId || !companyId;
+
+  const { data, isFetching, isLoading, refetch } = useGetActivityByUserQuery(
+    { userId: userMongoId, companyId },
+    {
+      skip,
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+      pollingInterval: 30000,
+    }
+  );
+
+  useEffect(() => {
+    if (!skip) refetch();
+  }, [skip, refetch]);
+
+  const rows = useMemo(() => {
+    const events = data?.data || [];
+    return events.map((e, i) => {
+      const entityLabel = prettyEntity(e.entity);
+      const idStr = String(e.entityId || '');
+      const itemLabel = e.entityName || `${entityLabel} #${shortId(idStr)}`;
+      const actor = e.actorName || 'admin';
+      const action = normalizeActionFromText(e.action);
+      const when = new Date(e.at || e.createdAt || Date.now()).toLocaleString();
+      return {
+        id: `${e.entity}-${e.entityId}-${e.at}-${i}`,
+        line: `${actor} → ${entityLabel} → ${itemLabel}`,
+        action,
+        when,
+      };
+    });
+  }, [data]);
+
+  const [visible, setVisible] = useState(7);
+  const hasMore = rows.length > visible;
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <History className="h-5 w-5" />
+            <HistoryIcon className="h-5 w-5" />
             Activity History
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {history.length === 0 ? (
+          {isLoading || isFetching ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading activity…
+            </div>
+          ) : rows.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Clock className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium mb-2">No Activity History</p>
-              <p className="text-sm">
-                User activity will appear here once recorded
-              </p>
+              <p className="text-lg font-medium mb-2">No Activity</p>
+              <p className="text-sm">This user has no recorded actions yet.</p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto">
-              {history
-                .slice()
-                .reverse()
-                .map((h, i) => (
+            <>
+              <div className="space-y-4 max-h-[520px] overflow-y-auto">
+                {rows.slice(0, visible).map((r) => (
                   <div
-                    key={i}
-                    className="flex justify-between items-start p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                    key={r.id}
+                    className="p-4 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium bg-primary/10 text-primary px-2 py-1 rounded">
-                          {h?.action || 'Unknown Action'}
-                        </div>
-                        {h?.performedBy && (
-                          <Badge variant="outline" className="text-xs">
-                            by {h.performedBy}
-                          </Badge>
-                        )}
-                      </div>
-                      {h?.details && (
-                        <div className="text-sm text-muted-foreground">
-                          {h.details}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(
-                          h?.createdAt || user?.updatedAt || Date.now()
-                        ).toLocaleString()}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-primary/10 text-primary">
+                        {String(r.action).charAt(0).toUpperCase() +
+                          String(r.action).slice(1)}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 text-sm font-medium">{r.line}</div>
+                    <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {r.when}
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing {Math.min(visible, rows.length)} of {rows.length}
+                </div>
+                <div className="space-x-2">
+                  {hasMore && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setVisible((v) => v + 10)}
+                    >
+                      Show more
+                    </Button>
+                  )}
+                  {visible > 7 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setVisible(7)}
+                    >
+                      Show less
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -228,14 +300,19 @@ const HistorySection = ({ user }) => {
   );
 };
 
+/* ---------- wrapper ---------- */
 export default function UserDetailsSheet({
   user,
   open,
   onOpenChange,
   permissionLabels,
   onManage,
+  companyId,
+  initialTab = 'profile',
 }) {
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(initialTab);
+  useEffect(() => setActiveTab(initialTab), [initialTab]);
+
   const active = isUserActive(user);
   if (!user) return null;
 
@@ -252,7 +329,7 @@ export default function UserDetailsSheet({
           />
         );
       case 'history':
-        return <HistorySection user={user} />;
+        return <HistorySection user={user} companyId={companyId} />;
       default:
         return <ProfileSection user={user} />;
     }
@@ -281,7 +358,7 @@ export default function UserDetailsSheet({
               Manage Permissions
             </Button>
           </div>
-          {/* Status & Role Badges */}
+
           <div className="flex flex-wrap items-center gap-2 mt-2 rounded-lg">
             {active ? (
               <Badge className="bg-green-500/20 text-green-800 border-green-300 dark:bg-green-500/20 dark:text-green-300 px-3 py-1">
@@ -305,7 +382,6 @@ export default function UserDetailsSheet({
             )}
           </div>
 
-          {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="profile" className="flex items-center gap-2">
@@ -320,7 +396,7 @@ export default function UserDetailsSheet({
                 Permissions
               </TabsTrigger>
               <TabsTrigger value="history" className="flex items-center gap-2">
-                <History className="h-4 w-4" />
+                <HistoryIcon className="h-4 w-4" />
                 History
               </TabsTrigger>
             </TabsList>

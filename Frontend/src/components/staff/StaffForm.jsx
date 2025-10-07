@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye, EyeOff, ShieldCheck, Settings2 } from 'lucide-react';
+import { useGetAllDevicesQuery } from '@/features/attendanceDeviceApi'; // Import the query hook
 
 const StaffForm = ({
   staff,
@@ -33,8 +34,12 @@ const StaffForm = ({
   departments = [],
   permissionLabels = {},
   staffPermissionKeys = null,
-  billingPermissionKeys = null, // NEW prop for billing
+  billingPermissionKeys = null,
 }) => {
+  // Fetch devices
+  const { data: devicesData, isLoading: isDevicesLoading } = useGetAllDevicesQuery();
+  const devices = devicesData?.data || [];
+
   // Local lists (allow custom values)
   const [roleList, setRoleList] = useState(subRoles);
   const [deptList, setDeptList] = useState(departments);
@@ -49,7 +54,7 @@ const StaffForm = ({
   const [showPassword, setShowPassword] = useState(false);
 
   // Permissions tabs
-  const [activePermTab, setActivePermTab] = useState('staff'); // 'staff' | 'billing' | 'other'
+  const [activePermTab, setActivePermTab] = useState('staff');
 
   // ---------- Permission keys & grouping ----------
   const permissionKeys = useMemo(
@@ -57,7 +62,6 @@ const StaffForm = ({
     [permissionLabels]
   );
 
-  // If provided, use staffPermissionKeys; else infer by key name containing "staff"
   const staffKeys = useMemo(() => {
     if (Array.isArray(staffPermissionKeys) && staffPermissionKeys.length > 0) {
       return staffPermissionKeys.filter((k) => permissionLabels[k] != null);
@@ -72,7 +76,6 @@ const StaffForm = ({
     ) {
       return billingPermissionKeys.filter((k) => permissionLabels[k] != null);
     }
-    // fallback inference if not passed
     return permissionKeys.filter((k) => /billing/i.test(k));
   }, [permissionKeys, billingPermissionKeys, permissionLabels]);
 
@@ -113,7 +116,7 @@ const StaffForm = ({
   }
   function onEnterFocus(e, nextId) {
     if (e.key === 'Enter') {
-      e.preventDefault(); // never submit on Enter
+      e.preventDefault();
       if (nextId) focusById(nextId);
     }
   }
@@ -188,7 +191,6 @@ const StaffForm = ({
     setStaff({ ...staff, subRole: value });
     setCustomRoleText('');
     setAddingCustomRole(false);
-    // move focus to dept select
     focusById('department-select-trigger');
   }
 
@@ -212,6 +214,16 @@ const StaffForm = ({
     setStaff({ ...staff, password: out });
   }
 
+  // Handle device selection
+  function handleDeviceToggle(deviceId, checked) {
+    setStaff({
+      ...staff,
+      deviceIds: checked
+        ? [...(staff?.deviceIds || []), deviceId]
+        : (staff?.deviceIds || []).filter((id) => id !== deviceId),
+    });
+  }
+
   // Which keys to show for the active tab
   const visibleKeys = useMemo(() => {
     if (activePermTab === 'staff') return staffKeys;
@@ -232,7 +244,6 @@ const StaffForm = ({
         </DialogDescription>
       </DialogHeader>
 
-      {/* Identity */}
       <div className="space-y-5">
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -243,7 +254,6 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Name */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}name`}>
                 Full Name
@@ -259,7 +269,6 @@ const StaffForm = ({
               />
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}email`}>Email</Label>
               <Input
@@ -276,7 +285,6 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Phone */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}phone`}>Phone</Label>
               <Input
@@ -290,7 +298,6 @@ const StaffForm = ({
               />
             </div>
 
-            {/* Password with show/hide + generate */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}password`}>
                 Password
@@ -337,7 +344,6 @@ const StaffForm = ({
             </div>
           </div>
 
-          {/* Address */}
           <div className="space-y-2">
             <Label htmlFor={`${isEditMode ? 'edit-' : ''}address`}>
               Address
@@ -354,7 +360,6 @@ const StaffForm = ({
 
         <Separator />
 
-        {/* Role & Department */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Settings2 className="h-4 w-4 opacity-70" />
@@ -364,7 +369,6 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Role */}
             <div className="space-y-2">
               <Label>Role</Label>
               <div className="flex items-center gap-2">
@@ -418,7 +422,6 @@ const StaffForm = ({
               )}
             </div>
 
-            {/* Department */}
             <div className="space-y-2">
               <Label>Department</Label>
               <div className="flex items-center gap-2">
@@ -493,7 +496,58 @@ const StaffForm = ({
 
         <Separator />
 
-        {/* Permissions */}
+        {/* Devices */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+              Attendance Devices
+            </h3>
+            <Badge variant="outline" className="text-[10px]">
+              {devices.length} available
+            </Badge>
+          </div>
+
+          {isDevicesLoading ? (
+            <p className="text-sm text-muted-foreground">Loading devices...</p>
+          ) : devices.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No devices available.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {devices.map((device) => (
+                <label
+                  key={device._id}
+                  htmlFor={`device-${device._id}`}
+                  className="flex items-center gap-2 rounded-md border p-3 hover:bg-muted/50"
+                >
+                  <Checkbox
+                    id={`device-${device._id}`}
+                    checked={staff?.deviceIds?.includes(device._id) || false}
+                    onCheckedChange={(checked) =>
+                      handleDeviceToggle(device._id, checked)
+                    }
+                  />
+                  <span className="text-sm">{device.deviceName || device._id}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {staff?.deviceIds?.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {staff.deviceIds.map((deviceId) => (
+                <Badge key={deviceId} variant="outline" className="text-xs">
+                  Device:{' '}
+                  {devices.find((d) => d._id === deviceId)?.deviceName || deviceId}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <Separator />
+
         <section className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -527,7 +581,6 @@ const StaffForm = ({
             </div>
           </div>
 
-          {/* Tabs + per-tab actions */}
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -556,7 +609,6 @@ const StaffForm = ({
               Other Permissions
             </Button>
 
-            {/* Per-tab quick actions */}
             {activePermTab === 'staff' && (
               <div className="ml-auto flex items-center gap-2">
                 <Button
@@ -568,7 +620,6 @@ const StaffForm = ({
                 >
                   Select All Staff
                 </Button>
- 
               </div>
             )}
 
@@ -583,8 +634,6 @@ const StaffForm = ({
                 >
                   Select All Billing
                 </Button>
-              
-                
               </div>
             )}
 
@@ -599,13 +648,10 @@ const StaffForm = ({
                 >
                   Select All Other
                 </Button>
-              
-               
               </div>
             )}
           </div>
 
-          {/* Permission list for the active tab */}
           {visibleKeys.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No permissions in this group.
@@ -639,7 +685,6 @@ const StaffForm = ({
         </section>
       </div>
 
-      {/* Footer actions */}
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel}>
           Cancel

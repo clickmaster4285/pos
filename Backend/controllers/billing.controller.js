@@ -77,6 +77,7 @@ const createBill = async (req, res) => {
     // Validate + resolve each requested item to an Inventory + Variant
     const inventoryItems = await Promise.all(
       items.map(async (item) => {
+        console.log('the items', item);
         if (
           !item?.sku ||
           typeof item.sku !== 'string' ||
@@ -84,7 +85,7 @@ const createBill = async (req, res) => {
         ) {
           throw new Error('Each item must have a valid SKU');
         }
-        if (!Number.isInteger(item.qty) || item.qty <= 0) {
+        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
           throw new Error('Quantity must be a positive integer');
         }
 
@@ -103,13 +104,13 @@ const createBill = async (req, res) => {
           throw new Error(`Variant with SKU ${item.sku} not found`);
         }
 
-        if (variant.quantity < item.qty) {
+        if (variant.quantity < item.quantity) {
           throw new Error(
-            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.qty}`
+            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.quantity}`
           );
         }
 
-        const lineTotal = item.qty * (variant.price ?? 0);
+        const lineTotal = item.quantity * (variant.price ?? 0);
 
         return {
           inventoryItem: inventory._id,
@@ -117,7 +118,7 @@ const createBill = async (req, res) => {
           variantName: variant.variantName,
           itemName: inventory.itemName,
           sku: variant.sku,
-          quantity: item.qty,
+          quantity: item.quantity,
           returnUnder: variant.returnUnder,
           price: variant.price ?? 0,
           costPrice: variant.costPrice ?? 0,

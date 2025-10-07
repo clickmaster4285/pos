@@ -281,8 +281,9 @@ export default function Sidebar() {
         { href: '#', label: 'Sumeries', icon: iconMap['Sumeries'] },
         { href: '#', label: 'Reports', icon: iconMap['Reports'] },
         { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
-        { href: '#', label: 'Attendance', icon: iconMap['Attendance'] },
-        { href: '#', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
+        { href: '/admin/attendance-devices', label: 'Attendance Devices', icon: iconMap['Attendance'] },
+        { href: '/admin/attendance', label: 'Attendance', icon: iconMap['Attendance'] },
+        { href: '/admin/staff-saleries', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
         {
           href: '/admin/setting',
           label: 'Settings',

@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  zkUserId:{type: String, unique: true},
   userId: {
     type: String,
     required: true,
@@ -60,6 +61,10 @@ const userSchema = new mongoose.Schema({
   address: {
     type: String,
   },
+  // models/user.model.js  (add these fields)
+  baseSalaryMonthly: { type: Number, default: 0, min: 0 },
+  lastPaymentDate: { type: Date },
+
   verified: {
     type: Boolean,
     default: false,

@@ -11,4 +11,5 @@ router.get("/me", authenticateToken, authController.getme);
 router.post("/refresh", authController.refreshToken);
 router.post("/register", authController.registerUser);
 router.post("/verify-email", verifyOTP);
+
 export default router;

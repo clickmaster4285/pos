@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Edit, Shield, Trash2 } from 'lucide-react';
-
+import { useRouter } from 'next/navigation';
 const StaffTable = ({
   staff,
   handleEditClick,
@@ -28,12 +28,9 @@ const StaffTable = ({
   permissionLabels,
   updatePermission,
   deletePermission,
+  onRowClick,
 }) => {
-    
-    console.log('Upppdate Permission:', updatePermission);
-    console.log('Dppelete Permission:', deletePermission);
-   
-
+  const router = useRouter();
   return (
     <div className="shadow-lg backdrop-blur-sm bg-card/80 border border-border/50 rounded-xl overflow-hidden">
       <Table>
@@ -65,7 +62,10 @@ const StaffTable = ({
               key={member._id}
               className="hover:bg-primary-foreground transition-all duration-300"
             >
-              <TableCell className="flex items-center space-x-3">
+              <TableCell
+                className="flex items-center space-x-3"
+                onClick={() => onRowClick?.(member)}
+              >
                 <Avatar className="h-10 w-10 ring-1 ring-primary/20">
                   <AvatarFallback
                     className={`text-white font-semibold ${getRoleColor(
@@ -79,7 +79,7 @@ const StaffTable = ({
                   {member.name}
                 </span>
               </TableCell>
-              <TableCell>
+              <TableCell onClick={() => onRowClick?.(member)}>
                 <Badge
                   className={`text-white ${getRoleColor(
                     member.subRole
@@ -88,13 +88,19 @@ const StaffTable = ({
                   {member.subRole}
                 </Badge>
               </TableCell>
-              <TableCell className="text-muted-foreground">
+              <TableCell
+                className="text-muted-foreground"
+                onClick={() => onRowClick?.(member)}
+              >
                 {member.department}
               </TableCell>
-              <TableCell className="text-muted-foreground">
+              <TableCell
+                className="text-muted-foreground"
+                onClick={() => onRowClick?.(member)}
+              >
                 {member.email}
               </TableCell>
-              <TableCell>
+              <TableCell onClick={() => onRowClick?.(member)}>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(member.permissions)
                     .filter(([_, value]) => value)
@@ -139,12 +145,16 @@ const StaffTable = ({
                   >
                     <DropdownMenuItem
                       onClick={() => handleEditClick(member)}
-                      className="text-foreground hover:bg-primary/10" disabled={!updatePermission}
+                      className="text-foreground hover:bg-primary/10"
+                      disabled={!updatePermission}
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Edit Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-foreground hover:bg-primary/10">
+                    <DropdownMenuItem
+                      className="text-foreground hover:bg-primary/10"
+                      onClick={() => router.push(`/admin/permissions`)}
+                    >
                       <Shield className="mr-2 h-4 w-4" />
                       Manage Permissions
                     </DropdownMenuItem>

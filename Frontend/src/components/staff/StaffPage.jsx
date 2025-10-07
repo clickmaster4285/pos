@@ -14,6 +14,7 @@ import StaffFilter from './StaffFilter';
 import StaffForm from './StaffForm';
 import StaffCard from './StaffCard';
 import StaffTable from './StaffTable';
+import StaffDetailsSheet from './StaffDetailsSheet';
 
 import { useContext } from 'react';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
@@ -37,7 +38,6 @@ const Staff = () => {
 
   const updatePermission = user?.permissions?.staffUpdate;
   const deletePermission = user?.permissions?.staffDelete;
-
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -125,22 +125,72 @@ const Staff = () => {
     'viewBilling',
   ];
 
-  const filteredStaff = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return staff;
-    return staff.filter((m) => {
-      const name = m.name?.toLowerCase() || '';
-      const email = m.email?.toLowerCase() || '';
-      const subRole = m.subRole?.toLowerCase() || '';
-      const department = m.department?.toLowerCase() || '';
-      return (
+  // ---------- Filter state ----------
+
+  const [departmentFilter, setDepartmentFilter] = React.useState('all');
+  const [roleFilter, setRoleFilter] = React.useState('all');
+
+  const staffList = React.useMemo(() => {
+    if (Array.isArray(staff)) return staff;
+    if (Array.isArray(staff?.data)) return staff.data;
+    if (Array.isArray(staff?.results)) return staff.results;
+    return [];
+  }, [staff]);
+
+  const departmentsList = React.useMemo(() => {
+    return Array.from(
+      new Set(
+        staffList.map((m) => (m?.department || '').trim()).filter(Boolean)
+      )
+    ).sort();
+  }, [staffList]);
+
+  const rolesList = React.useMemo(() => {
+    return Array.from(
+      new Set(
+        staffList
+          .map((m) => (m?.subRole || m?.role || '').trim())
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [staffList]);
+
+  const filteredStaff = React.useMemo(() => {
+    const q = (searchTerm || '').trim().toLowerCase();
+    const dep = (departmentFilter || 'all').toLowerCase();
+    const role = (roleFilter || 'all').toLowerCase();
+
+    return staffList.filter((m) => {
+      const name = (m?.name || '').toLowerCase();
+      const email = (m?.email || '').toLowerCase();
+      const subRole = (m?.subRole || '').toLowerCase();
+      const roleVal = (m?.role || '').toLowerCase();
+      const dept = (m?.department || '').toLowerCase();
+
+      const matchesSearch =
+        !q ||
         name.includes(q) ||
         email.includes(q) ||
         subRole.includes(q) ||
-        department.includes(q)
-      );
+        roleVal.includes(q) ||
+        dept.includes(q);
+
+      const matchesDept = dep === 'all' || dept === dep;
+      const matchesRole =
+        role === 'all' || subRole === role || roleVal === role;
+
+      return matchesSearch && matchesDept && matchesRole;
     });
-  }, [staff, searchTerm]);
+  }, [staffList, searchTerm, departmentFilter, roleFilter]);
+
+  //-------------------detail model form---------------
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+
+  const openQuickView = (member) => {
+    setSelectedStaff(member);
+    setIsSheetOpen(true);
+  };
 
   // ---------- Pagination derived values ----------
   const total = filteredStaff.length;
@@ -314,23 +364,34 @@ const Staff = () => {
         />
       </Dialog>
 
-      <StaffFilter searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+      <StaffFilter
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        departmentFilter={departmentFilter}
+        setDepartmentFilter={setDepartmentFilter}
+        roleFilter={roleFilter}
+        setRoleFilter={setRoleFilter}
+        departments={departmentsList}
+        roles={rolesList}
+      />
 
       {/* Results */}
       {viewMode === 'card' ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {paginatedStaff.map((member) => (
-            <StaffCard
-              key={member._id}
-              member={member}
-              handleEditClick={handleEditClick}
-              handleDeleteStaff={handleDeleteStaff}
-              getRoleColor={getRoleColor}
-              getInitials={getInitials}
-              permissionLabels={permissionLabels}
-              updatePermission={updatePermission}
-              deletePermission={deletePermission}
-            />
+            <div key={member._id}>
+              <StaffCard
+                member={member}
+                handleEditClick={handleEditClick}
+                handleDeleteStaff={handleDeleteStaff}
+                getRoleColor={getRoleColor}
+                getInitials={getInitials}
+                permissionLabels={permissionLabels}
+                updatePermission={updatePermission}
+                deletePermission={deletePermission}
+                onRowClick={openQuickView}
+              />
+            </div>
           ))}
         </div>
       ) : (
@@ -343,6 +404,7 @@ const Staff = () => {
           permissionLabels={permissionLabels}
           updatePermission={updatePermission}
           deletePermission={deletePermission}
+          onRowClick={openQuickView}
         />
       )}
 
@@ -422,6 +484,12 @@ const Staff = () => {
             </Button>
           </div>
         </div>
+        <StaffDetailsSheet
+          open={isSheetOpen}
+          onOpenChange={setIsSheetOpen}
+          staff={selectedStaff}
+          onEdit={handleEditClick}
+        />
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ const VendorSchema = new Schema(
     // ],
     paymentType: {
       type: String,
-      enum: ["Cash", "EasyPeisa", "Bank", "Other"],
+      enum: ["Cash", "EasyPaisa", "Bank", "Other"],
     },
     createdBy: {
       type: String,

@@ -11,8 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card } from '@/components/ui/card';
-import { Loader2, Settings, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Loader2,
+  Settings,
+  CheckCircle2,
+  XCircle,
+  History,
+} from 'lucide-react';
 import { countActivePermissions, getUserId, isUserActive } from './helpers';
 
 export default function UsersTable({
@@ -20,6 +25,7 @@ export default function UsersTable({
   filteredUsers,
   onOpenUser,
   onShowDetails,
+  onShowHistory,
 }) {
   return (
     <div className="px-6">
@@ -89,7 +95,7 @@ export default function UsersTable({
                           enabled
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -100,6 +106,17 @@ export default function UsersTable({
                         >
                           <Settings className="h-4 w-4 mr-1" />
                           Manage
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onShowHistory(user);
+                          }}
+                        >
+                          <History className="h-4 w-4 mr-1" />
+                          History
                         </Button>
                       </TableCell>
                     </TableRow>

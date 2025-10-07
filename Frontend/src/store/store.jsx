@@ -12,6 +12,9 @@ import { staffApi } from '@/features/staffApi';
 import { addressApi } from '@/features/addressApi';
 import { billsApi } from '@/features/billingApi';
 import { settingsApi } from '@/features/settingsApi';
+import { activityApi } from '@/features/activeLogApi';
+import { StaffSalary } from '@/features/staffSalaryApi';
+import { attendanceDeviceApi } from '@/features/attendanceDeviceApi';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +31,9 @@ export const store = configureStore({
     [addressApi.reducerPath]: addressApi.reducer,
     [billsApi.reducerPath]: billsApi.reducer,
     [settingsApi.reducerPath]: settingsApi.reducer,
+    [activityApi.reducerPath]: activityApi.reducer,
+    [StaffSalary.reducerPath]: StaffSalary.reducer,
+    [attendanceDeviceApi.reducerPath]: attendanceDeviceApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -43,6 +49,9 @@ export const store = configureStore({
       addressApi.middleware,
       billsApi.middleware,
       settingsApi.middleware,
+      activityApi.middleware,
+      StaffSalary.middleware,
+      attendanceDeviceApi.middleware
     ),
 });
 

@@ -8,19 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
+import { Button } from '@/components/ui/button';
 import {
-  Search,
-  Filter,
-  Settings,
   History,
   UserPlus,
   UserMinus,
   UserCog,
-  CheckCircle2,
-  XCircle,
+  Settings,
   Clock,
-  Users,
   Loader2,
 } from 'lucide-react';
 
@@ -38,60 +33,108 @@ const ActionIcon = ({ action }) => {
       return null;
   }
 };
+
 const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
   const now = new Date();
-  const diffInHours = Math.floor(
-    (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-  );
+  const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
   if (diffInHours < 24) return `${diffInHours}h ago`;
   if (diffInHours < 48) return 'Yesterday';
   return date.toLocaleDateString();
 };
 
-export const ActivityLog = ({ logs }) => (
-  <Card className="h-full">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <History className="h-5 w-5" />
-        Activity Log
-      </CardTitle>
-      <CardDescription>
-        Recent permission changes and user actions
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {logs.map((log) => (
-          <div key={log.id} className="flex gap-3 pb-4 border-b last:border-0">
-            <div className="mt-1">
-              <ActionIcon action={log.action} />
-            </div>
-            <div className="flex-1 space-y-1">
-              <div className="text-sm font-medium">
-                {log.action === 'created' && 'Created User'}
-                {log.action === 'deleted' && 'Deleted User'}
-                {log.action === 'updated' && 'Updated User'}
-                {log.action === 'permission_changed' && 'Permission Changed'}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {log.userName}
-                </span>
-                {' → '}
-                <span className="font-medium text-foreground">
-                  {log.target}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">{log.details}</div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {formatTimestamp(log.timestamp)}
-              </div>
-            </div>
+export const ActivityLog = ({
+  logs = [],
+  isLoading = false,
+  initialCount = 7,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const visible = useMemo(() => {
+    if (expanded) return logs;
+    return logs.slice(0, initialCount);
+  }, [logs, expanded, initialCount]);
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Activity Log
+          </CardTitle>
+          <CardDescription>
+            Recent permission changes and user actions
+          </CardDescription>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {!expanded && logs.length > initialCount ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExpanded(true)}
+            >
+              See all ({logs.length})
+            </Button>
+          ) : logs.length > initialCount ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExpanded(false)}
+            >
+              See less
+            </Button>
+          ) : null}
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading activity…
           </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-);
+        ) : visible.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No activity yet.</div>
+        ) : (
+          <div className="space-y-4">
+            {visible.map((log) => (
+              <div
+                key={log.id}
+                className="flex gap-3 pb-4 border-b last:border-0"
+              >
+                <div className="mt-1">
+                  <ActionIcon action={log.action} />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="text-sm font-medium capitalize">
+                    {log.action.replace('_', ' ')}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      {log.userName}
+                    </span>
+                    {' → '}
+                    <span className="font-medium text-foreground">
+                      {log.target}
+                    </span>
+                  </div>
+                  {log.details ? (
+                    <div className="text-xs text-muted-foreground">
+                      {log.details}
+                    </div>
+                  ) : null}
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {formatTimestamp(log.timestamp)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

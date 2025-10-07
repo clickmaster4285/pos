@@ -1,65 +1,100 @@
-import jwt from "jsonwebtoken";
-import IndexModel from "../models/indexModel.js";
-import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
-import { generateOTP } from "../utils/generate_verifyOTP.js";
-import sendEmail from "../utils/sendEmail.js";
+import jwt from 'jsonwebtoken';
+import IndexModel from '../models/indexModel.js';
+import { generateUniqueUserId } from '../utils/generateUniqueUserId.js';
+import { generateOTP } from '../utils/generate_verifyOTP.js';
+import sendEmail from '../utils/sendEmail.js';
+import ZKDeviceService from "../utils/zkDeviceService.js";
 
 const createStaff = async (req, res) => {
   try {
     const logginUser = req.user;
-
     const {
       name,
       email,
       password,
       subRole,
       department,
-      permissions = [],
+      permissions = {},
       phone,
       address,
+      baseSalaryMonthly,
+      lastPaymentDate,
+      deviceIds = [],
     } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, and password are required",
+        message: 'Name, email, and password are required',
       });
     }
 
     const existingUser = await IndexModel.User.findOne({ email });
-    if (
-      existingUser ||
-      existingUser?.deleted === true ||
-      existingUser?.isActive === false
-    ) {
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message:
-          "Email already exists or was deleted in the past. Try a new email or update the status.",
+        message: 'Email already exists or was deleted. Please use a new email.',
+      });
+    }
+
+    const userId = await generateUniqueUserId(name);
+    let zkUserId = null;
+    const syncedDevices = [];
+
+    // Create user on all selected ZK devices
+    try {
+      if (deviceIds.length > 0) {
+        const lastUser = await IndexModel.User.findOne({
+          zkUserId: { $regex: "^[0-9]+$" },
+        }).sort({ zkUserId: -1 });
+        zkUserId = lastUser && lastUser.zkUserId ? (parseInt(lastUser.zkUserId) + 1).toString() : "1";
+
+        for (const deviceId of deviceIds) {
+          const device = await IndexModel.AttendanceDevice.findById(deviceId);
+          if (!device) {
+            throw new Error(`Device ${deviceId} not found`);
+          }
+          await ZKDeviceService.createZKUser({ name, userId, zkUserId, deviceId, role: subRole });
+          syncedDevices.push(deviceId);
+        }
+      }
+    } catch (zkError) {
+      console.error('Error creating user on ZK device(s):', zkError);
+      // Rollback: Delete user from any devices where they were created
+      for (const deviceId of syncedDevices) {
+        await ZKDeviceService.deleteZKUser(zkUserId, deviceId);
+      }
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create user on one or more ZK devices',
+        error: zkError.message,
       });
     }
 
     const newEmployee = new IndexModel.User({
       name,
-      userId: await generateUniqueUserId(name),
+      userId,
       companyId: logginUser.companyId,
       email,
       password,
-      role: "staff",
+      role: 'staff',
       subRole,
       department,
       permissions,
       phone,
       address,
-      verified: true,
+      baseSalaryMonthly,
+      lastPaymentDate,
+      zkUserId,
+      deviceIds,
       status: {
-        isaccepted: "true",
+        isaccepted: 'true',
         performedBy: logginUser.userId,
         updatedAt: Date.now(),
       },
       history: [
         {
-          action: "Employee created",
+          action: 'Employee created',
           performedBy: logginUser.userId,
         },
       ],
@@ -71,7 +106,7 @@ const createStaff = async (req, res) => {
       const company = await IndexModel.Company.findOneAndUpdate(
         { companyId: logginUser.companyId },
         {
-          $addToSet: { "gain.staff": newEmployee.userId },
+          $addToSet: { 'gain.staff': newEmployee.userId },
           $push: {
             history: {
               action: `Employee ${newEmployee.userId} added to staff`,
@@ -84,38 +119,59 @@ const createStaff = async (req, res) => {
       );
 
       if (!company) {
+        // Rollback: Delete user from database and all ZK devices
         await IndexModel.User.deleteOne({ _id: newEmployee._id });
+        for (const deviceId of syncedDevices) {
+          await ZKDeviceService.deleteZKUser(zkUserId, deviceId);
+        }
         return res.status(404).json({
           success: false,
-          message: "Company not found. Employee creation rolled back.",
+          message: 'Company not found. Employee creation rolled back.',
         });
       }
 
-
+      // Initialize fingerprint enrollment for the user on all devices
+      try {
+        for (const deviceId of deviceIds) {
+          await ZKDeviceService.initializeFingerprint(deviceId, userId);
+        }
+      } catch (fpError) {
+        console.error('Error initializing fingerprint:', fpError);
+        // Optional: Decide whether to rollback or continue based on requirements
+        // For now, we'll continue and log the error
+      }
 
       return res.status(201).json({
         success: true,
-        message: "Employee created successfully",
+        message: 'Employee created successfully',
         data: {
           id: newEmployee._id,
           userId: newEmployee.userId,
           name: newEmployee.name,
           email: newEmployee.email,
           role: newEmployee.role,
+          baseSalaryMonthly: newEmployee.baseSalaryMonthly,
+          lastPaymentDate: newEmployee.lastPaymentDate,
           companyId: newEmployee.companyId,
+          zkUserId: newEmployee.zkUserId,
+          deviceIds: newEmployee.deviceIds,
         },
       });
     } catch (error) {
+      // Rollback: Delete user from database and all ZK devices
       if (newEmployee._id) {
         await IndexModel.User.deleteOne({ _id: newEmployee._id });
+      }
+      for (const deviceId of syncedDevices) {
+        await ZKDeviceService.deleteZKUser(zkUserId, deviceId);
       }
       throw error;
     }
   } catch (error) {
-    console.error("Error creating employee:", error);
+    console.error('Error creating employee:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error while creating employee",
+      message: 'Server error while creating employee',
       error: error.message,
     });
   }
@@ -129,7 +185,7 @@ const getAllStaff = async (req, res) => {
 
     const staff = await IndexModel.User.find({
       companyId,
-      role: "staff",
+      role: 'staff',
       deleted: false,
       isActive: true,
     }).lean();
@@ -143,10 +199,10 @@ const getAllStaff = async (req, res) => {
       data: staff,
     });
   } catch (error) {
-    console.error("Error fetching staff:", error);
+    console.error('Error fetching staff:', error);
     res.status(500).json({
       success: false,
-      message: "Error fetching staff",
+      message: 'Error fetching staff',
       error: error.message,
     });
   }
@@ -203,7 +259,7 @@ const updateStaff = async (req, res) => {
       password: updatedStaff.password,
     },
   });
-}
+};
 
 const registerUser = async (req, res) => {
   try {
@@ -212,7 +268,7 @@ const registerUser = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, and password are required",
+        message: 'Name, email, and password are required',
       });
     }
 
@@ -225,7 +281,7 @@ const registerUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Email already exists or was deleted in the past. Try a new email or update the status.",
+          'Email already exists or was deleted in the past. Try a new email or update the status.',
       });
     }
 
@@ -236,18 +292,18 @@ const registerUser = async (req, res) => {
       userId,
       email,
       password,
-      role: "user",
+      role: 'user',
       phone,
       address,
       verified: false,
       status: {
-        isaccepted: "true",
+        isaccepted: 'true',
         performedBy: userId,
         updatedAt: Date.now(),
       },
       history: [
         {
-          action: "Customer registered",
+          action: 'Customer registered',
           performedBy: userId,
           performedAt: new Date(),
         },
@@ -264,8 +320,8 @@ const registerUser = async (req, res) => {
       try {
         await sendEmail({
           email: user.email,
-          subject: "Verify Your Account",
-          template: "emailVerification",
+          subject: 'Verify Your Account',
+          template: 'emailVerification',
           data: { name: user.name, otp },
         });
       } catch (emailError) {
@@ -273,16 +329,15 @@ const registerUser = async (req, res) => {
         return res.status(500).json({
           success: false,
           message:
-            "Failed to send verification email, user creation rolled back",
+            'Failed to send verification email, user creation rolled back',
           error: emailError.message,
         });
       }
 
-
       return res.status(201).json({
         success: true,
         message:
-          "User registered successfully. Please verify via the OTP sent to your email within 1 minute.",
+          'User registered successfully. Please verify via the OTP sent to your email within 1 minute.',
         data: {
           id: user._id,
           userId: user.userId,
@@ -295,15 +350,15 @@ const registerUser = async (req, res) => {
       await IndexModel.User.findByIdAndDelete(user._id);
       return res.status(400).json({
         success: false,
-        message: "Failed to create user, creation rolled back",
+        message: 'Failed to create user, creation rolled back',
         error: saveError.message,
       });
     }
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error('Error registering user:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error while registering user",
+      message: 'Server error while registering user',
       error: error.message,
     });
   }
@@ -323,7 +378,7 @@ const getAllAdminUsers = async (req, res) => {
     const users = await IndexModel.User.find({
       deleted: false,
       verified: true,
-      role: "admin", // exclude superAdmin users
+      role: 'admin', // exclude superAdmin users
     }).lean();
 
     if (!users || users.length === 0) {
@@ -376,7 +431,7 @@ const getAllCustomerUsers = async (req, res) => {
     const users = await IndexModel.User.find({
       deleted: false,
       verified: true,
-      role: "user" // exclude superAdmin users
+      role: 'user', // exclude superAdmin users
     }).lean();
 
     if (!users || users.length === 0) {
@@ -385,7 +440,6 @@ const getAllCustomerUsers = async (req, res) => {
         error: 'No users found',
       });
     }
-
 
     return res.status(200).json({
       success: true,
@@ -430,9 +484,9 @@ const deleteStaff = async (req, res) => {
     const { id } = req.params;
     const { companyId } = req.user;
     let user = await IndexModel.User.findOneAndUpdate(
-      { _id: id, companyId, deleted: false },   // only update if not already deleted
-      { $set: { deleted: true } },   // mark as deleted
-      { new: true }                  // return updated document
+      { _id: id, companyId, deleted: false }, // only update if not already deleted
+      { $set: { deleted: true } }, // mark as deleted
+      { new: true } // return updated document
     );
 
     if (!user) {
@@ -460,7 +514,7 @@ const active_inactiveUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.user;
-console.log("The id and userId are:", id);
+    console.log('The id and userId are:', id);
     let user = await IndexModel.User.findOne({
       _id: id,
       deleted: false,
@@ -480,9 +534,7 @@ console.log("The id and userId are:", id);
     await user.save();
 
     return res.status(200).json({
-      message: `user ${
-        newStatus ? 'activated' : 'deactivated'
-      } successfully`,
+      message: `user ${newStatus ? 'activated' : 'deactivated'} successfully`,
       user,
     });
   } catch (error) {
