@@ -18,7 +18,6 @@ const AttendanceSchema = new Schema(
   { timestamps: true }
 );
 
-AttendanceSchema.index({ userId: 1, checkTime: 1 });
-AttendanceSchema.index({ companyId: 1, checkTime: 1 });
+AttendanceSchema.index({ userId: 1, checkTime: 1 }, { unique: true });
 
 export default mongoose.model("Attendance", AttendanceSchema);

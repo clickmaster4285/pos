@@ -4,8 +4,6 @@ import passport from '../middleware/passportAuth.middleware.js';
 
 const router = express.Router();
 
-router.post("/checkin", passport.authenticate('jwt', { session: false }), Indexcontroller.Attendance.checkin);
-router.post("/checkout", passport.authenticate('jwt', { session: false }), Indexcontroller.Attendance.checkout);
 router.get("/get-all-attendance/:deviceId", passport.authenticate('jwt', { session: false }), Indexcontroller.Attendance.getAllAttendance);
 router.get("/attendance/user/:deviceId/:userId", passport.authenticate('jwt', { session: false }), Indexcontroller.Attendance.getAttendanceByUid);
 

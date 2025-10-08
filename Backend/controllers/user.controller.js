@@ -44,17 +44,15 @@ const createStaff = async (req, res) => {
     // Create user on all selected ZK devices
     try {
       if (deviceIds.length > 0) {
-        const lastUser = await IndexModel.User.findOne({
-          zkUserId: { $regex: "^[0-9]+$" },
-        }).sort({ zkUserId: -1 });
-        zkUserId = lastUser && lastUser.zkUserId ? (parseInt(lastUser.zkUserId) + 1).toString() : "1";
+        zkUserId = userId;
 
         for (const deviceId of deviceIds) {
+          console.log("the device id in the user creation is", deviceId);
           const device = await IndexModel.AttendanceDevice.findById(deviceId);
           if (!device) {
             throw new Error(`Device ${deviceId} not found`);
           }
-          await ZKDeviceService.createZKUser({ name, userId, zkUserId, deviceId, role: subRole, companyId: req.user });
+          await ZKDeviceService.createZKUser({ name, userId, zkUserId, deviceId, role: subRole, companyId: req.user.companyId });
           syncedDevices.push(deviceId);
         }
       }
@@ -131,15 +129,15 @@ const createStaff = async (req, res) => {
       }
 
       // Initialize fingerprint enrollment for the user on all devices
-      try {
-        for (const deviceId of deviceIds) {
-          await ZKDeviceService.initializeFingerprint(deviceId, userId);
-        }
-      } catch (fpError) {
-        console.error('Error initializing fingerprint:', fpError);
-        // Optional: Decide whether to rollback or continue based on requirements
-        // For now, we'll continue and log the error
-      }
+      // try {
+      //   for (const deviceId of deviceIds) {
+      //     await ZKDeviceService.initializeFingerprint(deviceId, userId);
+      //   }
+      // } catch (fpError) {
+      //   console.error('Error initializing fingerprint:', fpError);
+      //   // Optional: Decide whether to rollback or continue based on requirements
+      //   // For now, we'll continue and log the error
+      // }
 
       return res.status(201).json({
         success: true,

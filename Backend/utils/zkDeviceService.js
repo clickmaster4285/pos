@@ -14,13 +14,20 @@ class ZKDeviceService {
     this.retryDelay = 2000;
   }
 
-  
   // -------------------- CREATE TO ZK --------------------
+
   async createZKUser({ name, userId, zkUserId, deviceId, role, companyId }) {
     const device = await IndexModel.AttendanceDevice.findById(deviceId);
     if (!device) throw new NotFoundError(`Device ${deviceId} not found`);
 
     const { deviceIp, devicePort } = device;
+    console.log("Creating user on device:", deviceIp, devicePort, {
+      name,
+      userId,
+      zkUserId,
+      role,
+      companyId,
+    });
     const zk = new ZKLib(deviceIp, devicePort, 10000, 4000);
 
     try {
@@ -28,7 +35,7 @@ class ZKDeviceService {
       const deviceRole = role === "admin" ? 14 : 0;
 
       // Encode companyId and deviceId in cardNumber
-      const cardNumber = `${companyId}_${deviceId}`;
+      const cardNumber = `${companyId}`;
 
       await zk.setUser(
         parseInt(zkUserId), // UID
@@ -38,12 +45,14 @@ class ZKDeviceService {
         deviceRole, // role
         cardNumber // store companyId + deviceId
       );
-
+      console.log("teh user are created in zk device");
       await zk.disconnect();
       return { zkUserId, deviceId, userId, companyId };
     } catch (err) {
       console.error("ZK create user error:", err);
-      throw new InternalServerError(`Failed to create user on device ${deviceId}: ${err}`);
+      throw new InternalServerError(
+        `Failed to create user on device ${deviceId}: ${err}`
+      );
     }
   }
 
@@ -60,7 +69,9 @@ class ZKDeviceService {
       await zk.disconnect();
     } catch (err) {
       console.error("ZK delete user error:", err);
-      throw new InternalServerError(`Failed to delete user from device ${deviceId}: ${err.message}`);
+      throw new InternalServerError(
+        `Failed to delete user from device ${deviceId}: ${err.message}`
+      );
     }
   }
 
@@ -72,12 +83,20 @@ class ZKDeviceService {
       if (!device) throw new NotFoundError("Device not found");
 
       // ✅ Avoid reconnecting to already connected device
-      if (this.connections.has(deviceId) && this.connections.get(deviceId).isConnected) {
+      if (
+        this.connections.has(deviceId) &&
+        this.connections.get(deviceId).isConnected
+      ) {
         console.log(`⚠️ Already connected to device ${device.deviceIp}`);
         return this.connections.get(deviceId);
       }
 
-      const zkInstance = new ZKLib(device.deviceIp, device.devicePort, 10000, 4000);
+      const zkInstance = new ZKLib(
+        device.deviceIp,
+        device.devicePort,
+        10000,
+        4000
+      );
       await zkInstance.createSocket();
 
       // 🧹 Prevent duplicate event listeners on the same socket
@@ -114,7 +133,9 @@ class ZKDeviceService {
         status: "disconnected",
       });
 
-      throw new InternalServerError(`Failed to connect to device: ${error.message}`);
+      throw new InternalServerError(
+        `Failed to connect to device: ${error.message}`
+      );
     }
   }
 
@@ -131,7 +152,9 @@ class ZKDeviceService {
 
   async listenForRealTimeAttendance(deviceId) {
     try {
-      console.log(`🔄 Starting real-time attendance listener for device ${deviceId}`);
+      console.log(
+        `🔄 Starting real-time attendance listener for device ${deviceId}`
+      );
       const connection = await this.connectToDevice(deviceId);
       const { zkInstance } = connection;
 
@@ -146,7 +169,9 @@ class ZKDeviceService {
           const logs = await zkInstance.getAttendances();
 
           if (logs?.data?.length) {
-            console.log(`📥 ${logs.data.length} logs received from device ${deviceId}`);
+            console.log(
+              `📥 ${logs.data.length} logs received from device ${deviceId}`
+            );
 
             for (const log of logs.data) {
               await this.processRealTimeAttendance(deviceId, log);
@@ -159,12 +184,15 @@ class ZKDeviceService {
           console.error(`❌ Polling error on ${deviceId}:`, err.message);
           await this.handleDeviceError(deviceId, err);
         }
-      }, 5000);
+      }, 3000);
 
       this.realtimeListeners.set(deviceId, { interval, zkInstance });
       console.log(`✅ Real-time attendance listener ACTIVE for ${deviceId}`);
     } catch (error) {
-      console.error(`❌ Failed to start listener for ${deviceId}:`, error.message);
+      console.error(
+        `❌ Failed to start listener for ${deviceId}:`,
+        error.message
+      );
       await this.attemptReconnection(deviceId);
     }
   }
@@ -185,7 +213,6 @@ class ZKDeviceService {
     try {
       const device = await IndexModel.AttendanceDevice.findById(deviceId);
       if (!device) return console.error(`❌ Device ${deviceId} not found`);
-console.log("the attendance log is", attendance);
       // Find user by zkUserId + company
       const user = await IndexModel.User.findOne({
         userId: attendance.deviceUserId.toString(),
@@ -194,12 +221,11 @@ console.log("the attendance log is", attendance);
       });
 
       if (!user) {
-        console.warn(`⚠️ No matching user for zkUserId ${attendance.deviceUserId}`);
+        // console.warn(`⚠️ No matching user for zkUserId ${attendance.deviceUserId}`);
         return;
       }
 
       const checkTime = new Date(attendance.recordTime);
-console.log("the check time is", checkTime);
       // ✅ Prevent duplicates: skip if already saved
       const existing = await IndexModel.Attendance.findOne({
         userId: user.userId,
@@ -207,7 +233,10 @@ console.log("the check time is", checkTime);
       });
       if (existing) return;
 
-      const type = await this.determineAttendanceType(user.userId, checkTime.toISOString());
+      const type = await this.determineAttendanceType(
+        user.userId,
+        checkTime.toISOString()
+      );
 
       const attendanceData = {
         userId: user.userId,
@@ -221,7 +250,9 @@ console.log("the check time is", checkTime);
 
       await IndexModel.Attendance.create(attendanceData);
 
-      console.log(`✅ ${user.name} ${type.toUpperCase()} recorded at ${checkTime}`);
+      console.log(
+        `✅ ${user.name} ${type.toUpperCase()} recorded at ${checkTime.toISOString}`
+      );
     } catch (err) {
       console.error(`❌ Error saving attendance:`, err.message);
     }
@@ -258,18 +289,36 @@ console.log("the check time is", checkTime);
   // -------------------- CHECKIN / CHECKOUT LOGIC --------------------
 
   async determineAttendanceType(userId, checkTime) {
+    console.log("Determining attendance type for user:", userId, checkTime);
     const start = new Date(checkTime);
     start.setHours(0, 0, 0, 0);
     const end = new Date(checkTime);
     end.setHours(23, 59, 59, 999);
 
+    // Get today's attendance logs sorted by time
     const todayLogs = await IndexModel.Attendance.find({
       userId,
       checkTime: { $gte: start, $lte: end },
     }).sort({ checkTime: 1 });
 
+    // If no record today → first entry must be "checkin"
     if (todayLogs.length === 0) return "checkin";
-    const lastType = todayLogs[todayLogs.length - 1].type;
+
+    const lastLog = todayLogs[todayLogs.length - 1];
+    const lastType = lastLog.type;
+
+    // ✅ STEP 1: Prevent duplicate same-time entry
+    const diffInSeconds = Math.abs(
+      (new Date(checkTime) - new Date(lastLog.checkTime)) / 1000
+    );
+
+    if (diffInSeconds < 10) {
+      // less than 10 seconds difference → same punch
+      console.log("Duplicate scan detected, ignoring...");
+      return lastType; // don't change type
+    }
+
+    // ✅ STEP 2: Otherwise, alternate the type
     return lastType === "checkin" ? "checkout" : "checkin";
   }
 }

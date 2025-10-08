@@ -121,6 +121,12 @@ if (fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH)) {
   console.log("🔓 HTTP server enabled (certs not found)");
 }
 
+const originalWrite = process.stdout.write;
+process.stdout.write = function (chunk, encoding, callback) {
+  if (typeof chunk === 'string' && chunk.trim() === 'ok tcp') return;
+  return originalWrite.apply(process.stdout, arguments);
+};
+
 server.listen(PORT, HOST, () => {
   const scheme = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? "https" : "http";
   console.log(`🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`);

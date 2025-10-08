@@ -6,7 +6,7 @@ function createRawUserId(name = '') {
   const cleaned = name.replace(/[^a-zA-Z]/g, '').toUpperCase();
   const namePart = (cleaned.slice(0, 3) + 'XXX').slice(0, 3); // always 3 letters
 
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@*&';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const suffix = Array.from({ length: 5 }, () =>
     chars[Math.floor(Math.random() * chars.length)]
   ).join('');
