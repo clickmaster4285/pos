@@ -6,7 +6,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  zkUserId:{type: String, unique: true},
   userId: {
     type: String,
     required: true,
@@ -54,6 +53,14 @@ const userSchema = new mongoose.Schema({
     deleteBilling: { type: Boolean, default: false },
     addBilling: { type: Boolean, default: false },
     viewBilling: { type: Boolean, default: false },
+    //
+    createPayment: { type: Boolean, default: false },
+    viewAllStaffSalaries: { type: Boolean, default: false },
+    updateSalary: { type: Boolean, default: false },
+    deletePayment: { type: Boolean, default: false },
+    staffSummary: { type: Boolean, default: false },
+    viewActiveLog: { type: Boolean, default: false },
+    viewCompanySummary: { type: Boolean, default: false },
   },
   phone: {
     type: String,

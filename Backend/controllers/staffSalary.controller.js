@@ -12,122 +12,17 @@ const getBaseMonthly = (user) =>
     0
   );
 
-/**
- * POST /payroll/pay
- * Body: { staffId, paymentType: 'salary'|'bonus'|'decrement', bonusAmount?, decrementAmount?, notes?, cycleMonth? }
- */
-// const processPayment = async (req, res) => {
-//   try {
-//     const companyId = req.user?.companyId || req.body.companyId; // fallback if needed
-//     const processedBy = req.user?.userId || 'system';
-
-//     const {
-//       staffId,
-//       paymentType, // 'salary' | 'bonus' | 'decrement'
-//       bonusAmount = 0,
-//       decrementAmount = 0,
-//       notes = '',
-//       cycleMonth = yyyymm(),
-//     } = req.body;
-
-//     // Validate basic fields
-//     if (!companyId)
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'companyId required' });
-//     if (!staffId)
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'staffId required' });
-//     if (!['salary', 'bonus', 'decrement'].includes(paymentType))
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'Invalid paymentType' });
-
-//     // Fetch staff user
-//     const staff = await IndexModel.User.findOne({
-//       _id: staffId,
-//       companyId,
-//       deleted: { $ne: true },
-//     });
-
-//     if (!staff)
-//       return res
-//         .status(404)
-//         .json({ success: false, message: 'Staff not found' });
-
-//     const baseSalary = getBaseMonthly(staff);
-//     if (baseSalary <= 0) {
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'Staff base monthly salary not set' });
-//     }
-
-//     const bonus = safeNumber(bonusAmount, 0);
-//     const dec = safeNumber(decrementAmount, 0);
-
-//     // Prevent duplicate base salary payout for same month
-//     if (paymentType === 'salary') {
-//       const exists = await IndexModel.StaffSalary.findOne({
-//         companyId,
-//         staffId,
-//         cycleMonth,
-//         paymentType: 'salary',
-//         deleted: { $ne: true },
-//       }).lean();
-
-//       if (exists) {
-//         return res.status(409).json({
-//           success: false,
-//           message: `Salary already processed for ${cycleMonth}`,
-//         });
-//       }
-//     }
-
-//     // Compute total to be paid
-//     let totalPaid = baseSalary;
-//     if (paymentType === 'bonus') totalPaid = baseSalary + bonus;
-//     if (paymentType === 'decrement') totalPaid = Math.max(0, baseSalary - dec);
-
-//     // Create salary record
-//     const doc = await IndexModel.StaffSalary.create({
-//       companyId,
-//       staffId,
-//       baseSalary,
-//       paymentType,
-//       bonusAmount: paymentType === 'bonus' ? bonus : 0,
-//       decrementAmount: paymentType === 'decrement' ? dec : 0,
-//       totalPaid,
-//       cycleMonth,
-//       processedBy,
-//       notes,
-//       status: 'paid',
-//     });
-
-//     // ✅ Update staff's payment tracking info
-//     await IndexModel.User.updateOne(
-//       { _id: staffId, companyId },
-//       {
-//         $set: {
-//           lastPaymentDate: new Date(), // update the new field
-//           lastSalaryPaidMonth: cycleMonth, // record which month was paid
-//         },
-//       }
-//     );
-
-//     return res.status(201).json({ success: true, data: doc });
-//   } catch (err) {
-//     console.error('processPayment error:', err);
-//     return res.status(500).json({ success: false, message: err.message });
-//   }
-// };
+//to make payment
 export const processPayment = async (req, res) => {
   try {
     const companyId = req.user?.companyId || req.body.companyId;
     const processedBy = req.user?.userId || 'system';
+
     const {
       staffId,
-      paymentType, // "salary" | "bonus" | "decrement"
+      paymentType = 'salary',
+      paymentMethod = '', // incoming dropdown value OR custom text
+      customMethod = '', // optional extra field when dropdown = "custom"
       bonusAmount = 0,
       decrementAmount = 0,
       notes = '',
@@ -142,60 +37,97 @@ export const processPayment = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: 'staffId required' });
-    if (!['salary', 'bonus', 'decrement'].includes(paymentType))
+
+    // normalize amounts
+    const bonus = Math.max(0, Number(bonusAmount) || 0);
+    const dec = Math.max(0, Number(decrementAmount) || 0);
+
+    // payment type guard
+    if (paymentType !== 'salary') {
       return res
         .status(400)
-        .json({ success: false, message: 'Invalid paymentType' });
+        .json({ success: false, message: 'paymentType must be "salary"' });
+    }
 
+    // only one of bonus/dec at a time
+    if (bonus > 0 && dec > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide either bonusAmount or decrementAmount, not both',
+      });
+    }
+
+    // resolve & validate payment method
+    const rawMethod = String(paymentMethod || '').trim();
+    let finalMethod = rawMethod;
+
+    // allow dropdown values or any non-empty custom text
+    const ALLOWED = new Set(['cash', 'card', 'easypaisa']);
+    if (rawMethod.toLowerCase() === 'custom') {
+      const cm = String(customMethod || '').trim();
+      if (!cm) {
+        return res.status(400).json({
+          success: false,
+          message: 'customMethod is required when paymentMethod is "custom"',
+        });
+      }
+      finalMethod = cm; // use provided custom value
+    } else if (!rawMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'paymentMethod is required',
+      });
+    } else if (!ALLOWED.has(rawMethod.toLowerCase())) {
+      // treat any non-empty non-allowed value as custom free text
+      finalMethod = rawMethod;
+    }
+
+    // fetch staff
     const staff = await IndexModel.User.findOne({
       _id: staffId,
       companyId,
       deleted: { $ne: true },
     });
+
     if (!staff)
       return res
         .status(404)
         .json({ success: false, message: 'Staff not found' });
 
     const baseSalary = getBaseMonthly(staff);
-    if (baseSalary <= 0)
+    if (!Number.isFinite(baseSalary) || baseSalary <= 0) {
       return res
         .status(400)
         .json({ success: false, message: 'Staff base monthly salary not set' });
+    }
 
-    const bonus = safeNumber(bonusAmount, 0);
-    const dec = safeNumber(decrementAmount, 0);
+    // prevent duplicate salary in same month
+    const exists = await IndexModel.StaffSalary.findOne({
+      companyId,
+      staffId,
+      cycleMonth,
+      paymentType: 'salary',
+      deleted: { $ne: true },
+    }).lean();
 
-    // Block paying base salary twice in same cycle
-    if (paymentType === 'salary') {
-      const exists = await IndexModel.StaffSalary.findOne({
-        companyId,
-        staffId,
-        cycleMonth,
-        paymentType: 'salary',
-        deleted: { $ne: true },
-      }).lean();
-      if (exists) {
-        return res.status(409).json({
-          success: false,
-          message: `Salary already processed for ${cycleMonth}`,
-        });
-      }
+    if (exists) {
+      return res.status(409).json({
+        success: false,
+        message: `Salary already processed for ${cycleMonth}`,
+      });
     }
 
     // compute total
-    let totalPaid = baseSalary;
-    if (paymentType === 'bonus') totalPaid = baseSalary + bonus;
-    if (paymentType === 'decrement') totalPaid = Math.max(0, baseSalary - dec);
+    const totalPaid = Math.max(0, baseSalary + bonus - dec);
 
-    // create payment record
     const doc = await IndexModel.StaffSalary.create({
       companyId,
       staffId,
       baseSalary,
-      paymentType,
-      bonusAmount: paymentType === 'bonus' ? bonus : 0,
-      decrementAmount: paymentType === 'decrement' ? dec : 0,
+      paymentType: 'salary',
+      paymentMethod: finalMethod, // ✅ use resolved value (required)
+      bonusAmount: bonus,
+      decrementAmount: dec,
       totalPaid,
       cycleMonth,
       processedBy,
@@ -203,14 +135,14 @@ export const processPayment = async (req, res) => {
       status: 'paid',
     });
 
-    // ✅ Atomically update user
-    const userUpdate = {
-      lastPaymentDate: new Date(),
-      lastSalaryPaidMonth: cycleMonth,
-    };
     await IndexModel.User.updateOne(
       { _id: staffId, companyId, deleted: { $ne: true } },
-      { $set: userUpdate }
+      {
+        $set: {
+          lastPaymentDate: new Date(),
+          lastSalaryPaidMonth: cycleMonth,
+        },
+      }
     );
 
     return res.status(201).json({ success: true, data: doc });
@@ -321,76 +253,7 @@ export const softDeletePayment = async (req, res) => {
   }
 };
 
-// GET /api/payroll/payments?companyId=&staffId=&month=&type=&page=1&limit=10
-// export const listPayments = async (req, res) => {
-//   try {
-//     const companyId = req.user?.companyId || req.query.companyId;
-//     const { staffId, month, type, page = 1, limit = 10 } = req.query;
-
-//     if (!companyId)
-//       return res
-//         .status(400)
-//         .json({ success: false, message: 'companyId required' });
-
-//     const match = { companyId, deleted: { $ne: true } };
-//     if (staffId)
-//       match.staffId = new IndexModel.mongoose.Types.ObjectId(staffId);
-//     if (month) match.cycleMonth = month;
-//     if (type) match.paymentType = type;
-
-//     const skip = (Number(page) - 1) * Number(limit);
-
-//     const pipeline = [
-//       { $match: match },
-//       { $sort: { createdAt: -1 } },
-//       { $skip: skip },
-//       { $limit: Number(limit) },
-//       {
-//         $lookup: {
-//           from: 'users',
-//           localField: 'staffId',
-//           foreignField: '_id',
-//           as: 'staff',
-//           pipeline: [
-//             {
-//               $project: {
-//                 name: 1,
-//                 email: 1,
-//                 userId: 1,
-//                 department: 1,
-//                 baseSalaryMonthly: 1,
-//                 lastPaymentDate: 1,
-//                 lastSalaryPaidMonth: 1,
-//               },
-//             },
-//           ],
-//         },
-//       },
-//       { $unwind: '$staff' },
-//     ];
-
-//     const [items, total] = await Promise.all([
-//       IndexModel.StaffSalary.aggregate(pipeline),
-//       IndexModel.StaffSalary.countDocuments(match),
-//     ]);
-
-//     return res.json({
-//       success: true,
-//       data: items,
-//       meta: {
-//         total,
-//         page: Number(page),
-//         limit: Number(limit),
-//         pages: Math.max(1, Math.ceil(total / Number(limit))),
-//       },
-//     });
-//   } catch (err) {
-//     console.error('listPayments error:', err);
-//     return res.status(500).json({ success: false, message: err.message });
-//   }
-// };
-
-// GET /api/payroll/staff/:staffId/summary?month=&limit=5
+//to get staff salary summary (1 staff all history by id)
 export const getStaffSalarySummary = async (req, res) => {
   try {
     const companyId = req.user?.companyId || req.query.companyId;
@@ -490,7 +353,61 @@ const getCompanyMonthSummary = async (req, res) => {
   }
 };
 
+//its getting staff data with staff salary papulted to show staff cards
 const listPayments = async (req, res) => {
+  try {
+    // Only superAdmin can access
+    if (req.user.role === 'Admin') {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized: you can't access this",
+      });
+    }
+
+    // Get all verified, not-deleted users
+    const users = await IndexModel.User.find({
+      deleted: false,
+      verified: true,
+      role: 'staff', // exclude superAdmin users
+    }).lean();
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'company Admin not found',
+      });
+    }
+
+    // For each user, fetch their company plan
+    const data = await Promise.all(
+      users.map(async (user) => {
+        const company = await IndexModel.Company.findOne({
+          owner: user.userId,
+          companyId: user.companyId,
+          deleted: false,
+        }).lean();
+        // console.log('the data is: ', company);
+        return {
+          ...user,
+          plan: company ? company.plan : null,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: 'Server error while fetching users',
+      details: error.message,
+    });
+  }
+};
+//its getting all the payment like all data of staff salary with staff name papulated
+export const getAllSaffSalaryDetail = async (req, res) => {
   try {
     const companyId = req.user?.companyId || req.query.companyId;
     if (!companyId) {
@@ -499,54 +416,39 @@ const listPayments = async (req, res) => {
         .json({ success: false, message: 'companyId required' });
     }
 
-    // 1) Get all verified, not-deleted users (exclude superAdmin)
-    const users = await IndexModel.User.find(
+    const pipeline = [
+      { $match: { companyId, deleted: { $ne: true } } },
       {
-        companyId,
-        deleted: false,
-        verified: true,
-        role: { $ne: 'superAdmin' },
+        $lookup: {
+          from: 'users',
+          localField: 'staffId',
+          foreignField: '_id',
+          as: 'staff',
+          pipeline: [
+            { $match: { companyId, deleted: { $ne: true } } },
+            {
+              $project: {
+                name: 1,
+              },
+            },
+          ],
+        },
       },
-      {
-        // projection: include only fields you need
-        _id: 1,
-        userId: 1,
-        name: 1,
-        email: 1,
-        address: 1,
-        subRole: 1,
-        phone: 1,
-        department: 1,
-        baseSalaryMonthly: 1,
-        lastPaymentDate: 1,
-        lastSalaryPaidMonth: 1,
-      }
-    ).lean();
+      { $unwind: { path: '$staff', preserveNullAndEmptyArrays: true } },
+      { $addFields: { staffName: '$staff.name' } },
+      // optional: decide what you return
+      // { $project: { /* include/exclude fields */ } },
+      { $sort: { processedAt: -1, createdAt: -1 } },
+    ];
 
-    // 2) For each user, fetch their company plan (adjust model if needed)
-    const data = await Promise.all(
-      users.map(async (user) => {
-        // Replace CompanyPlan with whatever model actually stores "plan"
-        const planDoc =
-          (IndexModel.CompanyPlan &&
-            (await IndexModel.CompanyPlan.findOne({
-              companyId: user.companyId,
-            }).lean())) ||
-          null;
-
-        return {
-          ...user,
-          plan: planDoc ? planDoc.plan : null, // or whatever field holds plan name/tier
-        };
-      })
-    );
-
-    return res.status(200).json({ success: true, data });
+    const rows = await IndexModel.StaffSalary.aggregate(pipeline);
+    return res.status(200).json({ success: true, data: rows });
   } catch (error) {
+    console.error('getAllStaffSalaryDetail error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Server error while fetching users',
-      details: error.message,
+      message: 'Error fetching activity log',
+      error: error.message,
     });
   }
 };
@@ -558,4 +460,5 @@ export default {
   listPayments,
   getStaffSalarySummary,
   getCompanyMonthSummary,
+  getAllSaffSalaryDetail,
 };

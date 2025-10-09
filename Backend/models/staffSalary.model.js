@@ -14,8 +14,7 @@ const historySchema = new mongoose.Schema(
       enum: ['salary', 'bonus', 'decrement', 'adjustment'],
       required: true,
     },
-    amount: { type: Number, required: true },
-    totalPaid: { type: Number, required: true },
+
     performedBy: { type: String },
     remarks: { type: String },
     date: { type: Date, default: Date.now },
@@ -48,7 +47,7 @@ const staffSalarySchema = new mongoose.Schema(
     // Payment type
     paymentType: {
       type: String,
-      enum: ['salary', 'bonus', 'decrement'],
+
       required: true,
     },
 
@@ -58,6 +57,7 @@ const staffSalarySchema = new mongoose.Schema(
 
     // Computed total
     totalPaid: { type: Number, required: true, min: 0 },
+    paymentMethod: { type: String, required: true },
 
     // Payroll cycle (e.g., 2025-10)
     cycleMonth: {

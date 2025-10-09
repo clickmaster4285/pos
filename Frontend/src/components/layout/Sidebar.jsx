@@ -42,7 +42,7 @@ const iconMap = {
   Reports: BarChart,
   'Live Store': Store,
   Attendance: ClipboardList,
-  'Staff Saleries': CreditCard,
+  'Staff Salaries': CreditCard,
 };
 
 function SidebarFooter({ userName, userRole }) {
@@ -95,8 +95,6 @@ const getAuthState = () => {
     return null;
   }
 };
-
-
 
 // ---- Permission helpers ----
 const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
@@ -182,6 +180,25 @@ function buildStaffLinks(user) {
     });
   }
 
+  // salary : show if any salary-related permission is true
+  if (
+    hasAny(user, [
+      'createPayment',
+      'viewAllStaffSalaries',
+      'updateSalary',
+      'deletePayment',
+      'staffSummary',
+      'viewActiveLog',
+      'viewCompanySummary',
+    ])
+  ) {
+    links.push({
+      href: `${staffBase}/staff-salaries`,
+      label: 'Payments',
+      icon: iconMap['Staff Salaries'],
+    });
+  }
+
   // Settings: show if they have *any* permission at all (or make your own rule)
   if (
     hasAny(user, [
@@ -211,7 +228,6 @@ function buildStaffLinks(user) {
 
   return links;
 }
-
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -281,9 +297,22 @@ export default function Sidebar() {
         { href: '#', label: 'Sumeries', icon: iconMap['Sumeries'] },
         { href: '#', label: 'Reports', icon: iconMap['Reports'] },
         { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
-        { href: '/admin/attendance-devices', label: 'Attendance Devices', icon: iconMap['Attendance'] },
-        { href: '/admin/attendance', label: 'Attendance', icon: iconMap['Attendance'] },
-        { href: '/admin/staff-saleries', label: 'Staff Saleries', icon: iconMap['Staff Saleries'] },
+        {
+          href: '/admin/attendance-devices',
+          label: 'Attendance Devices',
+          icon: iconMap['Attendance'],
+        },
+        {
+          href: '/admin/attendance',
+          label: 'Attendance',
+          icon: iconMap['Attendance'],
+        },
+
+        {
+          href: '/admin/staff-salaries',
+          label: 'Staff Salaries',
+          icon: iconMap['Staff Salaries'],
+        },
         {
           href: '/admin/setting',
           label: 'Settings',
@@ -291,6 +320,7 @@ export default function Sidebar() {
         },
       ],
       staff: buildStaffLinks(user),
+
       user: [
         { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
         { href: '#', label: 'Orders', icon: iconMap['Orders'] },

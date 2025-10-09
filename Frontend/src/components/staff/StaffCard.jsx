@@ -34,13 +34,21 @@ const StaffCard = ({
   onRowClick,
 }) => {
   const router = useRouter();
+
+  // derive a capped list for stable height (no logic change, just UI usage)
+  const permEntries = Object.entries(member.permissions || {}).filter(
+    ([, v]) => !!v
+  );
+  const visiblePerms = permEntries.slice(0, 2);
+  const restCount = Math.max(permEntries.length - 2, 0);
+
   return (
-    <Card className="shadow-lg backdrop-blur-sm bg-card/80 border border-border/50 hover:shadow-glow transition-all duration-300 transform hover:-translate-y-1">
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4">
+    <Card className="shadow-lg backdrop-blur-sm bg-card/80 border border-border/50 hover:shadow-glow transition-all duration-300">
+      <CardHeader className="pb-3 min-h-[84px]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
             <Avatar
-              className="h-14 w-14 ring-2 ring-primary/20"
+              className="h-14 w-14 shrink-0 cursor-pointer"
               onClick={() => onRowClick?.(member)}
             >
               <AvatarFallback
@@ -51,27 +59,48 @@ const StaffCard = ({
                 {getInitials(member.name)}
               </AvatarFallback>
             </Avatar>
-            <div onClick={() => onRowClick?.(member)}>
-              <h3 className="text-xl font-semibold text-foreground">
+
+            <div
+              className="min-w-0 cursor-pointer"
+              onClick={() => onRowClick?.(member)}
+              title={member.name || ''}
+            >
+              <h3 className="text-xl font-semibold text-foreground truncate max-w-[220px]">
                 {member.name}
               </h3>
-              <div className="flex items-center space-x-2 mt-1">
+
+              <div className="flex items-center gap-2 mt-1">
                 <Badge
                   className={`text-white font-medium ${getRoleColor(
                     member.subRole
-                  )} px-3 py-1`}
+                  )} px-2.5 py-0.5 h-6`}
+                  title={member.subRole || ''}
                 >
-                  {member.subRole}
+                  <span className="truncate max-w-[110px]">
+                    {member.subRole}
+                  </span>
                 </Badge>
-                <Badge variant="outline" className="text-muted-foreground">
-                  {member.department}
+
+                <Badge
+                  variant="outline"
+                  className="px-2.5 py-0.5 h-6 text-muted-foreground border-border"
+                  title={member.department || ''}
+                >
+                  <span className="truncate max-w-[120px]">
+                    {member.department}
+                  </span>
                 </Badge>
               </div>
             </div>
           </div>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="hover:bg-primary/10">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-primary/10 shrink-0"
+              >
                 <MoreVertical className="h-5 w-5 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
@@ -87,6 +116,7 @@ const StaffCard = ({
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Details
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 className="text-foreground hover:bg-primary/10"
                 onClick={() => router.push(`/admin/permissions`)}
@@ -94,6 +124,7 @@ const StaffCard = ({
                 <Shield className="mr-2 h-4 w-4" />
                 Manage Permissions
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 className="text-destructive hover:bg-destructive/10"
                 onClick={() => handleDeleteStaff(member._id)}
@@ -106,46 +137,74 @@ const StaffCard = ({
           </DropdownMenu>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
-        <div className="space-y-3" onClick={() => onRowClick?.(member)}>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Mail className="mr-2 h-4 w-4 text-secondary-foreground" />
-            {member.email}
+        {/* Contact block: truncate to keep height steady */}
+        <div className="space-y-2" onClick={() => onRowClick?.(member)}>
+          <div
+            className="flex items-center text-sm text-muted-foreground"
+            title={member.email || ''}
+          >
+            <Mail className="mr-2 h-4 w-4 text-secondary-foreground shrink-0" />
+            <span className="truncate">{member.email}</span>
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Phone className="mr-2 h-4 w-4 text-secondary-foreground" />
-            {member.phone || 'N/A'}
+          <div
+            className="flex items-center text-sm text-muted-foreground"
+            title={member.phone || 'N/A'}
+          >
+            <Phone className="mr-2 h-4 w-4 text-secondary-foreground shrink-0" />
+            <span className="truncate">{member.phone || 'N/A'}</span>
           </div>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <MapPin className="mr-2 h-4 w-4 text-secondary-foreground" />
-            {member.address || 'N/A'}
+          <div
+            className="flex items-center text-sm text-muted-foreground"
+            title={member.address || 'N/A'}
+          >
+            <MapPin className="mr-2 h-4 w-4 text-secondary-foreground shrink-0" />
+            <span className="truncate">{member.address || 'N/A'}</span>
           </div>
         </div>
 
-        <div className="space-y-2" onClick={() => onRowClick?.(member)}>
+        {/* Permissions block: one-line fixed height with neutral styling */}
+        <div onClick={() => onRowClick?.(member)}>
           <Label className="text-xs font-medium text-foreground">
             Key Permissions
           </Label>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(member.permissions)
-              .filter(([_, value]) => value)
-              .slice(0, 3)
-              .map(([key, _]) => (
-                <Badge
-                  key={key}
-                  variant="secondary"
-                  className="text-xs bg-primary/10 text-primary"
-                >
-                  {permissionLabels[key]}
-                </Badge>
-              ))}
-            {Object.values(member.permissions).filter(Boolean).length > 3 && (
+
+          <div
+            className="mt-2 flex items-center gap-2 overflow-hidden"
+            style={{ minHeight: 28, maxHeight: 28 }}
+          >
+            {visiblePerms.length > 0 ? (
+              <>
+                {visiblePerms.map(([key]) => (
+                  <Badge
+                    key={key}
+                    variant="outline"
+                    className="text-xs h-7 leading-7 bg-background border-secondary/20 text-secondary-foreground px-2"
+                    title={permissionLabels[key] || key}
+                  >
+                    <span className="truncate max-w-[140px]">
+                      {permissionLabels[key] || key}
+                    </span>
+                  </Badge>
+                ))}
+
+                {restCount > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs h-7 leading-7 bg-background border-secondary/20 text-secondary-foreground px-2"
+                    title={`${restCount} more`}
+                  >
+                    +{restCount} more
+                  </Badge>
+                )}
+              </>
+            ) : (
               <Badge
-                variant="secondary"
-                className="text-xs bg-muted/50 text-muted-foreground"
+                variant="outline"
+                className="text-xs h-7 leading-7 bg-background border-secondary text-secondary-foreground px-2"
               >
-                +{Object.values(member.permissions).filter(Boolean).length - 3}{' '}
-                more
+                No key permissions
               </Badge>
             )}
           </div>

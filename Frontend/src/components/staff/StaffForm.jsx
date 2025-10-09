@@ -35,9 +35,11 @@ const StaffForm = ({
   permissionLabels = {},
   staffPermissionKeys = null,
   billingPermissionKeys = null,
+  salaryPermissionKeys = null,
 }) => {
   // Fetch devices
-  const { data: devicesData, isLoading: isDevicesLoading } = useGetAllDevicesQuery();
+  const { data: devicesData, isLoading: isDevicesLoading } =
+    useGetAllDevicesQuery();
   const devices = devicesData?.data || [];
 
   // Local lists (allow custom values)
@@ -54,7 +56,7 @@ const StaffForm = ({
   const [showPassword, setShowPassword] = useState(false);
 
   // Permissions tabs
-  const [activePermTab, setActivePermTab] = useState('staff');
+  const [activePermTab, setActivePermTab] = useState('staff'); // 'staff' | 'billing' | 'other' | 'salary'
 
   // ---------- Permission keys & grouping ----------
   const permissionKeys = useMemo(
@@ -62,6 +64,7 @@ const StaffForm = ({
     [permissionLabels]
   );
 
+  // If provided, use staffPermissionKeys; else infer by key name containing "staff"
   const staffKeys = useMemo(() => {
     if (Array.isArray(staffPermissionKeys) && staffPermissionKeys.length > 0) {
       return staffPermissionKeys.filter((k) => permissionLabels[k] != null);
@@ -76,13 +79,35 @@ const StaffForm = ({
     ) {
       return billingPermissionKeys.filter((k) => permissionLabels[k] != null);
     }
+    // fallback inference if not passed
     return permissionKeys.filter((k) => /billing/i.test(k));
   }, [permissionKeys, billingPermissionKeys, permissionLabels]);
 
+  // NEW: Salary group — prefer explicit keys from parent; otherwise infer by common salary/pay terms
+  const salaryKeys = useMemo(() => {
+    if (
+      Array.isArray(salaryPermissionKeys) &&
+      salaryPermissionKeys.length > 0
+    ) {
+      // Trust the explicit list from parent; keep the original order.
+      return salaryPermissionKeys;
+    }
+    // Fallback only if parent forgot to pass a list
+    return [
+      'createPayment',
+      'viewAllStaffSalaries',
+      'updateSalary',
+      'deletePayment',
+      'staffSummary',
+      'viewActiveLog',
+      'viewCompanySummary',
+    ];
+  }, [salaryPermissionKeys]);
+
   const otherKeys = useMemo(() => {
-    const exclude = new Set([...staffKeys, ...billingKeys]);
+    const exclude = new Set([...staffKeys, ...billingKeys, ...salaryKeys]);
     return permissionKeys.filter((k) => !exclude.has(k));
-  }, [permissionKeys, staffKeys, billingKeys]);
+  }, [permissionKeys, staffKeys, billingKeys, salaryKeys]);
 
   // ---------- Selection state ----------
   const allSelected = useMemo(() => {
@@ -103,6 +128,11 @@ const StaffForm = ({
     return billingKeys.every((k) => !!staff.permissions[k]);
   }, [billingKeys, staff?.permissions]);
 
+  const allSalarySelected = useMemo(() => {
+    if (!staff?.permissions || salaryKeys.length === 0) return false;
+    return salaryKeys.every((k) => !!staff.permissions[k]);
+  }, [salaryKeys, staff?.permissions]);
+
   const allOtherSelected = useMemo(() => {
     if (!staff?.permissions || otherKeys.length === 0) return false;
     return otherKeys.every((k) => !!staff.permissions[k]);
@@ -116,11 +146,33 @@ const StaffForm = ({
   }
   function onEnterFocus(e, nextId) {
     if (e.key === 'Enter') {
-      e.preventDefault();
+      e.preventDefault(); // never submit on Enter
       if (nextId) focusById(nextId);
     }
   }
 
+  //-------------------------
+  // safe read
+  const perms = staff?.permissions ?? {};
+
+  const setPerm = (key, value) =>
+    setStaff((prev) => ({
+      ...prev,
+      permissions: { ...(prev.permissions ?? {}), [key]: value },
+    }));
+
+  const toggleAll = (keys, value) => {
+    if (!Array.isArray(keys) || !keys.length) return;
+    setStaff((prev) => ({
+      ...prev,
+      permissions: {
+        ...(prev.permissions ?? {}),
+        ...Object.fromEntries(keys.map((k) => [k, value])),
+      },
+    }));
+  };
+
+  //---------------------------
   // ---------- Permission handlers ----------
   function handlePermissionToggle(key, checked) {
     setStaff({
@@ -168,6 +220,18 @@ const StaffForm = ({
     setStaff({ ...staff, permissions: next });
   }
 
+  // NEW: salary bulk-selects
+  function handleSelectAllSalary() {
+    const next = { ...(staff?.permissions || {}) };
+    salaryKeys.forEach((k) => (next[k] = true));
+    setStaff({ ...staff, permissions: next });
+  }
+  function handleClearAllSalary() {
+    const next = { ...(staff?.permissions || {}) };
+    salaryKeys.forEach((k) => (next[k] = false));
+    setStaff({ ...staff, permissions: next });
+  }
+
   function handleSelectAllOther() {
     const next = { ...(staff?.permissions || {}) };
     otherKeys.forEach((k) => (next[k] = true));
@@ -191,6 +255,7 @@ const StaffForm = ({
     setStaff({ ...staff, subRole: value });
     setCustomRoleText('');
     setAddingCustomRole(false);
+    // move focus to dept select
     focusById('department-select-trigger');
   }
 
@@ -214,7 +279,7 @@ const StaffForm = ({
     setStaff({ ...staff, password: out });
   }
 
-  // Handle device selection
+    // Handle device selection
   function handleDeviceToggle(deviceId, checked) {
     setStaff({
       ...staff,
@@ -228,8 +293,9 @@ const StaffForm = ({
   const visibleKeys = useMemo(() => {
     if (activePermTab === 'staff') return staffKeys;
     if (activePermTab === 'billing') return billingKeys;
+    if (activePermTab === 'salary') return salaryKeys; // <-- wire salary tab
     return otherKeys;
-  }, [activePermTab, staffKeys, billingKeys, otherKeys]);
+  }, [activePermTab, staffKeys, billingKeys, salaryKeys, otherKeys]);
 
   return (
     <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -244,6 +310,7 @@ const StaffForm = ({
         </DialogDescription>
       </DialogHeader>
 
+      {/* Identity */}
       <div className="space-y-5">
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -254,6 +321,7 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Name */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}name`}>
                 Full Name
@@ -269,6 +337,7 @@ const StaffForm = ({
               />
             </div>
 
+            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}email`}>Email</Label>
               <Input
@@ -285,6 +354,7 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Phone */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}phone`}>Phone</Label>
               <Input
@@ -298,6 +368,7 @@ const StaffForm = ({
               />
             </div>
 
+            {/* Password with show/hide + generate */}
             <div className="space-y-2">
               <Label htmlFor={`${isEditMode ? 'edit-' : ''}password`}>
                 Password
@@ -344,6 +415,7 @@ const StaffForm = ({
             </div>
           </div>
 
+          {/* Address */}
           <div className="space-y-2">
             <Label htmlFor={`${isEditMode ? 'edit-' : ''}address`}>
               Address
@@ -352,14 +424,34 @@ const StaffForm = ({
               id={`${isEditMode ? 'edit-' : ''}address`}
               value={staff?.address || ''}
               onChange={(e) => setStaff({ ...staff, address: e.target.value })}
-              onKeyDown={(e) => onEnterFocus(e, null)}
+              onKeyDown={(e) =>
+                onEnterFocus(e, `${isEditMode ? 'edit-' : ''}baseSalaryMonthly`)
+              }
               placeholder="Street, City, Country"
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Salary */}
+            <div className="space-y-2">
+              <Label htmlFor={`${isEditMode ? 'edit-' : ''}baseSalaryMonthly`}>
+                Salary
+              </Label>
+              <Input
+                id={`${isEditMode ? 'edit-' : ''}baseSalaryMonthly`}
+                value={staff?.baseSalaryMonthly || ''}
+                onChange={(e) =>
+                  setStaff({ ...staff, baseSalaryMonthly: e.target.value })
+                }
+                placeholder="Enter employee salary"
+              />
+            </div>
           </div>
         </section>
 
         <Separator />
 
+        {/* Role & Department */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Settings2 className="h-4 w-4 opacity-70" />
@@ -369,6 +461,7 @@ const StaffForm = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Role */}
             <div className="space-y-2">
               <Label>Role</Label>
               <div className="flex items-center gap-2">
@@ -422,6 +515,7 @@ const StaffForm = ({
               )}
             </div>
 
+            {/* Department */}
             <div className="space-y-2">
               <Label>Department</Label>
               <div className="flex items-center gap-2">
@@ -494,8 +588,6 @@ const StaffForm = ({
           )}
         </section>
 
-        <Separator />
-
         {/* Devices */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -528,7 +620,9 @@ const StaffForm = ({
                       handleDeviceToggle(device._id, checked)
                     }
                   />
-                  <span className="text-sm">{device.deviceName || device._id}</span>
+                  <span className="text-sm">
+                    {device.deviceName || device._id}
+                  </span>
                 </label>
               ))}
             </div>
@@ -539,7 +633,8 @@ const StaffForm = ({
               {staff.deviceIds.map((deviceId) => (
                 <Badge key={deviceId} variant="outline" className="text-xs">
                   Device:{' '}
-                  {devices.find((d) => d._id === deviceId)?.deviceName || deviceId}
+                  {devices.find((d) => d._id === deviceId)?.deviceName ||
+                    deviceId}
                 </Badge>
               ))}
             </div>
@@ -548,6 +643,7 @@ const StaffForm = ({
 
         <Separator />
 
+        {/* Permissions */}
         <section className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -581,36 +677,54 @@ const StaffForm = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant={activePermTab === 'staff' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActivePermTab('staff')}
-            >
-              Staff Permissions
-            </Button>
+          {/* Tabs + per-tab actions */}
+          <div className="space-y-3">
+            {/* Tabs: 3 per row, wrap to next line inside the dialog */}
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant={activePermTab === 'staff' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('staff')}
+              >
+                Staff Permissions
+              </Button>
 
-            <Button
-              type="button"
-              variant={activePermTab === 'billing' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActivePermTab('billing')}
-            >
-              Billing Permissions
-            </Button>
+              <Button
+                type="button"
+                variant={activePermTab === 'billing' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('billing')}
+              >
+                Billing Permissions
+              </Button>
 
-            <Button
-              type="button"
-              variant={activePermTab === 'other' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActivePermTab('other')}
-            >
-              Other Permissions
-            </Button>
+              <Button
+                type="button"
+                variant={activePermTab === 'other' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('other')}
+              >
+                Other Permissions
+              </Button>
 
+              <Button
+                type="button"
+                variant={activePermTab === 'salary' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('salary')}
+              >
+                Manage Salary Permissions
+              </Button>
+            </div>
+
+            {/* Quick actions below tabs so nothing overflows horizontally */}
             {activePermTab === 'staff' && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -624,7 +738,7 @@ const StaffForm = ({
             )}
 
             {activePermTab === 'billing' && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -638,7 +752,7 @@ const StaffForm = ({
             )}
 
             {activePermTab === 'other' && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -650,8 +764,33 @@ const StaffForm = ({
                 </Button>
               </div>
             )}
+
+            {activePermTab === 'salary' && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllSalary}
+                  disabled={salaryKeys.length === 0}
+                >
+                  Select All Salary
+                </Button>
+                {/* If you want a Clear button too, uncomment:
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAllSalary}
+                  disabled={salaryKeys.length === 0}
+                >
+                  Clear All Salary
+                </Button> */}
+              </div>
+            )}
           </div>
 
+          {/* Permission list for the active tab */}
           {visibleKeys.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No permissions in this group.
@@ -671,7 +810,9 @@ const StaffForm = ({
                       handlePermissionToggle(key, checked)
                     }
                   />
-                  <span className="text-sm">{permissionLabels[key]}</span>
+                  <span className="text-sm">
+                    {permissionLabels[key] ?? key}
+                  </span>
                 </label>
               ))}
             </div>
@@ -685,6 +826,7 @@ const StaffForm = ({
         </section>
       </div>
 
+      {/* Footer actions */}
       <div className="mt-6 flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel}>
           Cancel

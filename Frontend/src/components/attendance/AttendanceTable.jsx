@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { debounce } from 'lodash';
 import {
   Table,
   TableBody,
@@ -11,79 +12,77 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
+import AttendanceDetailModal from "./AttendanceDetailModal";
 
-const AttendanceTable = ({ records }) => {
+const AttendanceTable = ({ records, rawRecords }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const debouncedSetSearchTerm = debounce(setSearchTerm, 300);
 
   const filteredRecords = records.filter(
     (record) =>
-      record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
+      record.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.userId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      present: "bg-success/10 text-success border-success/20",
-      absent: "bg-destructive/10 text-destructive border-destructive/20",
-      late: "bg-warning/10 text-warning border-warning/20",
-      "half-day": "bg-primary/10 text-primary border-primary/20",
-    };
-
-    const labels = {
-      present: "Present",
-      absent: "Absent",
-      late: "Late",
-      "half-day": "Half Day",
-    };
-
-    return (
-      <Badge variant="outline" className={variants[status]}>
-        {labels[status]}
-      </Badge>
-    );
+  const handleRowClick = (record) => {
+    setSelectedUser({ userId: record.userId, userName: record.name });
+    setSelectedDate(record.date);
+    setIsModalOpen(true);
   };
 
   return (
-    <Card className="p-6 border-border bg-card">
+    <Card className="p-6 border-border bg-card shadow-sm">
       <div className="mb-6">
-        <div className="relative">
+        <div className="relative max-w-md">
+          <label htmlFor="search-input" className="sr-only">Search by name or user ID</label>
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or employee ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-background border-border"
+            id="search-input"
+            placeholder="Search by name or user ID..."
+            onChange={(e) => debouncedSetSearchTerm(e.target.value)}
+            className="pl-10 bg-background border-border focus:ring-2 focus:ring-primary"
+            aria-label="Search by name or user ID"
           />
         </div>
       </div>
 
-      <div className="rounded-md border border-border overflow-hidden">
+      <div className="rounded-md border border-border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="font-semibold">Employee ID</TableHead>
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Check In</TableHead>
-              <TableHead className="font-semibold">Check Out</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold text-foreground">User ID</TableHead>
+              <TableHead className="font-semibold text-foreground">Name</TableHead>
+              <TableHead className="font-semibold text-foreground">Date</TableHead>
+              <TableHead className="font-semibold text-foreground">Check-In</TableHead>
+              <TableHead className="font-semibold text-foreground">Check-Out</TableHead>
+              <TableHead className="font-semibold text-foreground">Verification</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRecords.map((record) => (
-              <TableRow key={record.id} className="hover:bg-muted/30">
-                <TableCell className="font-medium text-foreground">
-                  {record.employeeId}
+            {filteredRecords.map((record, index) => (
+              <TableRow
+                key={record.id}
+                className={`hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/10'}`}
+              >
+                <TableCell className="font-medium text-foreground">{record.userId}</TableCell>
+                <TableCell className="text-foreground">
+                  <button
+                    onClick={() => handleRowClick(record)}
+                    className="text-primary hover:underline font-medium"
+                    aria-label={`View attendance details for ${record.name}`}
+                  >
+                    {record.name}
+                  </button>
                 </TableCell>
-                <TableCell className="text-foreground">{record.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {record.checkIn || "—"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {record.checkOut || "—"}
-                </TableCell>
-                <TableCell>{getStatusBadge(record.status)}</TableCell>
+                <TableCell className="text-muted-foreground">{record.date}</TableCell>
+                <TableCell className="text-muted-foreground">{record.checkinTime}</TableCell>
+                <TableCell className="text-muted-foreground">{record.checkoutTime}</TableCell>
+                <TableCell className="text-muted-foreground">{record.verificationMode}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -91,9 +90,20 @@ const AttendanceTable = ({ records }) => {
       </div>
 
       {filteredRecords.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          No attendance records found
+        <div className="text-center py-12 text-muted-foreground font-medium">
+          No attendance records found for the selected filters
         </div>
+      )}
+
+      {selectedUser && (
+        <AttendanceDetailModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          records={rawRecords}
+          userId={selectedUser.userId}
+          userName={selectedUser.userName}
+          selectedDate={selectedDate}
+        />
       )}
     </Card>
   );

@@ -87,7 +87,7 @@ class ZKDeviceService {
         this.connections.has(deviceId) &&
         this.connections.get(deviceId).isConnected
       ) {
-        console.log(`⚠️ Already connected to device ${device.deviceIp}`);
+        // console.log(`⚠️ Already connected to device ${device.deviceIp}`);
         return this.connections.get(deviceId);
       }
 
@@ -119,12 +119,12 @@ class ZKDeviceService {
         lastSync: new Date(),
       });
 
-      console.log(`✅ Connected to device ${deviceId} (${device.deviceIp})`);
+      // console.log(`✅ Connected to device ${deviceId} (${device.deviceIp})`);
       return connection;
     } catch (error) {
       if (retries < this.maxRetries) {
         const delay = this.retryDelay * 2 ** retries;
-        console.log(`🔄 Retry connecting to ${deviceId} in ${delay}ms`);
+        // console.log(`🔄 Retry connecting to ${deviceId} in ${delay}ms`);
         await new Promise((r) => setTimeout(r, delay));
         return this.connectToDevice(deviceId, retries + 1);
       }
@@ -159,7 +159,7 @@ class ZKDeviceService {
       const { zkInstance } = connection;
 
       if (this.realtimeListeners.has(deviceId)) {
-        console.log(`⚠️ Listener already running for ${deviceId}`);
+        // console.log(`⚠️ Listener already running for ${deviceId}`);
         return;
       }
 
@@ -168,7 +168,7 @@ const interval = setInterval(async () => {
   try {
     const logs = await zkInstance.getAttendances();
     if (!logs?.data?.length) return;
-console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
+// console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
     const validLogs = logs.data.filter(log => {
       // ✅ 1. valid userId characters only
       const validUserId = /^[A-Za-z0-9_-]+$/.test(log.deviceUserId?.trim() || "");
@@ -178,34 +178,33 @@ console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
     });
 
     if (validLogs.length === 0) {
-      console.warn(`⚠️ Skipping corrupted logs from ${zkInstance.ip}`);
+      // console.warn(`⚠️ Skipping corrupted logs from ${zkInstance.ip}`);
       return;
     }
 
-    console.log(`📥 ${validLogs.length} valid logs received from device ${deviceId}`);
+    // console.log(`📥 ${validLogs.length} valid logs received from device ${deviceId}`);
 
     for (const log of validLogs) {
       await this.processRealTimeAttendance(deviceId, log);
     }
 
     // Optional: clear logs after confirmed processing
-    console.log(`🧹 Clearing attendance logs on device ${deviceId}`);
+    // console.log(`🧹 Clearing attendance logs on device ${deviceId}`);
     await zkInstance.clearAttendanceLog();
 
   } catch (err) {
-    console.error(`❌ Polling error on ${deviceId}:`, err.message);
+    // console.error(`❌ Polling error on ${deviceId}:`, err.message);
     await this.handleDeviceError(deviceId, err);
   }
 }, 10000);
 
 
       this.realtimeListeners.set(deviceId, { interval, zkInstance });
-      console.log(`✅ Real-time attendance listener ACTIVE for ${deviceId}`);
+      // console.log(`✅ Real-time attendance listener ACTIVE for ${deviceId}`);
     } catch (error) {
-      console.error(
-        `❌ Failed to start listener for ${deviceId}:`,
-        error.message
-      );
+      // console.error(
+      //   error.message
+      // );
       await this.attemptReconnection(deviceId);
     }
   }
@@ -267,7 +266,7 @@ console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
         `✅ ${user.name} ${type.toUpperCase()} recorded at ${checkTime.toISOString}`
       );
     } catch (err) {
-      console.error(`❌ Error saving attendance:`, err.message);
+      // console.error(`❌ Error saving attendance:`, err.message);
     }
   }
 
@@ -278,21 +277,21 @@ console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
       status: "disconnected",
       lastError: error.message,
     });
-    console.error(`❌ Device ${deviceId} error: ${error.message}`);
+    // console.error(`❌ Device ${deviceId} error: ${error.message}`);
     await this.attemptReconnection(deviceId);
   }
 
   async attemptReconnection(deviceId, retry = 0) {
     if (retry >= this.maxRetries) {
-      console.error(`❌ Max reconnection attempts for ${deviceId}`);
+      // console.error(`❌ Max reconnection attempts for ${deviceId}`);
       return;
     }
     const delay = this.retryDelay * 2 ** retry;
-    console.log(`🔁 Reconnecting to ${deviceId} in ${delay}ms`);
+    // console.log(`🔁 Reconnecting to ${deviceId} in ${delay}ms`);
     setTimeout(async () => {
       try {
         await this.listenForRealTimeAttendance(deviceId);
-        console.log(`✅ Successfully reconnected to ${deviceId}`);
+        // console.log(`✅ Successfully reconnected to ${deviceId}`);
       } catch (err) {
         await this.attemptReconnection(deviceId, retry + 1);
       }
@@ -302,7 +301,7 @@ console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
   // -------------------- CHECKIN / CHECKOUT LOGIC --------------------
 
   async determineAttendanceType(userId, checkTime) {
-    console.log("Determining attendance type for user:", userId, checkTime);
+    // console.log("Determining attendance type for user:", userId, checkTime);
     const start = new Date(checkTime);
     start.setHours(0, 0, 0, 0);
     const end = new Date(checkTime);

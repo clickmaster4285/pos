@@ -48,7 +48,7 @@ import {
   Package,
 } from 'lucide-react';
 import BillingSummaryPDF from './BillingSummaryPDF'; // Import the BillingSummaryPDF component
-export function Header({ onCreate }) {
+export function Header({ onCreate, addPermission }) {
   return (
     <header className="bg-card">
       <div className="mx-auto px-6 py-4">
@@ -65,6 +65,7 @@ export function Header({ onCreate }) {
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={onCreate}
+              disabled={!addPermission}
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Bill

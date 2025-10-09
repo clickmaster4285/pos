@@ -16,6 +16,7 @@ import { VendorModal } from './vendor-modal';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { VendorGrid } from './vendor-grid';
 import { VendorList } from './vendor-list';
+import { VendorDetailsSheet } from './vendor-details-sheet'; // adjust path
 
 import {
   useGetAllVendorsQuery,
@@ -63,6 +64,7 @@ export function VendorManagement() {
     isError,
     refetch,
   } = useGetAllVendorsQuery();
+
 
   const [createVendor, { isLoading: creating }] = useCreateVendorMutation();
   const [updateVendor, { isLoading: updating }] = useUpdateVendorMutation();
@@ -114,14 +116,13 @@ export function VendorManagement() {
     setModalMode('view');
     setIsModalOpen(true);
   };
-const handleDeleteVendor = (vOrId) => {
-  const id = typeof vOrId === 'string' ? vOrId.trim() : getId(vOrId);
- 
-  if (!id) return console.error('No valid id passed to handleDeleteVendor');
-  setDeleteDialog({ open: true, vendorId: id });
-};
+  const handleDeleteVendor = (vOrId) => {
+    const id = typeof vOrId === 'string' ? vOrId.trim() : getId(vOrId);
+
+    if (!id) return console.error('No valid id passed to handleDeleteVendor');
+    setDeleteDialog({ open: true, vendorId: id });
+  };
   const confirmDelete = async () => {
-   
     if (!deleteDialog.vendorId) {
       console.error('No vendorId in dialog — aborting delete');
       return;
@@ -186,6 +187,18 @@ const handleDeleteVendor = (vOrId) => {
       console.error('Save vendor failed:', e);
     }
   };
+
+  //---------------------------
+  // sheet-only state (separate from the modal flow)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsVendor, setDetailsVendor] = useState(null);
+
+  // open the right-side sheet; do NOT touch your modal/view flow
+  const openVendorDetailsSheet = (vendor) => {
+    setDetailsVendor(vendor); // pass raw vendor (or normalize if you prefer)
+    setIsDetailsOpen(true);
+  };
+  //-----------------------------------------
 
   // basic loading/error UI
   if (isLoading) {
@@ -280,6 +293,7 @@ const handleDeleteVendor = (vOrId) => {
             handleToggle={handleToggle}
             pendingId={pendingId}
             onDelete={(v) => handleDeleteVendor(getId(v))}
+            onOpenSheet={openVendorDetailsSheet}
           />
         ) : (
           <div className="mb-6">
@@ -290,6 +304,7 @@ const handleDeleteVendor = (vOrId) => {
               handleToggle={handleToggle}
               pendingId={pendingId}
               onDelete={(v) => handleDeleteVendor(getId(v))}
+              onOpenSheet={openVendorDetailsSheet}
             />
           </div>
         )}
@@ -365,6 +380,12 @@ const handleDeleteVendor = (vOrId) => {
           vendors.find((v) => getId(v) === deleteDialog.vendorId)?.name
         }
         loading={deleting}
+      />
+
+      <VendorDetailsSheet
+        open={isDetailsOpen}
+        onOpenChange={setIsDetailsOpen}
+        vendor={detailsVendor}
       />
     </div>
   );

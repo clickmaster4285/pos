@@ -28,12 +28,14 @@ export const StaffSalary = createApi({
   endpoints: (builder) => ({
     // POST /api/payroll/pay
     createPayment: builder.mutation({
-      query: (body) => ({ url: '/create-payment', method: 'POST', body }),
+      query: (body) => {
+        return { url: '/create-payment', method: 'POST', body };
+      },
       transformResponse: (res) => res?.data ?? res,
       invalidatesTags: [{ type: 'Salary', id: 'LIST' }],
     }),
 
-    // GET /api/payroll/payments?companyId=&staffId=&month=&type=&page=&limit=
+    //it get all the staff data which is papulayted with staff salary information to show cards of staff
     getAllPaymentsInfo: builder.query({
       query: (params) => ({
         url: '/all-staff-salaries',
@@ -49,7 +51,7 @@ export const StaffSalary = createApi({
           : [{ type: 'Salary', id: 'LIST' }],
     }),
 
-    // Get all payment summay = history
+    //-------------------------
     getAllPaymentsSummary: builder.query({
       query: (params) => ({
         url: '/payments/grouped',
@@ -64,17 +66,31 @@ export const StaffSalary = createApi({
             ]
           : [{ type: 'Salary', id: 'LIST' }],
     }),
+    //--------------------------
+    // for active log ( it fetch all the payment record staff salaery made)
+    getAllPaymentLog: builder.query({
+      query: (params) => ({ url: '/staff-salary-details', params }),
+      transformResponse: (res) => res?.data ?? [],
+      providesTags: (result) =>
+        Array.isArray(result)
+          ? [
+              ...result.map((row) => ({ type: 'Salary', id: row._id })),
+              { type: 'Salary', id: 'LIST' },
+            ]
+          : [{ type: 'Salary', id: 'LIST' }],
+      keepUnusedDataFor: 30,
+    }),
 
     //Update base salary
     updateSalary: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/update-base-salary/${id}`,
+      query: ({ staffId, ...body }) => ({
+        url: `/update-base-salary/${staffId}`,
         method: 'PATCH',
         body,
       }),
       transformResponse: (res) => res?.data ?? res,
-      invalidatesTags: (result, error, { id }) => [
-        { type: 'Salary', id },
+      invalidatesTags: (result, error, { staffId }) => [
+        { type: 'Salary', id: staffId },
         { type: 'Salary', id: 'LIST' },
       ],
     }),
@@ -90,13 +106,14 @@ export const StaffSalary = createApi({
       invalidatesTags: [{ type: 'Salary', id: 'LIST' }],
     }),
 
-    // OPTIONAL: one staff snapshot
-    // GET /api/payroll/staff/:staffId/summary?companyId=&month=&limit=
+    // to get the history when admin wanna see staff history salary he paid , bonus , increment or decrement
     getStaffSummary: builder.query({
-      query: ({ staffId, ...params }) => ({
-        url: `/staff-summary/${staffId}`,
-        params,
-      }),
+      query: ({ staffId, ...params }) => {
+        return {
+          url: `/staff-summary/${staffId}`,
+          params,
+        };
+      },
       transformResponse: (res) => res?.data ?? res,
       providesTags: (result, error, { staffId }) => [
         { type: 'Salary', id: staffId },
@@ -113,4 +130,5 @@ export const {
   useUpdateSalaryMutation,
   useDeleteSalaryMutation,
   useGetStaffSummaryQuery,
+  useGetAllPaymentLogQuery,
 } = StaffSalary;

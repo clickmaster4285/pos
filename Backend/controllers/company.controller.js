@@ -96,6 +96,14 @@ const createCompany = async (req, res) => {
         deleteBilling: true,
         addBilling: true,
         viewBilling: true,
+        //
+        createPayment: true,
+        viewAllStaffSalaries: true,
+        updateSalary: true,
+        deletePayment: true,
+        staffSummary: true,
+        viewActiveLog: true,
+        viewCompanySummary: true,
       },
       history: [
         {

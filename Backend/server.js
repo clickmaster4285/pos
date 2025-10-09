@@ -67,7 +67,7 @@ app.use("/api", apiRouter);
 // Automatically start real-time listeners for all devices
 const startRealTimeListeners = async () => {
   try {
-    console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
+    // console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
     
     const devices = await IndexModel.AttendanceDevice.find({ 
       deleted: false 
@@ -80,17 +80,17 @@ const startRealTimeListeners = async () => {
       try {
         await ZKDeviceService.listenForRealTimeAttendance(device._id);
         successful++;
-        console.log(`✅ Listening: ${device.deviceName} (${device.deviceIp})`);
+        // console.log(`✅ Listening: ${device.deviceName} (${device.deviceIp})`);
       } catch (error) {
         failed++;
         console.error(`❌ Failed: ${device.deviceName} - ${error.message}`);
       }
     }
 
-    console.log(`📊 Real-time listeners: ${successful} successful, ${failed} failed`);
+    // console.log(`📊 Real-time listeners: ${successful} successful, ${failed} failed`);
 
   } catch (error) {
-    console.error("❌ Failed to start real-time listeners:", error.message);
+    // console.error("❌ Failed to start real-time listeners:", error.message);
   }
 };
 

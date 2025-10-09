@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { OrdersTable } from './orders-table';
 import { OrdersGrid } from './orders-grid';
 import OrderForm from './order-form';
+import OrderDetailsSheet from './OrderDetailsSheet';
 import { PaginationControls } from './pagination-controls';
 import {
   useGetOrdersQuery,
@@ -101,7 +102,7 @@ export default function OrdersClient() {
     isError,
     refetch,
   } = useGetOrdersQuery({ companyId }, { skip: !companyId });
-  // console.log("orders are" , orders)
+
   //fetching inventory
   const { data: inventory = [] } = useGetInventoryQuery();
   //fetching addresses
@@ -348,6 +349,23 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
     }));
   }, [paged, addressMap]);
 
+  //
+
+  // inside OrdersClient component:
+  const [orderSheetOpen, setOrderSheetOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const openOrderSheet = (order) => {
+    const addr =
+      addressMap.get(String(order.shippingAddressId || order.addressId)) ||
+      order.shippingAddress ||
+      order.shippingAddressSnapshot ||
+      null;
+    setSelectedOrder({ ...order, shippingAddress: addr });
+    setOrderSheetOpen(true);
+  };
+
+  //
   const loadingIds = deletingIds;
 
   const resetFilters = () => {
@@ -500,12 +518,13 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
       <div>
         {view === 'table' ? (
           <OrdersTable
-            orders={withAddress} // ⬅️ use withAddress (not paged)
-            onEdit={onUpdateStatus} // "Update Order Status"
-            onDelete={onCancelItems} // "Cancel Order Items"
+            orders={withAddress}
+            onEdit={onUpdateStatus}
+            onDelete={onCancelItems}
             onRequestReturn={onRequestReturn}
             onHandleReturnRequest={onHandleReturnRequest}
             loadingIds={loadingIds}
+            onRowClick={openOrderSheet}
             renderAddress={(o) => {
               const a = o.shippingAddress || o.shippingAddressSnapshot;
               if (a) return formatAddress(a);
@@ -525,6 +544,7 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
             onRequestReturn={onRequestReturn}
             onHandleReturnRequest={onHandleReturnRequest}
             loadingIds={loadingIds}
+            onCardClick={openOrderSheet}
             renderAddress={(o) => {
               const a = o.shippingAddress || o.shippingAddressSnapshot;
               if (a) return formatAddress(a);
@@ -543,6 +563,15 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
           pageSize={pageSize}
           total={total}
           onPageChange={setPage}
+        />
+        <OrderDetailsSheet
+          open={orderSheetOpen}
+          onOpenChange={(o) => {
+            setOrderSheetOpen(o);
+            if (!o) setSelectedOrder(null);
+          }}
+          order={selectedOrder}
+          formatAddress={formatAddress}
         />
       </div>
     </main>

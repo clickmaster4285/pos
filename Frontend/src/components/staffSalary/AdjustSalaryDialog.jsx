@@ -41,15 +41,14 @@ import {
   TrendingDown,
 } from 'lucide-react';
 
-
 export function AdjustSalaryDialog({ open, onOpenChange, staff, onApply }) {
   const [inc, setInc] = useState('');
-
   if (!staff) return null;
 
   const handleApply = (e) => {
     e.preventDefault();
     const add = Number.parseFloat(inc || '0') || 0;
+    if (add <= 0) return;
     onApply(staff.id, add);
     setInc('');
   };
@@ -96,7 +95,7 @@ export function AdjustSalaryDialog({ open, onOpenChange, staff, onApply }) {
               required
             />
             <p className="text-xs text-muted-foreground">
-              This will permanently increase the <b>monthly</b> salary.
+              This permanently increases the <b>monthly</b> salary.
             </p>
           </div>
 

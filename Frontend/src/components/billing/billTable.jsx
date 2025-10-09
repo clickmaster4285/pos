@@ -77,14 +77,20 @@ export function BillRow({
   onEdit,
   onPrint,
   onDelete,
+  onView,
+  updatePermission,
+  deletePermission,
 }) {
   return (
     <>
       <TableRow className="border-border hover:bg-muted/50">
-        <TableCell className="font-medium text-card-foreground">
+        <TableCell
+          className="font-medium text-card-foreground"
+          onClick={() => onView(bill)}
+        >
           {bill.billNumber}
         </TableCell>
-        <TableCell>
+        <TableCell onClick={() => onView(bill)}>
           <div className="flex flex-col">
             <span className="font-medium text-card-foreground">
               {bill?.buyer?.name}
@@ -94,7 +100,7 @@ export function BillRow({
             </span>
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell onClick={() => onView(bill)}>
           <div className="flex flex-col gap-1">
             {(bill.items || []).slice(0, 2).map((item, i) => (
               <div key={i} className="text-sm text-card-foreground">
@@ -108,10 +114,13 @@ export function BillRow({
             )}
           </div>
         </TableCell>
-        <TableCell className="text-right font-semibold text-card-foreground">
+        <TableCell
+          className="text-right font-semibold text-card-foreground"
+          onClick={() => onView(bill)}
+        >
           ${Number(bill.total || 0).toFixed(2)}
         </TableCell>
-        <TableCell>
+        <TableCell onClick={() => onView(bill)}>
           <StatusBadge status={bill.status} />
         </TableCell>
         <TableCell className="text-sm text-muted-foreground">
@@ -151,11 +160,13 @@ export function BillRow({
                   <DropdownMenuSubContent className="bg-popover border-border">
                     <DropdownMenuItem
                       onClick={() => onEdit(bill, 'partial')}
+                      disabled={!updatePermission || bill.status === 'refunded'}
                       className="text-popover-foreground hover:bg-accent"
                     >
                       Partial Refund
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      disabled={!updatePermission || bill.status === 'refunded'}
                       onClick={() => onEdit(bill, 'full')}
                       className="text-popover-foreground hover:bg-accent"
                     >
@@ -181,6 +192,7 @@ export function BillRow({
 
                 {/* Delete */}
                 <DropdownMenuItem
+                  disabled={!deletePermission}
                   className="text-red-600 hover:bg-accent hover:text-red-700"
                   onClick={() => onDelete(bill._id)}
                 >

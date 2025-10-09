@@ -55,16 +55,30 @@ export const billsApi = createApi({
       invalidatesTags: [{ type: 'Bills', id: 'LIST' }],
     }),
 
-    // PATCH /api/bill/:id/status
+    // // PATCH /api/bill/:id/status
+    // updateBillStatus: builder.mutation({
+    //   query: ({ id, body }) => {
+    //     console.log('Updating bill status for ID:', id, 'with body:', body);
+    //     return {
+    //       url: `/update-bills-status/${id}`, // must be plain string ObjectId
+    //       method: 'PATCH',
+    //       body, // your payload (status, refundItems, notes, etc.)
+    //     };
+    //   },
+    //   invalidatesTags: (_res, _err, { id }) => [
+    //     { type: 'Bills', id },
+    //     { type: 'Bills', id: 'LIST' },
+    //   ],
+    // }),
+
+    //
+    // ✅ Safer flat body for updateBillStatus
     updateBillStatus: builder.mutation({
-      query: ({ id, body }) => {
-        console.log('Updating bill status for ID:', id, 'with body:', body);
-        return {
-          url: `/update-bills-status/${id}`, // must be plain string ObjectId
-          method: 'PATCH',
-          body, // your payload (status, refundItems, notes, etc.)
-        };
-      },
+      query: ({ id, ...rest }) => ({
+        url: `/update-bills-status/${id}`,
+        method: 'PATCH',
+        body: rest, // e.g. { status: 'refunded' } or { refundItems, notes }
+      }),
       invalidatesTags: (_res, _err, { id }) => [
         { type: 'Bills', id },
         { type: 'Bills', id: 'LIST' },
@@ -103,5 +117,5 @@ export const {
   useCreateBillMutation,
   useUpdateBillStatusMutation,
   useSoftDeleteBillMutation,
-  // useRestoreBillMutation,
+ // useRefundBillPartialMutation,
 } = billsApi;

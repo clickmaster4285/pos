@@ -58,6 +58,7 @@ const Staff = () => {
       staffDelete: false,
       viewallstaff: false,
       viewReports: false,
+      //
       manageInventory: false,
       manageVendors: false,
       assignTasks: false,
@@ -65,6 +66,14 @@ const Staff = () => {
       manageAppointments: false,
       manageTeams: false,
       managePlans: false,
+      //
+      createPayment: false,
+      viewAllStaffSalaries: false,
+      updateSalary: false,
+      deletePayment: false,
+      staffSummary: false,
+      viewActiveLog: false,
+      viewCompanySummary: false,
     },
   });
   const [editStaff, setEditStaff] = useState(null);
@@ -78,13 +87,12 @@ const Staff = () => {
     setPage(1);
   }, [searchTerm, pageSize, staff.length]);
 
-  const subRoles = [
-    { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
-    { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
-    { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-3' },
-    { value: 'seller', label: 'Seller', color: 'bg-chart-4' },
-  ];
-
+const subRoles = [
+  { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
+  { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
+  { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-5' },
+  { value: 'seller', label: 'Seller', color: 'bg-chart-6' },
+];
   const departments = [
     'Engineering',
     'Front Office',
@@ -110,6 +118,14 @@ const Staff = () => {
     editBilling: 'Edit Billing',
     deleteBilling: 'Delete Billing',
     viewBilling: 'View Billing',
+    //
+    createPayment: 'Create Payment',
+    viewAllStaffSalaries: 'View All Staff Salaries',
+    updateSalary: 'Update Salary',
+    deletePayment: 'Delete Payment',
+    staffSummary: 'Staff Summary',
+    viewActiveLog: 'View Active Log',
+    viewCompanySummary: 'View Company Summary',
   };
 
   const staffPermissionKeys = [
@@ -124,7 +140,15 @@ const Staff = () => {
     'deleteBilling',
     'viewBilling',
   ];
-
+  const salaryPermissionKeys = [
+    'createPayment',
+    'viewAllStaffSalaries',
+    'updateSalary',
+    'deletePayment',
+    'staffSummary',
+    'viewActiveLog',
+    'viewCompanySummary',
+  ];
   // ---------- Filter state ----------
 
   const [departmentFilter, setDepartmentFilter] = React.useState('all');
@@ -237,6 +261,14 @@ const Staff = () => {
           manageAppointments: false,
           manageTeams: false,
           managePlans: false,
+          //
+          createPayment: false,
+          viewAllStaffSalaries: false,
+          updateSalary: false,
+          deletePayment: false,
+          staffSummary: false,
+          viewActiveLog: false,
+          viewCompanySummary: false,
         },
       });
       setIsAddDialogOpen(false);
@@ -318,6 +350,7 @@ const Staff = () => {
           setViewMode={setViewMode}
           staffPermissionKeys={staffPermissionKeys}
           billingPermissionKeys={billingPermissionKeys}
+          salaryPermissionKeys={salaryPermissionKeys}
         />
         <CardContent className="py-12 text-center">
           <Users className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
@@ -348,6 +381,10 @@ const Staff = () => {
         permissionLabels={permissionLabels}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        //
+        staffPermissionKeys={staffPermissionKeys}
+        billingPermissionKeys={billingPermissionKeys}
+        salaryPermissionKeys={salaryPermissionKeys}
       />
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -361,6 +398,10 @@ const Staff = () => {
           subRoles={subRoles}
           departments={departments}
           permissionLabels={permissionLabels}
+          //
+          staffPermissionKeys={staffPermissionKeys}
+          billingPermissionKeys={billingPermissionKeys}
+          salaryPermissionKeys={salaryPermissionKeys}
         />
       </Dialog>
 

@@ -3,61 +3,52 @@
 
   export default {
     getAllAttendance: async (req, res) => {
-      const { deviceId } = req.params;
-      const device = await IndexModel.AttendanceDevice.findById(deviceId);
-      if (!device) return res.status(404).json({ message: "Device not found" });
+  try {
+    const { companyId } = req.user;
 
-      const { deviceIp, devicePort } = device;
-      let zkInstance;
+    // 1️⃣ Fetch attendance records for the company
+    const attendanceRecords = await IndexModel.Attendance.find({ companyId })
+      .sort({ createdAt: -1 });
 
-      try {
-        // 1️⃣ Connect to device
-        zkInstance = new ZKLib(deviceIp, devicePort, 10000, 4000);
-        await zkInstance.createSocket();
-        console.log(`✅ Connected to device at ${deviceIp}`);
+    // 2️⃣ Check if no attendance records found
+    if (!attendanceRecords.length) {
+      return res.status(404).json({
+        message: "No attendance records found",
+        success: false,
+      });
+    }
 
-        // 2️⃣ Get users from device
-        const users = await zkInstance.getUsers();
-        console.log("📋 Users fetched:", users);
+    // 3️⃣ Extract all unique userIds from attendance records
+    const userIds = [...new Set(attendanceRecords.map(a => a.userId))];
 
-        // 3️⃣ Get attendance logs
-        const logs = await zkInstance.getAttendances();
-        console.log("📋 Logs fetched:", logs?.data?.length);
+    // 4️⃣ Fetch all users in one query
+    const users = await IndexModel.User.find({ userId: { $in: userIds } });
 
-        // 4️⃣ Merge name + logs
-        const mergedLogs = logs.data.map((log) => {
-          const matchedUser = users.data.find(
-            (u) => u.userId === log.deviceUserId.toString()
-          );
-          return {
-            ...log,
-            name: matchedUser ? matchedUser.name : "Unknown",
-          };
-        });
+    // 5️⃣ Combine user info into attendance records
+    const attendanceWithUser = attendanceRecords.map(a => {
+      const user = users.find(u => u.userId === a.userId);
+      return {
+        ...a.toObject(),
+        userName: user ? user.name : "Unknown User",
+      };
+    });
 
-        // 5️⃣ Sort (latest first)
-        const sortedLogs = mergedLogs.sort(
-          (a, b) => new Date(b.recordTime) - new Date(a.recordTime)
-        );
+    // 6️⃣ Send response
+    res.status(200).json({
+      message: "Attendance fetched successfully",
+      data: attendanceWithUser,
+      success: true,
+    });
 
-        // 6️⃣ Respond
-        res.status(200).json({
-          message: "Attendance fetched successfully",
-          attendances: sortedLogs,
-          count: sortedLogs.length,
-        });
+  } catch (err) {
+    console.error("❌ Error fetching attendance:", err.message);
+    res.status(500).json({
+      message: `Failed to fetch attendance: ${err.message}`,
+      success: false,
+    });
+  }
+},
 
-        // 7️⃣ Disconnect
-        await zkInstance.disconnect();
-        console.log("🔌 Disconnected from device");
-      } catch (err) {
-        console.error("❌ Error fetching attendance:", err.message);
-        if (zkInstance) await zkInstance.disconnect().catch(() => {});
-        res
-          .status(500)
-          .json({ message: `Failed to fetch attendance: ${err.message}` });
-      }
-    },
 
     getAttendanceByUid: async (req, res) => {
       const { deviceId, userId } = req.params; // userId = device user ID (e.g. '1012')

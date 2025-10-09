@@ -34,15 +34,17 @@ const getId = (v) => v?.id ?? v?._id ?? '';
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
 function statusVariant(isActive) {
-  return isActive ? 'active' : 'reject'; // your custom shadcn badge variants
+  return isActive ? 'active' : 'reject';
 }
 
 export function VendorGrid({
   vendors,
+  onView,
   onEdit,
   onDelete,
   handleToggle,
   pendingId,
+  onOpenSheet,
 }) {
   if (!vendors?.length) {
     return (
@@ -51,27 +53,38 @@ export function VendorGrid({
       </p>
     );
   }
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 mb-8">
       {vendors.map((vendor) => {
         const id = getId(vendor);
-        const isPending = pendingId === id; // ✅ local pending state
+        const isPending = pendingId === id;
+
+        const keyOpen = (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+          }
+        };
 
         return (
           <Card
             key={id}
-            className="group relative overflow-hidden border-border bg-card p-4 rounded-2xl transition hover:shadow-lg"
+            role="button"
+            tabIndex={0}
+            onKeyDown={keyOpen} // <-- keyboard accessible
+            className="group relative overflow-hidden border-border bg-card p-4 rounded-2xl transition hover:shadow-lg cursor-pointer"
           >
             {/* Top row: icon + name + status + menu */}
             <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+              <div
+                className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0"
+                onClick={() => onOpenSheet(vendor)}
+              >
                 <Building2 className="h-5 w-5" />
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0" onClick={() => onOpenSheet(vendor)}>
                     <h3 className="font-semibold text-md text-foreground truncate">
                       {safe(vendor.name) || 'Untitled vendor'}
                     </h3>
@@ -81,10 +94,10 @@ export function VendorGrid({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Status badge shown in grid */}
                     <Badge
                       variant={statusVariant(vendor.isActive)}
                       className="h-6 px-2 text-[10px] shrink-0"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {vendor.isActive ? 'Active' : 'Inactive'}
                     </Badge>
@@ -97,18 +110,26 @@ export function VendorGrid({
                           size="icon"
                           className="h-8 w-8 -mr-2 opacity-80 hover:opacity-100"
                           aria-label="Open actions"
+                          onClick={(e) => e.stopPropagation()} // don't open sheet
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-48"
+                        onClick={(e) => e.stopPropagation()} // keep clicks local
+                      >
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
 
                         {/* Change Status (hover panel with toggle) */}
                         <HoverCard openDelay={100} closeDelay={100}>
                           <HoverCardTrigger asChild>
-                            <DropdownMenuItem className="cursor-default">
+                            <DropdownMenuItem
+                              className="cursor-default"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               Change Status
                             </DropdownMenuItem>
                           </HoverCardTrigger>
@@ -116,6 +137,7 @@ export function VendorGrid({
                             side="right"
                             align="start"
                             className="w-64"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
@@ -125,6 +147,8 @@ export function VendorGrid({
                                 <Switch
                                   checked={!!vendor.isActive}
                                   onCheckedChange={() => handleToggle(vendor)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
                                   disabled={isPending}
                                 />
                               </div>
@@ -136,7 +160,10 @@ export function VendorGrid({
                               <Button
                                 size="sm"
                                 className="w-full"
-                                onClick={() => handleToggle(vendor)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggle(vendor);
+                                }}
                                 disabled={isPending}
                               >
                                 {isPending
@@ -149,14 +176,24 @@ export function VendorGrid({
                           </HoverCardContent>
                         </HoverCard>
 
-                        <DropdownMenuItem onClick={() => onEdit?.(vendor)}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(vendor);
+                          }}
+                        >
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
+
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => onDelete?.(vendor)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete?.(vendor);
+                          }}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -169,8 +206,13 @@ export function VendorGrid({
             </div>
 
             {/* labeled blocks */}
-            <div className="space-y-4 mt-3">
-              {/* Email */}
+            <div
+              className="space-y-4 mt-3"
+              onClick={(e) => {
+                e.stopPropagation()
+               onOpenSheet(vendor)
+              }}
+            >
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                   Email
@@ -181,7 +223,6 @@ export function VendorGrid({
                 </div>
               </div>
 
-              {/* Contact No */}
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                   Contact No
@@ -192,7 +233,6 @@ export function VendorGrid({
                 </div>
               </div>
 
-              {/* Address */}
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                   Address
@@ -207,7 +247,10 @@ export function VendorGrid({
             </div>
 
             {/* footer */}
-            <div className="pt-3 border-t border-border flex items-center justify-between">
+            <div
+              className="pt-3 border-t border-border flex items-center justify-between"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Badge variant="secondary" className="h-6 px-2 text-[10px]">
                 {vendor.paymentType || '—'}
               </Badge>

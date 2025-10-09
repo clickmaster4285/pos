@@ -27,11 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Loader,
-  Printer,
-  Trash2,
-} from 'lucide-react';
+import { Loader, Printer, Trash2 } from 'lucide-react';
 import ThermalPrintSlip from '@/components/billing/ThermalPrintSlip';
 import { useGetInventoryQuery } from '@/features/inventoryApi';
 import {
@@ -39,6 +35,7 @@ import {
   useCreateBillMutation,
   useUpdateBillStatusMutation,
   useSoftDeleteBillMutation,
+  //  useRefundBillPartialMutation,
 } from '@/features/billingApi';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
 import { Header, StatsCards, FilterBar } from './billingHeader';
@@ -47,6 +44,10 @@ import { BillRow } from './billTable';
 import { useClickOutside } from '@/utils/useClickOutside';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 import BillingSummaryPDF from './BillingSummaryPDF'; // Import the BillingSummaryPDF component
+import BillDetailsSheet from './BillDetailsSheet';
+
+import { useContext } from 'react';
+import { AuthContext } from '@/components/auth/SecureAuthProvider';
 
 export default function BillingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -58,12 +59,38 @@ export default function BillingPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const { user } = useContext(AuthContext) || {};
+  const addPermission = user?.permissions?.addBilling;
+  const updatePermission = user?.permissions?.editBilling;
+  const deletePermission = user?.permissions?.deleteBilling;
+
   const { data: bills = [], isLoading: billsLoading } = useGetBillsQuery();
+
+  // helpers (top-level in the component file)
+  const sumRefundQtyForItem = (item = {}) =>
+    (item.refundHistory || []).reduce(
+      (s, r) => s + (r?.refundQuantity || 0),
+      0
+    );
+
+  const sumRefundQtyForBill = (bill = {}) =>
+    (bill.items || []).reduce((s, it) => s + sumRefundQtyForItem(it), 0);
+
+  // replace your current totalRefundQuantity with this:
+  const totalRefundQtyByBill = useMemo(() => {
+    const map = {};
+    (bills || []).forEach((b) => {
+      map[b._id] = sumRefundQtyForBill(b);
+    });
+    return map;
+  }, [bills]);
+
   const { data: companyData, isLoading: companyLoading } = useGetCompanyQuery();
   const [createBill, { isLoading: creating }] = useCreateBillMutation();
   const [updateBillStatus] = useUpdateBillStatusMutation();
   const [softDeleteBill] = useSoftDeleteBillMutation();
-  const { data: inventoryData, isLoading: inventoryLoading } = useGetInventoryQuery();
+  const { data: inventoryData, isLoading: inventoryLoading } =
+    useGetInventoryQuery();
 
   const [searchInventory, setSearchInventory] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -84,6 +111,7 @@ export default function BillingPage() {
   const [confirmRefundOpen, setConfirmRefundOpen] = useState(false);
   const [billToRefund, setBillToRefund] = useState(null);
 
+  //const [refundBillPartial] = useRefundBillPartialMutation();
   // Define totalRecords based on bills data
   const totalRecords = useMemo(() => bills.length, [bills]);
 
@@ -103,13 +131,17 @@ export default function BillingPage() {
     }
   }, [paymentMethod]);
 
-  const taxRates = useMemo(() => ({
-    taxRateCash: companyData?.data?.invoiceSettings?.tax?.taxRateCash || 0,
-    taxRateCard: companyData?.data?.invoiceSettings?.tax?.taxRateCard || 0,
-  }), [companyData]);
+  const taxRates = useMemo(
+    () => ({
+      taxRateCash: companyData?.data?.invoiceSettings?.tax?.taxRateCash || 0,
+      taxRateCard: companyData?.data?.invoiceSettings?.tax?.taxRateCard || 0,
+    }),
+    [companyData]
+  );
 
   const searchableInventory = useMemo(() => {
-    const inventoryList = (inventoryData && inventoryData.data) || inventoryData || [];
+    const inventoryList =
+      (inventoryData && inventoryData.data) || inventoryData || [];
     const flattened = [];
 
     inventoryList.forEach((product) => {
@@ -261,36 +293,59 @@ export default function BillingPage() {
     thermalRef.current?.print(draft);
   };
 
+  // Import the new mutation
+
+  //----------------------------------------------------
+  // ✅ Replace your existing submitPartialRefund with this
   const submitPartialRefund = async () => {
     try {
-      const refundData = {
-        billId: refundBill?._id,
-        refundLines: refundLines.filter(line => line.quantity > 0).map(line => ({
-          variantId: line.variantId,
-          quantity: line.quantity,
-          reason: line.reason,
-        })),
-        notes: refundNotes,
+      // must come from the partial flow
+      if (!refundBill?._id) {
+        toast.error('No bill selected for partial refund');
+        return;
+      }
+
+      // build payload
+      const refundItems = refundLines
+        .filter((line) => Number(line.quantity) > 0)
+        .map((line) => ({
+          sku: line.sku,
+          quantity: Number(line.quantity),
+          reason: line.reason || '',
+        }));
+
+      if (refundItems.length === 0) {
+        toast.error('Select at least one item to refund');
+        return;
+      }
+
+      const payload = {
+        id: refundBill._id,
+        refundItems,
+        notes: refundNotes || '',
       };
-      await updateBillStatus({
-        billId: refundBill?._id,
-        status: 'partially_refunded',
-        refundData,
-      }).unwrap();
+
+      console.log('Submitting partial refund', payload);
+
+      await updateBillStatus(payload).unwrap();
+
       toast.success('Partial refund processed');
       setRefundOpen(false);
       setRefundLines([]);
       setRefundNotes('');
+      // optional cleanup
     } catch (error) {
-      toast.error('Failed to process partial refund');
-      console.error(error);
+      console.error('Partial refund failed:', error);
+      toast.error(error?.data?.message || 'Failed to process partial refund');
     }
   };
 
+  //----------------------------------
   const submitFullRefund = async () => {
     try {
+      console.log('bill refund', billToRefund._id);
       await updateBillStatus({
-        billId: billToRefund?._id,
+        id: billToRefund?._id,
         status: 'refunded',
       }).unwrap();
       toast.success('Full refund processed');
@@ -320,7 +375,11 @@ export default function BillingPage() {
   const resetCreateForm = () => {
     setItems([]);
     setBuyer({ name: '', email: '', phone: '' });
-    setTaxPercent(paymentMethod === PAYMENT_METHODS.CASH ? taxRates.taxRateCash : taxRates.taxRateCard || 0);
+    setTaxPercent(
+      paymentMethod === PAYMENT_METHODS.CASH
+        ? taxRates.taxRateCash
+        : taxRates.taxRateCard || 0
+    );
     setNotes('');
     setPaymentMethod(PAYMENT_METHODS.CASH);
     setPaymentNumber('');
@@ -329,30 +388,56 @@ export default function BillingPage() {
   const filteredBills = useMemo(() => {
     let filtered = bills;
     if (searchQuery) {
-      filtered = filtered.filter(bill =>
-        bill.billNumber.includes(searchQuery) ||
-        (bill.buyer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-        (bill.buyer?.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
+      filtered = filtered.filter(
+        (bill) =>
+          bill.billNumber.includes(searchQuery) ||
+          bill.buyer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          false ||
+          bill.buyer?.email
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          false
       );
     }
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(bill => bill.status === filterStatus);
+      filtered = filtered.filter((bill) => bill.status === filterStatus);
     }
     return filtered;
   }, [bills, searchQuery, filterStatus]);
+  // for detail side model open
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+
+  const openBillDetails = (bill) => {
+    setSelectedBill(bill);
+    setDetailsOpen(true);
+  };
 
   return (
     <div className="space-y-6">
-      <Header onCreate={() => setIsCreateModalOpen(true)} />
+      <Header
+        onCreate={() => setIsCreateModalOpen(true)}
+        addPermission={addPermission}
+      />
       <div className="mx-auto px-6">
-        <StatsCards summary={{
-          total: totalRecords,
-          paid: bills.filter(b => b.status === 'paid').length,
-          refunded: bills.filter(b => b.status === 'refunded' || b.status === 'partially_refunded').length,
-          todayRevenue: bills
-            .filter(b => b.status === 'paid' && new Date(b.createdAt).toDateString() === new Date().toDateString())
-            .reduce((sum, b) => sum + Number(b.total || 0), 0),
-        }} />
+        <StatsCards
+          summary={{
+            total: totalRecords,
+            paid: bills.filter((b) => b.status === 'paid').length,
+            refunded: bills.filter(
+              (b) =>
+                b.status === 'refunded' || b.status === 'partially_refunded'
+            ).length,
+            todayRevenue: bills
+              .filter(
+                (b) =>
+                  b.status === 'paid' &&
+                  new Date(b.createdAt).toDateString() ===
+                    new Date().toDateString()
+              )
+              .reduce((sum, b) => sum + Number(b.total || 0), 0),
+          }}
+        />
         <FilterBar
           filterStatus={filterStatus}
           setFilterStatus={setFilterStatus}
@@ -387,45 +472,63 @@ export default function BillingPage() {
                   </TableRow>
                 ) : filteredBills.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground"
+                    >
                       No bills found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBills.slice((page - 1) * pageSize, page * pageSize).map((bill) => (
-                    <BillRow
-                      key={bill._id}
-                      bill={bill}
-                      expanded={expandedBillId === bill._id}
-                      onToggleExpand={() => setExpandedBillId(expandedBillId === bill._id ? null : bill._id)}
-                      onEdit={(bill, type) => {
-                        if (type === 'partial') {
-                          setRefundBill(bill);
-                          setRefundLines(bill.items.map(item => ({
-                            ...item,
-                            maxQty: item.quantity,
-                            quantity: 0,
-                            reason: '',
-                          })));
-                          setRefundOpen(true);
-                        } else if (type === 'full') {
-                          setBillToRefund(bill);
-                          setConfirmRefundOpen(true);
+                  filteredBills
+                    .slice((page - 1) * pageSize, page * pageSize)
+                    .map((bill) => (
+                      <BillRow
+                        key={bill._id}
+                        bill={bill}
+                        onView={() => openBillDetails(bill)}
+                        expanded={expandedBillId === bill._id}
+                        onToggleExpand={() =>
+                          setExpandedBillId(
+                            expandedBillId === bill._id ? null : bill._id
+                          )
                         }
-                      }}
-                      onPrint={(bill) => handlePrintThermal(bill)}
-                      onDelete={(billId) => {
-                        setDeleteBillState(bills.find(b => b._id === billId));
-                        setDeleteOpen(true);
-                      }}
-                    />
-                  ))
+                        onEdit={(bill, type) => {
+                          if (type === 'partial') {
+                            setRefundBill(bill);
+                            setRefundLines(
+                              bill.items.map((item) => ({
+                                ...item,
+                                maxQty: item.quantity,
+                                quantity: 0,
+                                reason: '',
+                              }))
+                            );
+                            setRefundOpen(true);
+                          } else if (type === 'full') {
+                            setBillToRefund(bill);
+                            setConfirmRefundOpen(true);
+                          }
+                        }}
+                        onPrint={(bill) => handlePrintThermal(bill)}
+                        onDelete={(billId) => {
+                          setDeleteBillState(
+                            bills.find((b) => b._id === billId)
+                          );
+                          setDeleteOpen(true);
+                        }}
+                        deletePermission={deletePermission}
+                        updatePermission={updatePermission}
+                      />
+                    ))
                 )}
               </TableBody>
             </Table>
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-muted-foreground">
-                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalRecords)} of {totalRecords} bills
+                Showing {(page - 1) * pageSize + 1} to{' '}
+                {Math.min(page * pageSize, totalRecords)} of {totalRecords}{' '}
+                bills
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -438,12 +541,18 @@ export default function BillingPage() {
                 </Button>
                 <span className="text-sm">
                   Page <span className="font-medium">{page}</span> of{' '}
-                  <span className="font-medium">{Math.ceil(totalRecords / pageSize)}</span>
+                  <span className="font-medium">
+                    {Math.ceil(totalRecords / pageSize)}
+                  </span>
                 </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.min(Math.ceil(totalRecords / pageSize), p + 1))}
+                  onClick={() =>
+                    setPage((p) =>
+                      Math.min(Math.ceil(totalRecords / pageSize), p + 1)
+                    )
+                  }
                   disabled={page === Math.ceil(totalRecords / pageSize)}
                 >
                   Next
@@ -544,7 +653,8 @@ export default function BillingPage() {
             <DialogHeader>
               <DialogTitle>Delete Bill</DialogTitle>
               <DialogDescription>
-                This will mark the bill as deleted and return all items to inventory.
+                This will mark the bill as deleted and return all items to
+                inventory.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
@@ -586,7 +696,10 @@ export default function BillingPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setConfirmRefundOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmRefundOpen(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={submitFullRefund}>Confirm Refund</Button>
@@ -632,6 +745,16 @@ export default function BillingPage() {
         />
         <ThermalPrintSlip ref={thermalRef} />
       </div>
+
+      <BillDetailsSheet
+        open={detailsOpen}
+        onOpenChange={(o) => setDetailsOpen(o)}
+        bill={selectedBill}
+        onPrint={(bill) => handlePrintThermal(bill)}
+        totalRefundQty={
+          selectedBill ? totalRefundQtyByBill[selectedBill._id] || 0 : 0
+        }
+      />
     </div>
   );
 }

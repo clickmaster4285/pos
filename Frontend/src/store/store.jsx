@@ -15,6 +15,7 @@ import { settingsApi } from '@/features/settingsApi';
 import { activityApi } from '@/features/activeLogApi';
 import { StaffSalary } from '@/features/staffSalaryApi';
 import { attendanceDeviceApi } from '@/features/attendanceDeviceApi';
+import { attendanceApi } from '@/features/attendanceApi';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +35,8 @@ export const store = configureStore({
     [activityApi.reducerPath]: activityApi.reducer,
     [StaffSalary.reducerPath]: StaffSalary.reducer,
     [attendanceDeviceApi.reducerPath]: attendanceDeviceApi.reducer,
+    [attendanceApi.reducerPath]: attendanceApi.reducer,
+
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -51,7 +54,9 @@ export const store = configureStore({
       settingsApi.middleware,
       activityApi.middleware,
       StaffSalary.middleware,
-      attendanceDeviceApi.middleware
+      attendanceDeviceApi.middleware,
+      attendanceApi.middleware,
+
     ),
 });
 

@@ -1,11 +1,7 @@
 import express from 'express';
 import passport from '../middleware/passportAuth.middleware.js';
 import Indexcontroller from '../controllers/indexController.js';
-import {
-  checkplan,
-  checkPlanIsActive,
-  checkPermissionsValidation,
-} from '../middleware/authMiddleware.js';
+import { checkPermissionsValidation } from '../middleware/authMiddleware.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -13,24 +9,23 @@ const router = express.Router();
 router.post(
   '/create-payment',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('createPayment'),
   authenticateToken,
-  //   checkPlanIsActive,
-  //   checkplan('staffCreate'),
   Indexcontroller.StaffSalary.processPayment
 );
 
 router.get(
   '/all-staff-salaries',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('viewAllStaffSalaries'),
   authenticateToken,
-  //   checkPlanIsActive,
-  //   checkplan('staffCreate'),
   Indexcontroller.StaffSalary.listPayments
 );
 
 router.patch(
   '/update-base-salary/:staffId',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('updateSalary'),
   authenticateToken,
   Indexcontroller.StaffSalary.updateStaffBaseSalary
 );
@@ -38,6 +33,7 @@ router.patch(
 router.delete(
   '/delete-payment/:id',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('deletePayment'),
   authenticateToken,
   Indexcontroller.StaffSalary.softDeletePayment
 );
@@ -45,7 +41,24 @@ router.delete(
 router.get(
   '/staff-summary/:staffId',
   passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('staffSummary'),
   authenticateToken,
   Indexcontroller.StaffSalary.getStaffSalarySummary
+);
+
+router.get(
+  '/staff-salary-details',
+  passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('viewActiveLog'),
+  authenticateToken,
+  Indexcontroller.StaffSalary.getAllSaffSalaryDetail
+);
+
+router.get(
+  '/get-company-monthly-summary',
+  passport.authenticate('jwt', { session: false }),
+  checkPermissionsValidation('viewCompanySummary'),
+  authenticateToken,
+  Indexcontroller.StaffSalary.getCompanyMonthSummary
 );
 export default router;

@@ -198,6 +198,7 @@ export function OrdersGrid({
   loadingIds,
   onHandleReturnRequest, // used for accept/reject
   renderAddress,
+  onCardClick,
   addressesLoading,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -329,7 +330,10 @@ export function OrdersGrid({
             >
               {/* Header */}
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+                <div
+                  className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0"
+                  onClick={() => onCardClick?.(o)}
+                >
                   <Package className="h-5 w-5" />
                 </div>
 
@@ -422,7 +426,10 @@ export function OrdersGrid({
               </div>
 
               {/* Body */}
-              <div className="space-y-4 mt-4 flex-1 min-h-0">
+              <div
+                className="space-y-4 mt-4 flex-1 min-h-0"
+                onClick={() => onCardClick?.(o)}
+              >
                 <InfoStat label="Order Number">{o.orderNumber || '—'}</InfoStat>
 
                 <div>

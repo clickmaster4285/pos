@@ -18,6 +18,9 @@ const StaffHeader = ({
   permissionLabels,
   viewMode,
   setViewMode,
+  staffPermissionKeys,
+  billingPermissionKeys,
+  salaryPermissionKeys,
 }) => {
   const { user } = useContext(AuthContext) || {};
   const addPermission = user?.permissions?.staffCreate;
@@ -61,7 +64,7 @@ const StaffHeader = ({
           <DialogTrigger asChild>
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow transition-all duration-300"
-                disabled={!addPermission}
+              disabled={!addPermission}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Staff Member
@@ -77,6 +80,9 @@ const StaffHeader = ({
             subRoles={subRoles}
             departments={departments}
             permissionLabels={permissionLabels}
+            staffPermissionKeys={staffPermissionKeys}
+            billingPermissionKeys={billingPermissionKeys}
+            salaryPermissionKeys={salaryPermissionKeys}
           />
         </Dialog>
       </div>

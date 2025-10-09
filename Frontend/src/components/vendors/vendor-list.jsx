@@ -48,7 +48,8 @@ export function VendorList({
   onEdit,
   onDelete,
   handleToggle,
-  pendingId, // optional: pass from parent to disable controls for the row being updated
+  pendingId,
+  onOpenSheet,
 }) {
   if (!vendors?.length) {
     return (
@@ -81,7 +82,10 @@ export function VendorList({
             className="grid grid-cols-12 items-center px-4 py-3 hover:bg-accent/30 transition-colors"
           >
             {/* Vendor */}
-            <div className="col-span-12 sm:col-span-2 mb-2 sm:mb-0">
+            <div
+              className="col-span-12 sm:col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(v)}
+            >
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-primary/10 rounded-lg shrink-0">
                   <Building2 className="h-4 w-4 text-primary" />
@@ -93,14 +97,20 @@ export function VendorList({
             </div>
 
             {/* Contact Name */}
-            <div className="col-span-6 sm:col-span-2 mb-2 sm:mb-0">
+            <div
+              className="col-span-6 sm:col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(v)}
+            >
               <p className="text-sm text-muted-foreground font-medium truncate">
                 {v.contactName}
               </p>
             </div>
 
             {/* Phone */}
-            <div className="col-span-6 sm:col-span-2 mb-2 sm:mb-0">
+            <div
+              className="col-span-6 sm:col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(v)}
+            >
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Phone className="h-3 w-3 shrink-0 text-secondary-foreground" />
                 <span className="truncate">{v.phone}</span>
@@ -108,7 +118,10 @@ export function VendorList({
             </div>
 
             {/* Email */}
-            <div className="col-span-9 sm:col-span-3 mb-2 sm:mb-0">
+            <div
+              className="col-span-9 sm:col-span-3 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(v)}
+            >
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Mail className="h-3 w-3 shrink-0 text-secondary-foreground" />
                 <span className="truncate">{v.email}</span>
@@ -140,7 +153,7 @@ export function VendorList({
 
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="delete"
                   onClick={() => onDelete(v)}
                   className="h-8 w-8 p-0"
                   aria-label="Delete vendor"

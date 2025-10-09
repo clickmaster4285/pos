@@ -1,55 +1,70 @@
 'use client';
 
 import { Card } from "@/components/ui/card";
-import { Users, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Users, LogIn, LogOut } from "lucide-react";
 
-const AttendanceSummary = ({ total, present, absent, late }) => {
+const AttendanceSummary = ({ total, checkIns, checkOuts }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <Card className="p-6 border-border bg-card hover:shadow-lg transition-shadow">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <Card
+        className="p-6 border-border bg-card hover:shadow-lg transition-all duration-300"
+        role="region"
+        aria-label="Total Logs Summary"
+      >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Total Employees</p>
-            <p className="text-3xl font-bold text-foreground mt-2">{total}</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">Total Logs</p>
+            <p className="text-3xl font-bold text-foreground">
+              {total || 0}
+              {total === 0 && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">No logs</span>
+              )}
+            </p>
           </div>
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="h-6 w-6 text-primary" />
+            <Users className="h-6 w-6 text-primary" aria-hidden="true" />
           </div>
         </div>
       </Card>
 
-      <Card className="p-6 border-border bg-card hover:shadow-lg transition-shadow">
+      <Card
+        className="p-6 border-border bg-card hover:shadow-lg transition-all duration-300"
+        role="region"
+        aria-label="Check-Ins Summary"
+      >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Present</p>
-            <p className="text-3xl font-bold text-success mt-2">{present}</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">Check-Ins</p>
+            <p className="text-3xl font-bold text-success">
+              {checkIns || 0}
+              {checkIns === 0 && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">No check-ins</span>
+              )}
+            </p>
           </div>
           <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-            <CheckCircle className="h-6 w-6 text-success" />
+            <LogIn className="h-6 w-6 text-success" aria-hidden="true" />
           </div>
         </div>
       </Card>
 
-      <Card className="p-6 border-border bg-card hover:shadow-lg transition-shadow">
+      <Card
+        className="p-6 border-border bg-card hover:shadow-lg transition-all duration-300"
+        role="region"
+        aria-label="Check-Outs Summary"
+      >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Absent</p>
-            <p className="text-3xl font-bold text-destructive mt-2">{absent}</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">Check-Outs</p>
+            <p className="text-3xl font-bold text-primary">
+              {checkOuts || 0}
+              {checkOuts === 0 && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">No check-outs</span>
+              )}
+            </p>
           </div>
-          <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-            <XCircle className="h-6 w-6 text-destructive" />
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6 border-border bg-card hover:shadow-lg transition-shadow">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Late</p>
-            <p className="text-3xl font-bold text-warning mt-2">{late}</p>
-          </div>
-          <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
-            <Clock className="h-6 w-6 text-warning" />
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <LogOut className="h-6 w-6 text-primary" aria-hidden="true" />
           </div>
         </div>
       </Card>

@@ -228,6 +228,7 @@ export function OrdersTable({
   loadingIds,
   onRequestReturn, // request return
   onHandleReturnRequest, // accept/reject return
+  onRowClick,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogText, setDialogText] = useState('');
@@ -322,7 +323,10 @@ export function OrdersTable({
               className="grid grid-cols-12 items-center px-4 py-3 hover:bg-accent/30 transition-colors"
             >
               {/* Order */}
-              <div className="col-span-1 min-w-0 pr-2">
+              <div
+                className="col-span-1 min-w-0 pr-2"
+                onClick={() => onRowClick?.(o)}
+              >
                 <p className="text-sm font-medium truncate">
                   {shortOrder(o.orderNumber, id)}
                 </p>
@@ -332,7 +336,10 @@ export function OrdersTable({
               </div>
 
               {/* Customer */}
-              <div className="col-span-1 min-w-0 pr-2">
+              <div
+                className="col-span-1 min-w-0 pr-2"
+                onClick={() => onRowClick?.(o)}
+              >
                 <p className="text-sm truncate">
                   {o.userName || o.user?.name || o.userId || '—'}
                 </p>
@@ -342,7 +349,10 @@ export function OrdersTable({
               </div>
 
               {/* Shipping */}
-              <div className="col-span-3 min-w-0 pr-3">
+              <div
+                className="col-span-3 min-w-0 pr-3"
+                onClick={() => onRowClick?.(o)}
+              >
                 <p className="text-sm font-medium truncate">{shipping.name}</p>
                 <p
                   className="text-[11px] text-muted-foreground truncate"

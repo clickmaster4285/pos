@@ -1,3 +1,4 @@
+// activity.controller.business.v1.js
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import IndexModel from '../models/indexModel.js';
@@ -75,9 +76,8 @@ function getModelsWithHistory() {
     .map(([key, Model]) => ({ key: key.toLowerCase(), Model }));
 }
 
-/* ---------- entity name helpers (NEW) ---------- */
+/* ---------- entity name helpers ---------- */
 
-// which fields to fetch and how to derive a label per entity
 const ENTITY_NAME_CONFIG = {
   vendor: { select: 'name', pick: (r) => r?.name },
   bill: { select: 'billNumber', pick: (r) => r?.billNumber },
@@ -92,7 +92,8 @@ const ENTITY_NAME_CONFIG = {
     select: 'name email userId',
     pick: (r) => r?.name || r?.email || r?.userId,
   },
-  // fallback for any other model that still has history
+  // StaffSalary uses staffId → we override name via lookup; keep default minimal
+  staffsalary: { select: '', pick: () => null },
   default: { select: 'name title', pick: (r) => r?.name || r?.title || null },
 };
 
@@ -129,8 +130,21 @@ function isCompanyEchoAction(txt = '') {
     t.includes('bill created')
   );
 }
+
+// inventory adjustments caused by orders/bills
 function isInventoryOrderAdjustment(txt = '') {
-  return /^order\s+[a-z0-9-]+:/.test(String(txt).toLowerCase());
+  return /^\s*order\s+[a-z0-9-]+:/i.test(String(txt));
+}
+function isInventoryBillAdjustment(txt = '') {
+  const t = String(txt);
+  return (
+    /Refund:\s*Bill\s+/i.test(t) ||
+    /Partial Refund:\s*Bill\s+/i.test(t) ||
+    /^\s*bill\s+[a-z0-9-]+:/i.test(t)
+  );
+}
+function isInventoryAdjustmentLine(txt = '') {
+  return isInventoryOrderAdjustment(txt) || isInventoryBillAdjustment(txt);
 }
 
 function eventKey(e) {
@@ -142,13 +156,13 @@ function eventKey(e) {
   }|${bucket}`;
 }
 
-/* ---------- history normalizer (updated to include entityName) ---------- */
-function normalizeHistory(entity, record, historyItem) {
+/* ---------- history normalizer (with optional override) ---------- */
+function normalizeHistory(entity, record, historyItem, nameOverride = null) {
   return {
     source: 'history',
     entity,
     entityId: record._id,
-    entityName: pickEntityName(entity, record), // ← populated here
+    entityName: nameOverride ?? pickEntityName(entity, record),
     action: historyItem?.action || 'unknown',
     performedBy: historyItem?.performedBy || null,
     at: historyItem?.createdAt || record?.createdAt,
@@ -177,7 +191,10 @@ async function resolvePlatformUserId(input) {
   return String(input);
 }
 
-/* ------------- collector (with filters + dedupe) ------------- */
+/* ------------- collector ------------- */
+
+// VERSION 1: hide inventory adjustments
+const SHOW_INVENTORY_ADJUSTMENTS = false;
 
 async function collectActivities({ companyId, filterUserId = null }) {
   const models = getModelsWithHistory();
@@ -191,9 +208,8 @@ async function collectActivities({ companyId, filterUserId = null }) {
       seen.set(k, ev);
       return;
     }
-    if (existing.source === 'synthetic' && ev.source === 'history') {
+    if (existing.source === 'synthetic' && ev.source === 'history')
       seen.set(k, ev);
-    }
   };
 
   for (const { key, Model } of models) {
@@ -205,22 +221,70 @@ async function collectActivities({ companyId, filterUserId = null }) {
       ];
     }
 
-    // 🔑 select entity-specific label fields too
     const extra = getEntityNameSelect(key);
-    const selectStr = `_id companyId createdBy createdAt deleted history ${extra}`;
+
+    // Include staffId when collecting StaffSalary rows so we can resolve names.
+    const needsStaffName = key === 'staffsalary';
+    const selectStr = `_id companyId createdBy createdAt deleted history ${extra}${
+      needsStaffName ? ' staffId' : ''
+    }`;
 
     const records = await Model.find(baseQuery).select(selectStr).lean();
 
+    // Prefetch staff names for StaffSalary in one go
+    let staffNameById = null;
+    if (needsStaffName && records.length) {
+      const staffIds = Array.from(
+        new Set(
+          records
+            .map((r) => r?.staffId)
+            .filter(Boolean)
+            .map((id) =>
+              mongoose.isValidObjectId(id)
+                ? new mongoose.Types.ObjectId(id)
+                : id
+            )
+        )
+      );
+
+      if (staffIds.length) {
+        const staffUsers = await IndexModel.User.find({
+          _id: { $in: staffIds },
+          companyId: cid,
+          role: 'staff', // optional guard
+        })
+          .select('_id name')
+          .lean();
+
+        staffNameById = new Map(
+          (staffUsers || []).map((u) => [String(u._id), (u.name || '').trim()])
+        );
+      }
+    }
+
     for (const record of records) {
+      const entityNameOverride = needsStaffName
+        ? (record?.staffId && staffNameById?.get(String(record.staffId))) ||
+          null
+        : null;
+
       // 1) history items
       if (Array.isArray(record.history)) {
         for (const item of record.history) {
           if (key === 'company' && isCompanyEchoAction(item?.action)) continue;
-          if (key === 'inventory' && isInventoryOrderAdjustment(item?.action))
+
+          // hide inventory +/- lines in Version 1
+          if (
+            key === 'inventory' &&
+            !SHOW_INVENTORY_ADJUSTMENTS &&
+            isInventoryAdjustmentLine(item?.action)
+          ) {
             continue;
+          }
+
           if (filterUserId && item?.performedBy !== filterUserId) continue;
 
-          pushOnce(normalizeHistory(key, record, item));
+          pushOnce(normalizeHistory(key, record, item, entityNameOverride));
         }
       }
 
@@ -242,7 +306,7 @@ async function collectActivities({ companyId, filterUserId = null }) {
           source: 'synthetic',
           entity: key,
           entityId: record._id,
-          entityName: pickEntityName(key, record), // ← also set here
+          entityName: entityNameOverride ?? pickEntityName(key, record),
           action: 'created',
           performedBy: record.createdBy,
           at: record.createdAt,
@@ -264,11 +328,10 @@ async function getAllActivity(req, res) {
   try {
     const actor = getActor(req);
     const companyId = await resolveCompanyId(req, actor);
-    if (!companyId) {
+    if (!companyId)
       return res
         .status(401)
         .json({ success: false, message: 'Missing or invalid companyId' });
-    }
 
     const allActivities = await collectActivities({ companyId });
     res.json({
@@ -287,16 +350,14 @@ async function getUserActivity(req, res) {
     const companyId = await resolveCompanyId(req, actor);
     const rawParam = req.params.userId;
 
-    if (!companyId) {
+    if (!companyId)
       return res
         .status(401)
         .json({ success: false, message: 'Missing or invalid companyId' });
-    }
-    if (!rawParam) {
+    if (!rawParam)
       return res
         .status(400)
         .json({ success: false, message: 'userId param required' });
-    }
 
     const platformUserId = await resolvePlatformUserId(rawParam);
     const userActivities = await collectActivities({
