@@ -152,9 +152,9 @@ class ZKDeviceService {
 
   async listenForRealTimeAttendance(deviceId) {
     try {
-      console.log(
-        `🔄 Starting real-time attendance listener for device ${deviceId}`
-      );
+      // console.log(
+      //   `🔄 Starting real-time attendance listener for device ${deviceId}`
+      // );
       const connection = await this.connectToDevice(deviceId);
       const { zkInstance } = connection;
 
@@ -164,27 +164,40 @@ class ZKDeviceService {
       }
 
       // Poll every 5 seconds (stable interval)
-      const interval = setInterval(async () => {
-        try {
-          const logs = await zkInstance.getAttendances();
+const interval = setInterval(async () => {
+  try {
+    const logs = await zkInstance.getAttendances();
+    if (!logs?.data?.length) return;
+console.log(`📥 ${Object.keys(logs.data)} logs fetched from ${deviceId}`);
+    const validLogs = logs.data.filter(log => {
+      // ✅ 1. valid userId characters only
+      const validUserId = /^[A-Za-z0-9_-]+$/.test(log.deviceUserId?.trim() || "");
 
-          if (logs?.data?.length) {
-            console.log(
-              `📥 ${logs.data.length} logs received from device ${deviceId}`
-            );
 
-            for (const log of logs.data) {
-              await this.processRealTimeAttendance(deviceId, log);
-            }
+      return validUserId;
+    });
 
-            // ✅ Clear logs after saving (optional: can skip for testing)
-            await zkInstance.clearAttendanceLog();
-          }
-        } catch (err) {
-          console.error(`❌ Polling error on ${deviceId}:`, err.message);
-          await this.handleDeviceError(deviceId, err);
-        }
-      }, 3000);
+    if (validLogs.length === 0) {
+      console.warn(`⚠️ Skipping corrupted logs from ${zkInstance.ip}`);
+      return;
+    }
+
+    console.log(`📥 ${validLogs.length} valid logs received from device ${deviceId}`);
+
+    for (const log of validLogs) {
+      await this.processRealTimeAttendance(deviceId, log);
+    }
+
+    // Optional: clear logs after confirmed processing
+    console.log(`🧹 Clearing attendance logs on device ${deviceId}`);
+    await zkInstance.clearAttendanceLog();
+
+  } catch (err) {
+    console.error(`❌ Polling error on ${deviceId}:`, err.message);
+    await this.handleDeviceError(deviceId, err);
+  }
+}, 10000);
+
 
       this.realtimeListeners.set(deviceId, { interval, zkInstance });
       console.log(`✅ Real-time attendance listener ACTIVE for ${deviceId}`);
