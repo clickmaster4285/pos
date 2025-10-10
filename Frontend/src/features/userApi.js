@@ -29,7 +29,6 @@ export const userApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[userApi]', method, url);
       } catch {}
       return fetch(input, init);
     },
@@ -42,7 +41,6 @@ export const userApi = createApi({
       transformResponse: (res) => {
         if (res?.success && Array.isArray(res.data)) return res.data;
         if (Array.isArray(res)) return res;
-        throw new Error(res?.message || 'Failed to fetch users');
       },
       providesTags: (result) =>
         result

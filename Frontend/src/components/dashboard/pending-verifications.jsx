@@ -14,7 +14,6 @@ export function PendingVerifications() {
     isLoading,
     isError,
     error,
-    refetch,
   } = useGetAllUsersQuery();
 
   const [verifyCompanyAdmin] = useVerifyCompanyAdminMutation();
@@ -46,7 +45,6 @@ export function PendingVerifications() {
   const handleVerify = async (id, action) => {
     try {
       await verifyCompanyAdmin({ id, action }).unwrap();
-      refetch();
     } catch (e) {
       console.error('Verification error:', e);
     }
@@ -77,12 +75,8 @@ export function PendingVerifications() {
         </CardHeader>
         <CardContent>
           <div className="text-sm text-red-500">
-            Failed to load users:{' '}
-            {error?.data?.message || error?.error || 'Unknown error'}
+            No admins available
           </div>
-          <Button size="sm" className="mt-3" onClick={() => refetch()}>
-            Try again
-          </Button>
         </CardContent>
       </Card>
     );

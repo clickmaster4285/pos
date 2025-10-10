@@ -1,302 +1,491 @@
+// src/middleware/toastMiddleware.js
 import { isRejectedWithValue, isFulfilled } from "@reduxjs/toolkit";
 import { addToast } from "@/features/toastSlice";
 
 export const toastMiddleware = (store) => (next) => (action) => {
-  if (isFulfilled(action)) {
-    const { type, meta, payload } = action;
-    // console.log("Fulfilled action:", type, payload, meta);
+  // Define the allowed endpoints for toasts
+  const allowedEndpoints = [
+    'login',
+    'registerUser',
+    'verifyEmail',
+    'logout',
+    'refreshToken',
+    'createAddress',
+    'updateAddress',
+    'deleteAddress',
+    'createCompany',
+    'toggleCompanyStatus',
+    'createOrder',
+    'updateOrderStatus',
+    'cancelOrderItems',
+    'requestReturn',
+    'handleReturnRequest',
+    'createInventoryItem',
+    'updateInventoryInfo',
+    'addStock',
+    'updateInventoryItem',
+    'deleteInventoryItem',
+    'createPayment',
+    'updateSalary',
+    'deleteSalary',
+    'createStaff',
+    'updateStaff',
+    'deleteStaff',
+    'updateCompanySettings',
+    'createPlan',
+    'updatePlan',
+    'deletePlan',
+    'createVendor',
+    'updateVendor',
+    'deleteVendor',
+    'toggleVendorStatus',
+    'toggleUserStatus',
+    'createDevice',
+    'connectDevice',
+    'createBill',
+    'updateBillStatus',
+    'softDeleteBill',
+    'verifyCompanyAdmin',
+    'emailSend',
+  ];
 
+  if (isFulfilled(action)) {
+    const { meta, payload } = action;
     const endpoint = meta?.arg?.endpointName;
 
-    const toastTypes = {
-      // authApi
-      login: {
-        type: "success",
-        name: payload?.data?.user?.name || "",
-        details: `Welcome back, ${payload?.data?.user?.name || "User"}!`,
-        status: payload?.status || 200,
-      },
-      logout: {
-        type: "success",
-        details: "Logged out successfully",
-        status: payload?.status || 200,
-      },
-      registerUser: {
-        type: "success",
-        name: payload?.data?.user?.name || "",
-        details: `Account created for ${payload?.data?.user?.name || "User"}`,
-        status: payload?.status || 201,
-      },
-      refreshToken: {
-        type: "success",
-        details: "Session refreshed successfully",
-        status: payload?.status || 200,
-      },
-      // getMe: {
-      //   type: "success",
-      //   details: "User data fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      verifyEmail: {
-        type: "success",
-        details: "Email verified successfully",
-        status: payload?.status || 200,
-      },
+    // Only show toast for allowed endpoints
+    if (allowedEndpoints.includes(endpoint)) {
+      const toastTypes = {
+        // authApi
+        login: {
+          type: "success",
+          title: `Welcome, ${payload?.data?.user?.name || "User"}!`,
+          description: "You are now logged in.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        registerUser: {
+          type: "success",
+          title: "Account Created",
+          description: `Welcome, ${payload?.data?.user?.name || "User"}!`,
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        verifyEmail: {
+          type: "success",
+          title: "Email Verified",
+          description: "Your email has been verified successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        logout: {
+          type: "success",
+          title: "Logged Out",
+          description: "You have been logged out successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        refreshToken: {
+          type: "success",
+          title: "Session Refreshed",
+          description: "Your session has been extended.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // addressApi
+        createAddress: {
+          type: "success",
+          title: "Address Created",
+          description: "New shipping address added successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateAddress: {
+          type: "success",
+          title: "Address Updated",
+          description: "Address details updated successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deleteAddress: {
+          type: "success",
+          title: "Address Deleted",
+          description: "Address removed successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // companyApi
+        createCompany: {
+          type: "success",
+          title: "Company Created",
+          description: "Your company has been created.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        toggleCompanyStatus: {
+          type: "success",
+          title: "Company Status Updated",
+          description: "Company status changed successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        verifyCompanyAdmin: {
+          type: "success",
+          title: "Verification Processed",
+          description: `Company admin verification ${action.meta?.arg?.originalArgs?.action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // ordersApi
+        createOrder: {
+          type: "success",
+          title: "Order Created",
+          description: "Your order has been placed successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateOrderStatus: {
+          type: "success",
+          title: "Order Status Updated",
+          description: "Order status has been updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        cancelOrderItems: {
+          type: "success",
+          title: "Order Items Cancelled",
+          description: "Selected items have been cancelled.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        requestReturn: {
+          type: "success",
+          title: "Return Requested",
+          description: "Your return request has been submitted.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        handleReturnRequest: {
+          type: "success",
+          title: "Return Request Processed",
+          description: "Return request has been processed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // inventoryApi
+        createInventoryItem: {
+          type: "success",
+          title: "Inventory Item Created",
+          description: "New inventory item added.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateInventoryInfo: {
+          type: "success",
+          title: "Inventory Updated",
+          description: "Inventory details updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        addStock: {
+          type: "success",
+          title: "Stock Added",
+          description: "Stock added successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateInventoryItem: {
+          type: "success",
+          title: "Inventory Item Updated",
+          description: "Inventory item updated successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deleteInventoryItem: {
+          type: "success",
+          title: "Inventory Item Deleted",
+          description: "Inventory item removed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // staffSalaryApi
+        createPayment: {
+          type: "success",
+          title: "Payment Created",
+          description: "Payment has been processed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateSalary: {
+          type: "success",
+          title: "Salary Updated",
+          description: "Salary details updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deleteSalary: {
+          type: "success",
+          title: "Salary Deleted",
+          description: "Salary record removed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // staffApi
+        createStaff: {
+          type: "success",
+          title: "Staff Added",
+          description: "New staff member created.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateStaff: {
+          type: "success",
+          title: "Staff Updated",
+          description: "Staff details updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deleteStaff: {
+          type: "success",
+          title: "Staff Removed",
+          description: "Staff member deleted.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // settingsApi
+        updateCompanySettings: {
+          type: "success",
+          title: "Settings Updated",
+          description: "Company settings updated successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // planApi
+        createPlan: {
+          type: "success",
+          title: "Plan Created",
+          description: "New plan added.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updatePlan: {
+          type: "success",
+          title: "Plan Updated",
+          description: "Plan details updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deletePlan: {
+          type: "success",
+          title: "Plan Deleted",
+          description: "Plan removed successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // vendorApi
+        createVendor: {
+          type: "success",
+          title: "Vendor Added",
+          description: "New vendor created.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateVendor: {
+          type: "success",
+          title: "Vendor Updated",
+          description: "Vendor details updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        deleteVendor: {
+          type: "success",
+          title: "Vendor Removed",
+          description: "Vendor deleted.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        toggleVendorStatus: {
+          type: "success",
+          title: "Vendor Status Changed",
+          description: "Vendor status updated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // userApi
+        toggleUserStatus: {
+          type: "success",
+          title: "User Status Updated",
+          description: "User account status changed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // attendanceDeviceApi
+        createDevice: {
+          type: "success",
+          title: "Device Registered",
+          description: "Attendance device added.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        connectDevice: {
+          type: "success",
+          title: "Device Connected",
+          description: "Device is now connected.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // billingApi
+        createBill: {
+          type: "success",
+          title: "Bill Created",
+          description: "New bill generated.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        updateBillStatus: {
+          type: "success",
+          title: "Bill Status Updated",
+          description: "Bill status changed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        softDeleteBill: {
+          type: "success",
+          title: "Bill Deleted",
+          description: "Bill has been removed.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+        // Placeholder for email send endpoint
+        emailSend: {
+          type: "success",
+          title: "Email Sent",
+          description: "Email sent successfully.",
+          bgColor: "bg-green-100",
+          textColor: "text-green-800",
+          icon: "check-circle",
+          actions: [],
+        },
+      };
 
-      // addressApi
-      // getAddresses: {
-      //   type: "success",
-      //   details: "Addresses fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      // getAddressById: {
-      //   type: "success",
-      //   details: "Address details fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      createAddress: {
-        type: "success",
-        details: "Address created successfully",
-        status: payload?.status || 201,
-      },
-      updateAddress: {
-        type: "success",
-        details: "Address updated successfully",
-        status: payload?.status || 200,
-      },
-      deleteAddress: {
-        type: "success",
-        details: "Address deleted successfully",
-        status: payload?.status || 200,
-      },
+      const mapping = toastTypes[endpoint];
 
-      // companyApi
-      createCompany: {
-        type: "success",
-        details: "Company created successfully",
-        status: payload?.status || 201,
-      },
-      // getAllCompanies: {
-      //   type: "success",
-      //   details: "Fetched all companies successfully",
-      //   status: payload?.status || 200,
-      // },
-      verifyCompanyAdmin: {
-        type: "success",
-        details: "Company admin verified successfully",
-        status: payload?.status || 200,
-      },
-      verifyEmailCode: {
-        type: "success",
-        details: "Email verified successfully",
-        status: payload?.status || 200,
-      },
-      resendVerificationCode: {
-        type: "success",
-        details: "Verification code resent successfully",
-        status: payload?.status || 200,
-      },
-      toggleCompanyStatus: {
-        type: "success",
-        details: "Company status updated successfully",
-        status: payload?.status || 200,
-      },
-
-      // ordersApi
-      // getOrders: {
-      //   type: "success",
-      //   details: "Orders fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      // getOrderById: {
-      //   type: "success",
-      //   details: "Order details fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      createOrder: {
-        type: "success",
-        details: "Order created successfully",
-        status: payload?.status || 201,
-      },
-      updateOrderStatus: {
-        type: "success",
-        details: "Order status updated successfully",
-        status: payload?.status || 200,
-      },
-      cancelOrderItems: {
-        type: "success",
-        details: "Order items cancelled successfully",
-        status: payload?.status || 200,
-      },
-      requestReturn: {
-        type: "success",
-        details: "Return request submitted successfully",
-        status: payload?.status || 200,
-      },
-      handleReturnRequest: {
-        type: "success",
-        details: "Return request processed successfully",
-        status: payload?.status || 200,
-      },
-
-      // planApi
-      // getAllPlans: {
-      //   type: "success",
-      //   details: "Plans fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      createPlan: {
-        type: "success",
-        details: "Plan created successfully",
-        status: payload?.status || 201,
-      },
-      updatePlan: {
-        type: "success",
-        details: "Plan updated successfully",
-        status: payload?.status || 200,
-      },
-      deletePlan: {
-        type: "success",
-        details: "Plan deleted successfully",
-        status: payload?.status || 200,
-      },
-
-      // inventoryApi
-      // getInventory: {
-      //   type: "success",
-      //   details: "Inventory items fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      // getInventoryById: {
-      //   type: "success",
-      //   details: "Inventory item details fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      createInventoryItem: {
-        type: "success",
-        details: "Inventory item created successfully",
-        status: payload?.status || 201,
-      },
-      updateInventoryInfo: {
-        type: "success",
-        details: "Inventory info updated successfully",
-        status: payload?.status || 200,
-      },
-      addStock: {
-        type: "success",
-        details: "Stock added successfully",
-        status: payload?.status || 200,
-      },
-      updateInventoryItem: {
-        type: "success",
-        details: "Inventory item updated successfully",
-        status: payload?.status || 200,
-      },
-      deleteInventoryItem: {
-        type: "success",
-        details: "Inventory item deleted successfully",
-        status: payload?.status || 200,
-      },
-
-      // userApi
-      // getAllUsers: {
-      //   type: "success",
-      //   details: "Users fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      // getAllCustomerUsers: {
-      //   type: "success",
-      //   details: "Customer users fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      toggleUserStatus: {
-        type: "success",
-        details: "User status updated successfully",
-        status: payload?.status || 200,
-      },
-
-      // staffApi
-      // getAllStaff: {
-      //   type: "success",
-      //   details: "Staff members fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      createStaff: {
-        type: "success",
-        details: "Staff member created successfully",
-        status: payload?.status || 201,
-      },
-      updateStaff: {
-        type: "success",
-        details: "Staff member updated successfully",
-        status: payload?.status || 200,
-      },
-      deleteStaff: {
-        type: "success",
-        details: "Staff member deleted successfully",
-        status: payload?.status || 200,
-      },
-
-      // vendorApi
-      createVendor: {
-        type: "success",
-        details: "Vendor created successfully",
-        status: payload?.status || 201,
-      },
-      // getAllVendors: {
-      //   type: "success",
-      //   details: "Vendors fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      // getVendorById: {
-      //   type: "success",
-      //   details: "Vendor details fetched successfully",
-      //   status: payload?.status || 200,
-      // },
-      updateVendor: {
-        type: "success",
-        details: "Vendor updated successfully",
-        status: payload?.status || 200,
-      },
-      deleteVendor: {
-        type: "success",
-        details: "Vendor deleted successfully",
-        status: payload?.status || 200,
-      },
-      toggleVendorStatus: {
-        type: "success",
-        details: "Vendor status updated successfully",
-        status: payload?.status || 200,
-      },
-    };
-
-    const mapping = toastTypes[endpoint];
-
-    if (mapping) {
-      store.dispatch(
-        addToast({
-          ...mapping,
-          details:
-            mapping.details ||
-            `Action completed successfully (Status: ${mapping.status})`,
-        })
-      );
+      if (mapping) {
+        store.dispatch(addToast(mapping));
+      } else {
+        console.warn(`No toast configuration found for endpoint: ${endpoint}`);
+      }
     }
   }
 
   if (isRejectedWithValue(action)) {
-    console.error("Rejected action:", action);
-    const errorMessage =
-      action.payload?.data?.message ||
-      action.payload?.data?.error ||
-      "An error occurred. Please try again or contact support.";
-    const status = action.payload?.status || action.error?.status || "Unknown";
-    store.dispatch(
-      addToast({
-        type: "error",
-        details: `${errorMessage} (Status: ${status})`,
-      })
-    );
+    const endpoint = action.meta?.arg?.endpointName;
+
+    // Only show error toast for allowed endpoints
+    if (allowedEndpoints.includes(endpoint)) {
+      const errorMessage =
+        action.payload?.data?.message ||
+        action.payload?.data?.error ||
+        action.payload?.message ||
+        "An unexpected error occurred.";
+
+      const status = action.payload?.status || "Unknown";
+
+      store.dispatch(
+        addToast({
+          type: "error",
+          title: "Error",
+          description: `${errorMessage}`,
+          status,
+          bgColor: "bg-red-100",
+          textColor: "text-red-800",
+          icon: "alert-circle",
+          actions: [],
+        })
+      );
+    }
   }
 
   return next(action);

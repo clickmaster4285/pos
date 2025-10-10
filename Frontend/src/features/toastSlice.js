@@ -1,7 +1,9 @@
+// src/features/toastSlice.js
 import { createSlice } from '@reduxjs/toolkit';
+import { v4 as uuidv4 } from 'uuid';
 
 const initialState = {
-  toasts: [], // Array to support multiple toasts
+  toasts: [],
 };
 
 const toastSlice = createSlice({
@@ -9,10 +11,10 @@ const toastSlice = createSlice({
   initialState,
   reducers: {
     addToast: (state, action) => {
-      state.toasts.push(action.payload);
+      state.toasts.push({ ...action.payload, id: uuidv4() });
     },
     removeToast: (state, action) => {
-      state.toasts = state.toasts.filter((_, index) => index !== action.payload);
+      state.toasts = state.toasts.filter((toast) => toast.id !== action.payload);
     },
     clearToasts: (state) => {
       state.toasts = [];

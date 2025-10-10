@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Currency options (can be fetched from an API or config file)
+// Currency options
 const currencyOptions = [
   { code: 'PKR', name: 'Pakistani Rupee (PKR)', symbol: '₨' },
   { code: 'USD', name: 'US Dollar (USD)', symbol: '$' },
@@ -27,7 +27,7 @@ const currencyOptions = [
   { code: 'CUSTOM', name: 'Custom', symbol: '' },
 ];
 
-// Define field configurations for dynamic rendering
+// Field configurations
 const fieldConfigs = {
   companySettings: [
     { key: 'companyName', label: 'Company Name', type: 'text', placeholder: 'Enter company name', icon: Building2 },
@@ -73,20 +73,6 @@ const fieldConfigs = {
       { key: 'taxRateCash', label: 'Tax Cash Rate (%)', type: 'number', min: 0, max: 100, step: 0.1, conditional: 'isTaxPayerRegistered', icon: '%' },
       { key: 'taxRateCard', label: 'Tax Card Rate (%)', type: 'number', min: 0, max: 100, step: 0.1, conditional: 'isTaxPayerRegistered', icon: '%' },
     ],
-    thermalPrint: [
-      {
-        key: 'paperWidth',
-        label: 'Paper Width',
-        type: 'select',
-        options: [
-          { value: '58', label: '58mm' },
-          { value: '80', label: '80mm' },
-        ],
-        icon: Printer,
-      },
-      { key: 'fontSize', label: 'Font Size', type: 'number', min: 8, max: 16, icon: 'A' },
-      { key: 'showLogo', label: 'Show Logo on Thermal Print', type: 'switch', icon: Eye },
-    ],
   },
   terms: { key: 'terms', label: 'Terms Text', type: 'textarea', placeholder: 'Enter your terms and conditions', icon: FileText },
 };
@@ -114,7 +100,6 @@ const RenderField = ({ config, value, onChange, section, values }) => {
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  // Handle conditional rendering based on other field values
   if (config.conditional) {
     const [condField, condValue] = config.conditional.split(':');
     if (values[condField] !== condValue && values[condField] !== true) {
@@ -127,19 +112,19 @@ const RenderField = ({ config, value, onChange, section, values }) => {
       return <span className="text-sm font-medium">{config.icon}</span>;
     }
     const IconComponent = config.icon;
-    return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
+    return IconComponent ? <IconComponent className="h-5 w-5" /> : null;
   };
 
   switch (config.type) {
     case 'text':
     case 'number':
       return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-medium">{config.label}</Label>
+            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
           </div>
           <Input 
             type={config.type} 
@@ -147,10 +132,10 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             min={config.min} 
             max={config.max} 
             step={config.step}
-            className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+            className="h-11 rounded-lg border border-input bg-background px-4 py-2 text-sm focus:ring-2 focus:ring-primary/30 transition-all duration-200"
           />
           {config.description && (
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <span>💡</span>
               {config.description}
             </p>
@@ -159,20 +144,20 @@ const RenderField = ({ config, value, onChange, section, values }) => {
       );
     case 'select':
       return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-medium">{config.label}</Label>
+            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
           </div>
           <Select value={value?.toString()} onValueChange={onChange}>
-            <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
+            <SelectTrigger className="h-11 rounded-lg border border-input bg-background px-4 py-2 text-sm focus:ring-2 focus:ring-primary/30 transition-all duration-200">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-lg bg-background border border-input">
               {config.options.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
+                <SelectItem key={option.value} value={option.value} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary/5">
                   {option.label}
                 </SelectItem>
               ))}
@@ -182,13 +167,13 @@ const RenderField = ({ config, value, onChange, section, values }) => {
       );
     case 'switch':
       return (
-        <div className="flex items-center justify-between p-4 rounded-lg border bg-card/50 hover:bg-card/70 transition-colors duration-200">
+        <div className="flex items-center justify-between p-4 rounded-lg border border-input bg-background/50 hover:bg-background/70 transition-colors duration-200">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
             <div>
-              <Label htmlFor={id} className="text-sm font-medium cursor-pointer">{config.label}</Label>
+              <Label htmlFor={id} className="text-sm font-semibold text-foreground cursor-pointer">{config.label}</Label>
               {config.description && (
                 <p className="text-xs text-muted-foreground mt-1">{config.description}</p>
               )}
@@ -198,26 +183,26 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             checked={value} 
             onCheckedChange={onChange} 
             id={id}
-            className="data-[state=checked]:bg-primary"
+            className="data-[state=checked]:bg-primary h-6 w-11"
           />
         </div>
       );
     case 'textarea':
       return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-medium">{config.label}</Label>
+            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
           </div>
           <div className="relative">
             <Textarea 
               {...commonProps} 
               value={typeof value === 'string' ? value : ''} 
-              className="min-h-[200px] resize-y transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+              className="min-h-[180px] rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
             />
-            <div className="absolute bottom-3 right-3 px-2 py-1 bg-muted/50 rounded text-xs text-muted-foreground">
+            <div className="absolute bottom-3 right-3 px-2 py-1 bg-muted/80 rounded text-xs text-muted-foreground">
               {typeof value === 'string' ? value.length : 0} characters
             </div>
           </div>
@@ -225,26 +210,26 @@ const RenderField = ({ config, value, onChange, section, values }) => {
       );
     case 'file':
       return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-md bg-primary/10 text-primary">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-medium">{config.label}</Label>
+            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
           </div>
-          <div className="flex items-center gap-6 p-4 rounded-lg border bg-card/50">
+          <div className="flex items-center gap-4 p-4 rounded-lg border border-input bg-background/50">
             {value ? (
               <div className="relative group">
-                <div className="h-24 w-24 rounded-xl border-2 border-border overflow-hidden bg-card shadow-sm">
+                <div className="h-20 w-20 rounded-lg border border-input overflow-hidden bg-background shadow-sm">
                   <img src={`${API_URL}${value?.replace(/\\/g, "/")}`} alt="Company logo" className="h-full w-full object-cover" />
                 </div>
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
                   <Eye className="h-5 w-5 text-white" />
                 </div>
               </div>
             ) : (
-              <div className="h-24 w-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/30 group hover:border-primary/50 transition-colors duration-200">
-                <Upload className="h-8 w-8 text-muted-foreground group-hover:text-primary" />
+              <div className="h-20 w-20 rounded-lg border-2 border-dashed border-input flex items-center justify-center bg-muted/20 group hover:border-primary/50 transition-colors duration-200">
+                <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
               </div>
             )}
             <div className="flex-1 space-y-2">
@@ -252,10 +237,10 @@ const RenderField = ({ config, value, onChange, section, values }) => {
                 type="file" 
                 accept={config.accept} 
                 {...commonProps}
-                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 transition-colors duration-200"
+                className="file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 transition-colors duration-200"
               />
               {config.description && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <span>📝</span>
                   {config.description}
                 </p>
@@ -272,18 +257,18 @@ const RenderField = ({ config, value, onChange, section, values }) => {
 // Preview Card Component
 const SettingsPreview = ({ companySettings, invoiceSettings }) => {
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+    <Card className="bg-gradient-to-br from-background to-muted/30 border-input shadow-lg">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Eye className="h-4 w-4" />
+        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <Eye className="h-5 w-5 text-primary" />
           Live Preview
         </CardTitle>
-        <CardDescription>How your settings will appear</CardDescription>
+        <CardDescription className="text-sm text-muted-foreground">How your settings will appear</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {companySettings.companyLogo && (
-            <div className="h-12 w-12 rounded-lg border overflow-hidden bg-white">
+            <div className="h-14 w-14 rounded-lg border border-input overflow-hidden bg-white shadow-sm">
               <img 
                 src={companySettings.companyLogo} 
                 alt="Company logo" 
@@ -293,18 +278,18 @@ const SettingsPreview = ({ companySettings, invoiceSettings }) => {
           )}
           <div>
             <h3 className="font-semibold text-foreground">{companySettings.companyName || 'Your Company'}</h3>
-            <p className="text-xs text-muted-foreground">{companySettings.contactPhone || 'No phone number'}</p>
+            <p className="text-xs text-muted-foreground mt-1">{companySettings.contactPhone || 'No phone number'}</p>
             <p className="text-xs text-muted-foreground">{companySettings.address || 'No address'}</p>
             <p className="text-xs text-muted-foreground">Next Invoice: {invoiceSettings.format.prefix || 'INV-'}001</p>
           </div>
         </div>
         
-        <Separator />
+        <Separator className="bg-input/50" />
         
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted-foreground">Currency</p>
-            <p className="font-medium">
+            <p className="text-xs text-muted-foreground">Currency</p>
+            <p className="font-medium text-foreground">
               {invoiceSettings.currency.code === 'CUSTOM' 
                 ? invoiceSettings.currency.customCode 
                 : invoiceSettings.currency.code} 
@@ -312,8 +297,11 @@ const SettingsPreview = ({ companySettings, invoiceSettings }) => {
             </p>
           </div>
           <div>
-            <p className="text-muted-foreground">Tax Registered</p>
-            <Badge variant={invoiceSettings.tax.isTaxPayerRegistered ? "default" : "secondary"} className="text-xs">
+            <p className="text-xs text-muted-foreground">Tax Registered</p>
+            <Badge 
+              variant={invoiceSettings.tax.isTaxPayerRegistered ? "default" : "secondary"} 
+              className="text-xs font-medium px-2 py-1"
+            >
               {invoiceSettings.tax.isTaxPayerRegistered ? 'Yes' : 'No'}
             </Badge>
           </div>
@@ -335,7 +323,6 @@ export default function Settings({ companyId }) {
     currency: { code: '', symbol: '', customCode: '' },
     tax: { isTaxPayerRegistered: false, taxRateCash: 0, taxRateCard: 0 },
     template: { header: '', footer: '' },
-    thermalPrint: { paperWidth: 58, fontSize: 12, showLogo: true },
     terms: '',
   });
   const [logoFile, setLogoFile] = useState(null);
@@ -406,7 +393,7 @@ export default function Settings({ companyId }) {
         ...prev,
         currency: { ...prev.currency, customCode: value },
       }));
-    } else if (section == 'terms') {
+    } else if (section === 'terms') {
       const stringValue = typeof value === 'string' ? value : '';
       setInvoiceSettings((prev) => ({
         ...prev,
@@ -451,10 +438,10 @@ export default function Settings({ companyId }) {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-64">
+      <div className="flex justify-center items-center min-h-[400px] bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading your settings...</p>
+          <p className="text-sm text-muted-foreground font-medium">Loading your settings...</p>
         </div>
       </div>
     );
@@ -462,19 +449,17 @@ export default function Settings({ companyId }) {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-        <header className="border-b bg-card/80 backdrop-blur-lg sticky top-0 z-10 shadow-sm">
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-20 shadow-sm">
           <div className="container mx-auto px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-md">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/80 to-primary shadow-md">
                   <Building2 className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-                    Company Settings
-                  </h1>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <h1 className="text-2xl font-bold text-foreground tracking-tight">Company Settings</h1>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                     <span>⚙️</span>
                     Manage your company configuration and invoice settings
                   </p>
@@ -484,29 +469,28 @@ export default function Settings({ companyId }) {
                 <TooltipTrigger asChild>
                   <Button 
                     onClick={handleSave} 
-                    className="gap-2 px-6 shadow-lg transition-all duration-200 hover:shadow-xl"
+                    className="gap-2 px-6 py-2 h-11 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200"
                     disabled={loading || isLoading}
-                    size="lg"
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                         Saving...
                       </>
                     ) : saveSuccess ? (
                       <>
-                        <CheckCircle2 className="h-4 w-4" />
+                        <CheckCircle2 className="h-5 w-5" />
                         Saved!
                       </>
                     ) : (
                       <>
-                        <Save className="h-4 w-4" />
+                        <Save className="h-5 w-5" />
                         Save Changes
                       </>
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="text-sm">
                   <p>Save all settings changes</p>
                 </TooltipContent>
               </Tooltip>
@@ -514,25 +498,25 @@ export default function Settings({ companyId }) {
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-8">
-              <Card className="transition-all duration-300 hover:shadow-lg border-l-4 border-l-primary">
+        <main className="container mx-auto px-4 py-10 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <Building2 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl">Company Profile</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                      <CardTitle className="text-xl font-semibold text-foreground">Company Profile</CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                         <span>🏢</span>
                         Update your company information and branding
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-5 p-6">
                   {fieldConfigs.companySettings.map((config) => (
                     <RenderField
                       key={config.key}
@@ -544,37 +528,37 @@ export default function Settings({ companyId }) {
                 </CardContent>
               </Card>
 
-              <Card className="transition-all duration-300 hover:shadow-lg border-l-4 border-l-blue-500">
+              <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-500/10">
                       <Receipt className="h-5 w-5 text-blue-500" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl">Invoice Settings</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                      <CardTitle className="text-xl font-semibold text-foreground">Invoice Settings</CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                         <span>🧾</span>
                         Configure invoice format, currency, tax, and printing
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue={Object.keys(fieldConfigs.invoiceSettings)[0]} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-4 p-1 bg-muted/50 rounded-lg">
+                <CardContent className="p-6">
+                  <Tabs defaultValue={Object.keys(fieldConfigs.invoiceSettings)[0]} className="space-y-5">
+                    <TabsList className="grid w-full grid-cols-4 p-1 bg-muted/40 rounded-lg h-11">
                       {Object.keys(fieldConfigs.invoiceSettings).map((section) => (
                         <TabsTrigger 
                           key={section} 
                           value={section}
-                          className="data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200"
+                          className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                         >
                           {section.charAt(0).toUpperCase() + section.slice(1)}
                         </TabsTrigger>
                       ))}
                     </TabsList>
                     {Object.entries(fieldConfigs.invoiceSettings).map(([section, fields]) => (
-                      <TabsContent key={section} value={section} className="space-y-6 animate-in fade-in-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <TabsContent key={section} value={section} className="space-y-5 animate-in fade-in-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           {fields.map((config) => (
                             <RenderField
                               key={config.key}
@@ -592,22 +576,22 @@ export default function Settings({ companyId }) {
                 </CardContent>
               </Card>
 
-              <Card className="transition-all duration-300 hover:shadow-lg border-l-4 border-l-green-500">
+              <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-green-500/10">
                       <FileText className="h-5 w-5 text-green-500" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl">Terms and Conditions</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                      <CardTitle className="text-xl font-semibold text-foreground">Terms and Conditions</CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                         <span>📄</span>
                         Define your company's terms and conditions
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <RenderField
                     config={fieldConfigs.terms}
                     value={invoiceSettings.terms}
@@ -617,15 +601,15 @@ export default function Settings({ companyId }) {
               </Card>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
               <SettingsPreview 
                 companySettings={companySettings} 
                 invoiceSettings={invoiceSettings} 
               />
               
-              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-amber-200">
+              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border border-amber-200 shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2 text-amber-800">
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2 text-amber-800">
                     <span>💡</span>
                     Tips
                   </CardTitle>

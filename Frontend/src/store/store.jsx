@@ -1,3 +1,4 @@
+// src/store.js
 import { configureStore } from '@reduxjs/toolkit';
 import { authSlice, authApi } from '@/features/authApi';
 import toastReducer from '@/features/toastSlice';
@@ -36,7 +37,6 @@ export const store = configureStore({
     [StaffSalary.reducerPath]: StaffSalary.reducer,
     [attendanceDeviceApi.reducerPath]: attendanceDeviceApi.reducer,
     [attendanceApi.reducerPath]: attendanceApi.reducer,
-
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -55,8 +55,7 @@ export const store = configureStore({
       activityApi.middleware,
       StaffSalary.middleware,
       attendanceDeviceApi.middleware,
-      attendanceApi.middleware,
-
+      attendanceApi.middleware
     ),
 });
 

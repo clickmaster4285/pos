@@ -380,7 +380,7 @@ const getAllAdminUsers = async (req, res) => {
     }).lean();
 
     if (!users || users.length === 0) {
-      return res.status(404).json({
+      return res.status(500).json({
         success: false,
         error: 'company Admin not found',
       });

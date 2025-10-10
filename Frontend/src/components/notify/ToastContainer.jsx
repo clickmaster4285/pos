@@ -1,17 +1,18 @@
-// ToastContainer.jsx
+// components/ToastContainer.jsx
 "use client";
 
 import { useSelector, useDispatch } from 'react-redux';
 import { ToastNotification } from './ToastNotification';
 import { removeToast } from '@/features/toastSlice';
 import { useTransition, animated } from '@react-spring/web';
+import { v4 as uuidv4 } from 'uuid';
 
 export function ToastContainer() {
   const dispatch = useDispatch();
   const toasts = useSelector((state) => state.toast.toasts);
-// console.log('Current toasts:', toasts);
+
   const transitions = useTransition(toasts, {
-    keys: (toast, index) => index,
+    keys: (toast) => toast.id || uuidv4(),
     from: { opacity: 0, transform: 'translateX(100%)' },
     enter: { opacity: 1, transform: 'translateX(0)' },
     leave: { opacity: 0, transform: 'translateX(100%)' },
@@ -20,17 +21,20 @@ export function ToastContainer() {
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col space-y-4 w-96">
-      {transitions((style, toast, _, index) => (
+      {transitions((style, toast) => (
         <animated.div style={style}>
           <ToastNotification
-            key={index}
+            key={toast.id}
             isVisible={true}
             type={toast.type}
-            name={toast.name}
-            details={toast.details}
-            status={toast.status} // Pass status to ToastNotification
-            onClose={() => dispatch(removeToast(index))}
-            onActionClick={(label) => console.log(`Action clicked: ${label}`)}
+            title={toast.title}
+            description={toast.description}
+            status={toast.status}
+            bgColor={toast.bgColor}
+            textColor={toast.textColor}
+            icon={toast.icon} // Now a string like "check-circle" or "alert-circle"
+            actions={toast.actions}
+            onClose={() => dispatch(removeToast(toast.id || toasts.indexOf(toast)))}
             duration={toast.duration || 5000}
           />
         </animated.div>
