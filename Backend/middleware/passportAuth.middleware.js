@@ -36,17 +36,17 @@ passport.use(
       if (user.status?.isaccepted === "pending") {
         return done(null, false, { message: "User approval is still pending" });
       }
-
+      
       if (user.status?.isaccepted === "false") {
         return done(null, false, {
           message: `User was rejected by ${user.status?.performedBy}`,
         });
       }
-
+      
       if (user.status?.isaccepted === "true") {
         return done(null, user);
       }
-
+      
       // Catch-all fallback
       return done(null, false, { message: "Invalid user status" });
     } catch (error) {

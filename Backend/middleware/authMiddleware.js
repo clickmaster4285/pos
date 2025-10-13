@@ -292,7 +292,7 @@ export const checkplan = (moduleName) => {
           break;
         }
         case "Vendor": {
-          if (user.permissions.manageVendors === false) {
+          if (user.permissions.createVendors === false) {
             return res.status(403).json({
               success: false,
               message: "Unauthorized: you cannot manage vendors",
@@ -405,6 +405,7 @@ export const checkPermissionsValidation = (moduleName) => {
       if (user.role === "superAdmin") {
         return next();
       }
+      // console.log("Checking permissions for module:", moduleName, user.permissions);
       if (
         user.role === "admin" ||
         (user.role === "staff" && user.permissions?.[moduleName] === true)

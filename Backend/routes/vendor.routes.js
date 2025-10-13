@@ -14,7 +14,7 @@ router.post(
   '/create-vendor',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('createVendors'),
   checkplan('Vendor'),
   Indexcontroller.Vendor.createVendor
 );
@@ -23,7 +23,7 @@ router.get(
   '/get-all-vendors',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('viewVendors'),
   Indexcontroller.Vendor.getAllVendors
 );
 
@@ -31,7 +31,7 @@ router.get(
   '/get-vendors-by-id/:id',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('viewVendors'),
   Indexcontroller.Vendor.getVendorById
 );
 
@@ -39,7 +39,7 @@ router.patch(
   '/update-vendor/:id',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('updateVendors'),
   Indexcontroller.Vendor.updateVendor
 );
 
@@ -47,7 +47,7 @@ router.delete(
   '/delete-vendor/:id',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('deleteVendors'),
   Indexcontroller.Vendor.deleteVendor
 );
 
@@ -55,7 +55,7 @@ router.patch(
   '/status-update-vendor/:id',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  checkPermissionsValidation('manageVendors'),
+  checkPermissionsValidation('updateVendors'),
   // checkplan("Vendor"),
   Indexcontroller.Vendor.active_inactiveVendor
 );

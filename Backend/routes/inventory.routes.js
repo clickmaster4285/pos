@@ -12,7 +12,7 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("createInventory"),
   checkplan("Inventory"),
   Indexcontroller.Inventory.createInventory
 );
@@ -22,7 +22,7 @@ router.patch(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("updateInventory"),
   checkplan("Inventory"),
   Indexcontroller.Inventory.updateInfo
 );
@@ -32,7 +32,7 @@ router.put(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
     checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("createInventory"),
   checkplan("Inventory"),
   Indexcontroller.Inventory.addStock
 );
@@ -42,7 +42,7 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("viewInventory"),
   Indexcontroller.Inventory.getAllInventoryItems
 );
 
@@ -51,7 +51,7 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("viewInventory"),
   Indexcontroller.Inventory.getInventoryItemById
 );
 
@@ -60,7 +60,7 @@ router.patch(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("updateInventory"),
   checkplan("Inventory"),
   Indexcontroller.Inventory.updateInventoryItem
 );
@@ -70,7 +70,7 @@ router.delete(
   passport.authenticate("jwt", { session: false }),
   authenticateToken,
   checkPlanIsActive,
-  checkPermissionsValidation("manageInventory"),
+  checkPermissionsValidation("deleteInventory"),
   checkplan("Inventory"),
   Indexcontroller.Inventory.deleteInventoryItem
 );

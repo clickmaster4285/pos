@@ -85,6 +85,7 @@ const createStaff = async (req, res) => {
       lastPaymentDate,
       zkUserId,
       deviceIds,
+      verified: true,
       status: {
         isaccepted: 'true',
         performedBy: logginUser.userId,

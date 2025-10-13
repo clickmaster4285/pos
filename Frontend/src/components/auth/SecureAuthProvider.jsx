@@ -79,21 +79,22 @@ export default function SecureAuthProvider({ children }) {
 
   useEffect(() => {
     if (isAuthenticated && isPublicRoute(pathname)) {
-      const dashboardPath = getDashboardPath(user?.role);
+      console.log("the user are siginging: ", user)
+      const dashboardPath = getDashboardPath(user?.role, user?.subRole);
       router.push(dashboardPath);
     }
   }, [isAuthenticated, pathname, router, user]);
 
-  const getDashboardPath = (role) => {
+  const getDashboardPath = (role, subrole) => {
     const r = String(role || "").toLowerCase();
-    console.log("Determining dashboard path for role:", r);
+    console.log("Determining dashboard path for role:", subrole);
     switch (r) {
       case "superadmin":
         return "/superadmin/dashboard";
       case "admin":
         return "/admin/dashboard";
       case "staff":
-        return "/staff/dashboard";
+        return `/staff/${subrole}/dashboard`;
       case "user":
         return "/user/dashboard";
       default:

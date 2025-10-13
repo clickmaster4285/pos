@@ -1,12 +1,11 @@
-import IndexModel from '../models/indexModel.js';
-import { generateUniqueUserId } from '../utils/generateUniqueUserId.js';
-import { generateUniqueCompanyId } from '../utils/generateUniqueCompanyId.js';
-import sendEmail from '../utils/sendEmail.js';
-import { generateOTP } from '../utils/generate_verifyOTP.js';
-import bcrypt from 'bcrypt';
-import { upload } from '../config/multer.js';
-import path from 'path';
-
+import IndexModel from "../models/indexModel.js";
+import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
+import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
+import sendEmail from "../utils/sendEmail.js";
+import { generateOTP } from "../utils/generate_verifyOTP.js";
+import bcrypt from "bcrypt";
+import { upload } from "../config/multer.js";
+import path from "path";
 
 const createCompany = async (req, res) => {
   try {
@@ -16,14 +15,14 @@ const createCompany = async (req, res) => {
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
         success: false,
-        error: 'Company name, contact email, and plan are required',
+        error: "Company name, contact email, and plan are required",
       });
     }
 
     if (!admin || !admin.name || !admin.email || !admin.password) {
       return res.status(400).json({
         success: false,
-        error: 'Admin name, email, and password are required',
+        error: "Admin name, email, and password are required",
       });
     }
     // console.log("the logs is : io am her")
@@ -38,13 +37,13 @@ const createCompany = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        error: 'plan does not exist or deactivated: contact support',
+        error: "plan does not exist or deactivated: contact support",
       });
     }
     if (company.plan !== availablePlan.id) {
       return res.status(400).json({
         success: false,
-        error: 'plan does not exist or deactivated: contact support',
+        error: "plan does not exist or deactivated: contact support",
       });
     }
     // Generate unique companyId
@@ -63,7 +62,7 @@ const createCompany = async (req, res) => {
       },
       history: [
         {
-          action: 'Company created',
+          action: "Company created",
           performedBy: userId,
         },
       ],
@@ -74,29 +73,34 @@ const createCompany = async (req, res) => {
       name: admin.name,
       email: admin.email,
       password: admin.password,
-      role: 'admin',
+      role: "admin",
       companyId: newCompany.companyId,
       userId,
       address: admin.address,
       Phone: admin.phone,
       permissions: {
-        staffCreate: true,
-        staffUpdate: true,
-        staffDelete: true,
-        viewallstaff: true,
-        viewReports: true,
-        manageInventory: true,
-        manageVendors: true,
-        assignTasks: true,
         approveRequests: true,
-        manageAppointments: true, // receptionist use
+        assignTasks: true,
+        manageAppointments: true,
+        createInventory: true,
+        updateInventory: true,
+        viewInventory: true,
+        deleteInventory: true,
+        managePlans: true,
         manageTeams: true,
-        managePlans: true, // for superadmin/admin
+        createVendors: true,
+        updateVendors: true,
+        deleteVendors: true,
+        viewVendors: true,
+        staffCreate: true,
+        staffDelete: true,
+        staffUpdate: true,
+        viewReports: true,
+        viewallstaff: true,
         editBilling: true,
         deleteBilling: true,
         addBilling: true,
         viewBilling: true,
-        //
         createPayment: true,
         viewAllStaffSalaries: true,
         updateSalary: true,
@@ -107,7 +111,7 @@ const createCompany = async (req, res) => {
       },
       history: [
         {
-          action: 'Admin created',
+          action: "Admin created",
           performedBy: userId,
         },
       ],
@@ -133,7 +137,7 @@ const createCompany = async (req, res) => {
       await IndexModel.Company.findByIdAndDelete(newCompany._id);
       return res.status(400).json({
         success: false,
-        error: 'Failed to create admin, company creation rolled back',
+        error: "Failed to create admin, company creation rolled back",
         details: adminError.message,
       });
     }
@@ -142,8 +146,8 @@ const createCompany = async (req, res) => {
     try {
       await sendEmail({
         email: admin.email,
-        subject: 'Verify Your Account',
-        template: 'emailVerification',
+        subject: "Verify Your Account",
+        template: "emailVerification",
         data: { name: admin.name, otp },
       });
     } catch (emailError) {
@@ -151,7 +155,7 @@ const createCompany = async (req, res) => {
       await IndexModel.User.findByIdAndDelete(adminUser._id);
       return res.status(500).json({
         success: false,
-        error: 'Failed to send verification email, creation rolled back',
+        error: "Failed to send verification email, creation rolled back",
         details: emailError.message,
       });
     }
@@ -168,14 +172,14 @@ const createCompany = async (req, res) => {
 
       return res.status(400).json({
         success: false,
-        error: 'Verification failed: Incomplete creation detected, rolled back',
+        error: "Verification failed: Incomplete creation detected, rolled back",
       });
     }
 
     // Return response with populated data
     const populatedCompany = await IndexModel.Company.findById(newCompany._id)
-      .populate('owner', 'name email userId')
-      .populate('plan');
+      .populate("owner", "name email userId")
+      .populate("plan");
 
     return res.status(201).json({
       success: true,
@@ -189,11 +193,11 @@ const createCompany = async (req, res) => {
         },
       },
       message:
-        'Company and admin created. Please verify via the OTP sent to your email within 1 minute.',
+        "Company and admin created. Please verify via the OTP sent to your email within 1 minute.",
     });
   } catch (error) {
     // Handle specific errors
-    if (error.name === 'ValidationError') {
+    if (error.name === "ValidationError") {
       return res.status(400).json({
         success: false,
         error: Object.values(error.errors).map((err) => err.message),
@@ -203,13 +207,13 @@ const createCompany = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        error: 'Company name, company ID, or admin email already exists',
+        error: "Company name, company ID, or admin email already exists",
       });
     }
 
     return res.status(500).json({
       success: false,
-      error: 'Server error while creating company and admin',
+      error: "Server error while creating company and admin",
       details: error.message,
     });
   }
@@ -218,15 +222,15 @@ const createCompany = async (req, res) => {
 const verifyCompany_Admin = async (req, res) => {
   const { id, action } = req.query;
   try {
-    console.log("the id and action is : ",id, action)
-    if (req.user.role !== 'superAdmin') {
+    console.log("the id and action is : ", id, action);
+    if (req.user.role !== "superAdmin") {
       return res.status(401).json({
         success: false,
-        error: 'Unauthorized: Only superAdmin can perform this action',
+        error: "Unauthorized: Only superAdmin can perform this action",
       });
     }
 
-    if (!['approve', 'reject'].includes(action)) {
+    if (!["approve", "reject"].includes(action)) {
       return res.status(400).json({
         success: false,
         error: 'Invalid action: Must be "approve" or "reject"',
@@ -234,14 +238,17 @@ const verifyCompany_Admin = async (req, res) => {
     }
 
     const performedBy = req.user?.userId;
-    const isActive = action === 'approve' ? 'true' : 'false';
-    const actionMessage = action === 'approve' ? 'Company admin approved' : 'Company admin rejected';
+    const isActive = action === "approve" ? "true" : "false";
+    const actionMessage =
+      action === "approve"
+        ? "Company admin approved"
+        : "Company admin rejected";
 
     const company = await IndexModel.Company.findByIdAndUpdate(
       { _id: id, deleted: false, isActive: false },
       {
         $set: {
-          isActive: action === 'approve',
+          isActive: action === "approve",
         },
         $push: {
           history: {
@@ -256,12 +263,12 @@ const verifyCompany_Admin = async (req, res) => {
 
     // Update user to set status.isaccepted and status.isactive
     const updatedUser = await IndexModel.User.findOneAndUpdate(
-      { userId: company.owner, deleted: false, isActive: true, verified:true},
+      { userId: company.owner, deleted: false, isActive: true, verified: true },
       {
         $set: {
-          'status.isaccepted': isActive,
-          'status.performedBy': performedBy,
-          'status.updatedAt': new Date(),
+          "status.isaccepted": isActive,
+          "status.performedBy": performedBy,
+          "status.updatedAt": new Date(),
         },
         $push: {
           history: {
@@ -277,13 +284,15 @@ const verifyCompany_Admin = async (req, res) => {
     if (!updatedUser) {
       return res.status(404).json({
         success: false,
-        error: 'User not found',
+        error: "User not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: `Company admin ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      message: `Company admin ${
+        action === "approve" ? "approved" : "rejected"
+      } successfully`,
       data: {
         userId: updatedUser.userId,
         name: updatedUser.name,
@@ -358,7 +367,10 @@ const updateCompanySettings = async (req, res) => {
     }
 
     // Validate address (basic check for non-empty string)
-    if (updateData.companySettings?.address && typeof updateData.companySettings.address !== 'string') {
+    if (
+      updateData.companySettings?.address &&
+      typeof updateData.companySettings.address !== "string"
+    ) {
       return res.status(400).json({ error: "Address must be a valid string" });
     }
 
@@ -375,8 +387,8 @@ const updateCompanySettings = async (req, res) => {
         $set: {
           invoiceSettings: updateData.invoiceSettings || {},
           name: updateData.companySettings.companyName,
-          contactPhone: updateData.companySettings.contactPhone || '',
-          address: updateData.companySettings.address || '',
+          contactPhone: updateData.companySettings.contactPhone || "",
+          address: updateData.companySettings.address || "",
           companyLogo: logoUrl,
         },
       },
@@ -399,10 +411,11 @@ const updateCompanySettings = async (req, res) => {
       invoiceSettings: updatedCompany.invoiceSettings,
     });
   } catch (error) {
-    res.status(500).json({ error: "Internal server error", details: error.message });
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 };
-
 
 // Get company by ID
 const getCompany = async (req, res) => {
@@ -410,7 +423,7 @@ const getCompany = async (req, res) => {
     const { id } = req.query;
     // console.log("the id from get company is : ", id, req.user.companyId)
     let company;
-    if (req.user.role === 'superAdmin') {
+    if (req.user.role === "superAdmin") {
       // console.log("eh id is : ", id)
       company = await IndexModel.Company.findOne({ _id: id });
     }
@@ -423,7 +436,7 @@ const getCompany = async (req, res) => {
     if (!company) {
       return res.status(404).json({
         success: false,
-        error: 'Company not found',
+        error: "Company not found",
       });
     }
 
@@ -434,7 +447,7 @@ const getCompany = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Server error while fetching company',
+      error: "Server error while fetching company",
       details: error.message,
     });
   }
@@ -443,7 +456,7 @@ const getCompany = async (req, res) => {
 // Get all company
 const getAllCompany = async (req, res) => {
   try {
-    if (req.user.role !== 'superAdmin') {
+    if (req.user.role !== "superAdmin") {
       return res.status(401).json({
         success: false,
         error: "Unauthorized: you cann't access it",
@@ -454,7 +467,7 @@ const getAllCompany = async (req, res) => {
     if (!company) {
       return res.status(404).json({
         success: false,
-        error: 'Company not available',
+        error: "Company not available",
       });
     }
 
@@ -465,7 +478,7 @@ const getAllCompany = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: 'Server error while fetching company',
+      error: "Server error while fetching company",
       details: error.message,
     });
   }
@@ -483,7 +496,7 @@ const active_inactiveCompany = async (req, res) => {
     });
 
     if (!company) {
-      return res.status(404).json({ message: 'Company not found' });
+      return res.status(404).json({ message: "Company not found" });
     }
 
     // 2. Toggle status
@@ -493,7 +506,7 @@ const active_inactiveCompany = async (req, res) => {
     // 3. Add to history
     company.history.push({
       action: `Set isActive to ${newStatus}`,
-      performedBy: userId || 'system',
+      performedBy: userId || "system",
       createdAt: new Date(),
     });
 
@@ -508,14 +521,14 @@ const active_inactiveCompany = async (req, res) => {
 
     return res.status(200).json({
       message: `Company ${
-        newStatus ? 'activated' : 'deactivated'
+        newStatus ? "activated" : "deactivated"
       } successfully, and all users updated.`,
       company,
     });
   } catch (error) {
-    console.error('Error toggling company active state:', error);
+    console.error("Error toggling company active state:", error);
     return res.status(500).json({
-      message: 'Failed to update company status',
+      message: "Failed to update company status",
       error: error.message,
     });
   }

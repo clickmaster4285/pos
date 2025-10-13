@@ -21,7 +21,6 @@ import {
   Briefcase,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
 } from 'lucide-react';
 
 const iconMap = {
@@ -106,73 +105,10 @@ function buildStaffLinks(user) {
     ? `/staff/${encodeURIComponent(subRoleLower)}`
     : '/staff';
 
-  // Always visible for staff
-  const links = [
-    {
-      href: `${staffBase}/dashboard`,
-      label: 'Dashboard',
-      icon: iconMap['Dashboard'],
-    },
-  ];
+  const links = [];
 
-  // Map permissions → links
-
-  if (hasPerm(user, 'managePlans')) {
-    links.push({
-      href: `${staffBase}/plans`,
-      label: 'Plans',
-      icon: iconMap['Plans'],
-    });
-  }
-
-  if (hasPerm(user, 'manageVendors')) {
-    links.push({
-      href: `${staffBase}/vendors`,
-      label: 'Vendors',
-      icon: iconMap['Vendors'],
-    });
-  }
-
-  if (hasPerm(user, 'manageInventory')) {
-    links.push({
-      href: `${staffBase}/inventory`,
-      label: 'Inventory',
-      icon: iconMap['Inventory'],
-    });
-  }
-
-  // Billing: show if any billing-related permission is true
-  if (
-    hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])
-  ) {
-    links.push({
-      href: `${staffBase}/billing`,
-      label: 'Billing',
-      icon: iconMap['Billing'],
-    });
-  }
-
-  if (hasPerm(user, 'viewReports')) {
-    links.push({
-      href: `${staffBase}/reports`,
-      label: 'Reports',
-      icon: iconMap['Reports'],
-    });
-  }
-
-  // Staff management (if they can see or manage staff)
-  if (
-    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
-  ) {
-    links.push({
-      href: `${staffBase}/staff`,
-      label: 'Staff',
-      icon: iconMap['Staff'],
-    });
-  }
-
-  // Orders (example: show if they can manageAppointments OR assignTasks; tweak as you like)
-  if (user?.subRole?.toLowerCase() === 'receptionist') {
+  // Role-based links for specific subRoles
+  if (subRoleLower === 'receptionist') {
     links.push({
       href: `${staffBase}/orders`,
       label: 'Orders',
@@ -180,9 +116,56 @@ function buildStaffLinks(user) {
     });
   }
 
-  // salary : show if any salary-related permission is true
-  if (
-    hasAny(user, [
+  // Permission-based links
+  if (hasAny(user, ['managePlans'])) {
+    links.push({
+      href: `${staffBase}/plans`,
+      label: 'Plans',
+      icon: iconMap['Plans'],
+    });
+  }
+
+  if (hasAny(user, ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors'])) {
+    links.push({
+      href: `${staffBase}/vendors`,
+      label: 'Vendors',
+      icon: iconMap['Vendors'],
+    });
+  }
+
+  if (hasAny(user, ['createInventory', 'updateInventory', 'deleteInventory', 'viewInventory'])) {
+    links.push({
+      href: `${staffBase}/inventory`,
+      label: 'Inventory',
+      icon: iconMap['Inventory'],
+    });
+  }
+
+  if (hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])) {
+    links.push({
+      href: `${staffBase}/billing`,
+      label: 'Billing',
+      icon: iconMap['Billing'],
+    });
+  }
+
+  if (hasAny(user, ['viewReports'])) {
+    links.push({
+      href: `${staffBase}/reports`,
+      label: 'Reports',
+      icon: iconMap['Reports'],
+    });
+  }
+
+  if (hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])) {
+    links.push({
+      href: `${staffBase}/staff`,
+      label: 'Staff',
+      icon: iconMap['Staff'],
+    });
+  }
+
+  if (hasAny(user, [
       'createPayment',
       'viewAllStaffSalaries',
       'updateSalary',
@@ -190,8 +173,7 @@ function buildStaffLinks(user) {
       'staffSummary',
       'viewActiveLog',
       'viewCompanySummary',
-    ])
-  ) {
+    ])) {
     links.push({
       href: `${staffBase}/staff-salaries`,
       label: 'Payments',
@@ -199,14 +181,23 @@ function buildStaffLinks(user) {
     });
   }
 
-  // Settings: show if they have *any* permission at all (or make your own rule)
+  // Settings: show if user has any relevant permission
   if (
     hasAny(user, [
       'manageVendors',
+      'createVendors',
+      'updateVendors',
+      'deleteVendors',
+      'viewVendors',
       'manageInventory',
+      'createInventory',
+      'updateInventory',
+      'deleteInventory',
+      'viewInventory',
       'addBilling',
       'editBilling',
       'deleteBilling',
+      'viewBilling',
       'viewReports',
       'viewallstaff',
       'staffCreate',
@@ -292,11 +283,6 @@ export default function Sidebar() {
         },
         { href: '/admin/billing', label: 'Billing', icon: iconMap['Billing'] },
         { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
-        // { href: '#', label: 'Customers', icon: iconMap['Customers'] },
-        // { href: '/admin/orders', label: 'Orders', icon: iconMap['Orders'] },
-        // { href: '#', label: 'Sumeries', icon: iconMap['Sumeries'] },
-        // { href: '#', label: 'Reports', icon: iconMap['Reports'] },
-        // { href: '#', label: 'Live Store', icon: iconMap['Live Store'] },
         {
           href: '/admin/attendance-devices',
           label: 'Attendance Devices Setting',
@@ -307,7 +293,6 @@ export default function Sidebar() {
           label: 'Manage Attendance',
           icon: iconMap['Attendance'],
         },
-
         {
           href: '/admin/staff-salaries',
           label: 'Staff Salaries',
@@ -320,7 +305,6 @@ export default function Sidebar() {
         },
       ],
       staff: buildStaffLinks(user),
-
       user: [
         { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
         { href: '#', label: 'Orders', icon: iconMap['Orders'] },
@@ -328,10 +312,17 @@ export default function Sidebar() {
       ],
       guest: [],
     };
-  }, [user?.subRole, user?.role]);
+  }, [user?.subRole, user?.role, user?.permissions]);
+
   const mainLinks = useMemo(() => {
     if (loading || !user?.role) return roleBasedLinks.guest;
-    return roleBasedLinks[user.role] || roleBasedLinks.guest;
+    // Restrict superAdmin links to superAdmin role only
+    if (user.role !== 'superAdmin' && roleBasedLinks[user.role]) {
+      return roleBasedLinks[user.role];
+    } else if (user.role === 'superAdmin') {
+      return roleBasedLinks.superAdmin;
+    }
+    return roleBasedLinks.guest;
   }, [user, loading, roleBasedLinks]);
 
   return (
@@ -343,24 +334,11 @@ export default function Sidebar() {
       {/* Header */}
       <div className="px-6 py-5 border-b border-sidebar-border/30">
         <div className="flex items-center justify-between">
-          {/* {!collapsed && ( */}
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent">
               AutoMotive
             </h1>
           </div>
-          {/* )} */}
-          {/* <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-lg hover:bg-primary/10 text-sidebar-foreground/70 hover:text-primary transition-all duration-200"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </button> */}
         </div>
       </div>
 
