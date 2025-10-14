@@ -13,6 +13,7 @@ import ActiveLog from './activeLog.route.js';
 import StaffSalary from './staffSalary.route.js';
 import Attendance from "./attendance.router.js";
 import AttendanceDevice from "./attendanceDevice.router.js";
+import PaymentGatway from "./PaymentGatway.route.js";
 
 const router = express.Router();
 
@@ -63,5 +64,6 @@ router.use('/activity', ActiveLog);
 router.use('/staff-salary', StaffSalary);
 router.use("/attendance-device", AttendanceDevice);
 router.use("/attendance", Attendance);
+router.use("/strip", PaymentGatway);
 
 export default router;

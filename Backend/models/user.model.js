@@ -100,6 +100,15 @@ const userSchema = new mongoose.Schema({
       type: Date,
     },
   },
+  subscription:[{
+    planId: { type: String }, 
+    status: { type: String, enum: ['active', 'inactive', 'canceled'], default: 'inactive' },
+    paymentIntentId: { type: String },
+    companyId: { type: String },
+    createdby: { type: String },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  }],
   history: [
     {
       action: {

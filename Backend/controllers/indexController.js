@@ -11,6 +11,7 @@ import ActiveLog from "./activeLog.controller.js";
 import StaffSalary from "./staffSalary.controller.js";
 import Attendance from './attendanceUser.controller.js';
 import AttendanceDevice from './attendanceDevice.controller.js';
+import PaymentGatway from './PaymentGatway.controller.js';
 
 export default {
   Company,
@@ -26,4 +27,5 @@ export default {
   StaffSalary,
     Attendance,
   AttendanceDevice,
+  PaymentGatway,
 };

@@ -17,6 +17,7 @@ import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import IndexModel from "./models/indexModel.js";
 import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
+import bodyParser from "body-parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,7 +44,11 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
+app.set("trust proxy", true);
+app.use(
+  "/api/strip/strip-webhook",
+  bodyParser.raw({ type: "application/json" })
+);
 app.use(helmet());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
