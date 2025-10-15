@@ -62,17 +62,23 @@ export default function Navbar({setErrorMessage}) {
     { id: 3, text: 'New feature available', time: '2 days ago', read: true },
   ];
 
-  const handleLogOut = async () => {
-    try {
-      await logout().unwrap();
-      setIsProfileOpen(false);
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      setErrorMessage('Logout failed. Please try again.');
-      toast.error('Logout failed. Please try again.');
-    }
-  };
+const handleLogOut = async () => {
+  try {
+    sessionStorage.removeItem('authUser'); 
+    await logout().unwrap();
+
+    // ✅ Remove the auth user session
+    sessionStorage.removeItem('authUser'); 
+
+    setIsProfileOpen(false);
+    router.push('/login');
+  } catch (error) {
+    console.error('Logout failed:', error);
+    setErrorMessage('Logout failed. Please try again.');
+    toast.error('Logout failed. Please try again.');
+  }
+};
+
 
   return (
     <nav className="w-full bg-background border-b border-gray-200">

@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useCreateCompanyMutation } from '@/features/CompanyApi';
 import { useGetAllPlansQuery } from '@/features/planApi';
 import { useRouter } from 'next/navigation';
+import PlanSelection from '@/components/PaymentGateWay/PlanSelection';
 
 export default function CompanyRegister({ setStep, setEmailForVerify }) {
-  const [companyStep, setCompanyStep] = useState('company'); // 'company' | 'admin'
+  const [companyStep, setCompanyStep] = useState('plan'); // 'plan' | 'company' | 'admin'
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [planId, setPlanId] = useState('');
@@ -16,17 +17,18 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
   const { data: plans = [], isLoading: isPlansLoading, error: plansError } = useGetAllPlansQuery();
   const router = useRouter();
 
+  // Handle Plan Selection
+  const handlePlanSelect = (selectedPlanId) => {
+    setPlanId(selectedPlanId);
+    setCompanyStep('company');
+  };
+
   // Handle Company Details Submission
   const handleCompanyDetailsSubmit = (e) => {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
-
-    if (!planId) {
-      alert('Please select a plan');
-      return;
-    }
 
     setCompanyData({
       name: data.companyName,
@@ -76,8 +78,31 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
   };
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full px-4">
       <div className="bg-gradient-to-br from-blue-50 via-orange-50 p-6 sm:p-8 rounded-lg shadow-sm">
+        {companyStep === 'plan' && (
+          <div className="max-w-6xl mx-3">
+            <PlanSelection
+              plans={plans}
+              selectedPlan={planId}
+              onPlanSelect={handlePlanSelect}
+              isLoading={isPlansLoading}
+            />
+            {plansError && (
+              <p className="text-red-500 text-sm mt-4">
+                Failed to load plans. Please try again.
+              </p>
+            )}
+            {/* <button
+              type="button"
+              onClick={() => router.push('/#pricing')}
+              className="w-full text-gray-600 hover:underline font-medium mt-4"
+            >
+              See All Plans
+            </button> */}
+          </div>
+        )}
+
         {companyStep === 'company' && (
           <>
             <div className="text-center md:text-left mb-6">
@@ -142,46 +167,20 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
                 />
               </div>
 
-              <div className="flex justify-between text-sm font-medium text-gray-700 mb-0">
-                <label className="">Plan</label>
-                <button
-                  type="button"
-                  onClick={() => router.push('/#pricing')}
-                  className="mb-1 hover:text-primary"
-                >
-                  See All Plans
-                </button>
-              </div>
-              <select
-                name="planId"
-                value={planId}
-                onChange={(e) => setPlanId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                required
-                disabled={isPlansLoading || !!plansError}
-              >
-                <option value="" disabled>
-                  {isPlansLoading ? 'Loading plans…' : 'Select a plan'}
-                </option>
-                {plans.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name} — ${p.price} / {p.validateDays}d
-                  </option>
-                ))}
-              </select>
-
-              {plansError && (
-                <p className="text-red-500 text-sm mt-1">
-                  Failed to load plans.
-                </p>
-              )}
-
               <button
                 type="submit"
                 className="w-full bg-blue-900 hover:bg-blue-950 text-white py-3 rounded-lg mt-4 disabled:opacity-60"
                 disabled={isCompanyLoading}
               >
                 Next
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCompanyStep('plan')}
+                className="w-full text-gray-600 hover:underline font-medium mt-2"
+              >
+                Go back to Plan Selection
               </button>
             </form>
           </>
@@ -227,7 +226,7 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Admin email
+                  Admin Email
                 </label>
                 <input
                   name="adminEmail"

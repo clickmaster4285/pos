@@ -31,14 +31,42 @@ const stripWebhook = async (req, res) => {
       const paymentIntent = event.data.object;
       console.log("✅ Payment succeeded:", paymentIntent.id);
       try {
+        console.log("the paymentIntent.metadata are: ", paymentIntent.metadata);
         const { userId, companyId, planId } = paymentIntent.metadata;
+
+        // Update user subscription
         await IndexModel.User.updateOne(
           { userId },
-          { $set: { subscription: { planId, status: 'active', paymentIntentId: paymentIntent.id } } }
+          {
+            $push: {
+              subscription: {
+                planId,
+                status: 'complete',
+                paymentIntentId: paymentIntent.id,
+                companyId,
+                createdby: userId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            },
+          }
         );
         console.log(`Updated subscription for user ${userId}`);
+
+        // Update company plan isActive status
+        await IndexModel.Company.updateOne(
+          { companyId, 'plan.planId': planId },
+          {
+            $set: {
+              'plan.$.isActive': true,
+              'plan.$.updatedAt': new Date(),
+              'plan.$.status': "in progress",
+            },
+          }
+        );
+        console.log(`Activated plan ${planId} for company ${companyId}`);
       } catch (error) {
-        console.error("❌ Error updating subscription:", error.message);
+        console.error("❌ Error updating subscription or company plan:", error.message);
       }
       break;
     case "payment_intent.payment_failed":

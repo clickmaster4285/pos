@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -41,32 +41,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white">
-      {/* Left Column (branding) */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-r from-orange-50 via-orange-50 flex-col items-center justify-center p-12">
-        <div className="text-center">
-          <h2 className="text-xl mb-4 text-gray-800">
-            Sign in to your Alpha AutoMotive account
-          </h2>
-          <p className="text-2xl font-bold text-amber-600">
-            Secure & Protected
-          </p>
-        </div>
-      </div>
-
-      {/* Right Column */}
-      <div className="w-full md:w-1/2 p-6 sm:p-8 flex items-center justify-center">
-        <div className="w-full max-w-xl">
+    <div className="w-screen h-screen flex justify-center item-center">
+      <div className="">
+        <div className="w-full">
           {step === 'register' && (
             <>
-              <div className="text-center md:text-left mb-6">
+              <div className="text-center mb-6">
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
                   Create Account
                 </h2>
                 <p className="text-gray-600">
                   Choose the type of account you want to create
                 </p>
-                <div className="flex justify-center gap-4 mt-4">
+                <div className="space-x-5 mt-4">
                   <button
                     onClick={() => setRegisterType('company')}
                     className={`px-4 py-2 rounded-lg ${registerType === 'company' ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-800'}`}
@@ -174,7 +161,7 @@ export default function RegisterPage() {
           )}
 
           {step === 'verified' && (
-            <div className="bg-gradient-to-br from-blue-50 via-orange-50 p-6 sm:p-8 rounded-lg shadow-sm">
+            <div className="bg-gradient-to-br from-blue-50 via-orange-50 p-6 sm:p-8 rounded-lg shadow-sm mt-10">
               <div className="text-center space-y-4 py-6">
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
                   Email verified 🎉

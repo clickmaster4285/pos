@@ -90,6 +90,18 @@ export const planApi = createApi({
         { type: 'Plans', id: 'LIST' },
       ],
     }),
+
+    changePlan: builder.mutation({
+      query: (body) => ({
+        url: `/change-your-plan`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (r, e, { changingPlanId }) => [
+        { type: 'Plans', id: changingPlanId },
+        { type: 'Plans', id: 'LIST' },
+      ],
+    }),
   }),
 });
 
@@ -98,4 +110,5 @@ export const {
   useCreatePlanMutation,
   useUpdatePlanMutation,
   useDeletePlanMutation,
+  useChangePlanMutation,
 } = planApi;

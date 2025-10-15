@@ -102,7 +102,7 @@ const userSchema = new mongoose.Schema({
   },
   subscription:[{
     planId: { type: String }, 
-    status: { type: String, enum: ['active', 'inactive', 'canceled'], default: 'inactive' },
+    status: { type: String, enum: ['complete', 'cancelled', 'pending'], default: 'pending' },
     paymentIntentId: { type: String },
     companyId: { type: String },
     createdby: { type: String },

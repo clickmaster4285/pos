@@ -19,7 +19,7 @@ const router = express.Router();
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
@@ -33,7 +33,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 50,
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.',

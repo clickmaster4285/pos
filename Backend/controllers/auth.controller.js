@@ -64,19 +64,19 @@ const login = async (req, res, next) => {
         message: "User or company is deactivated",
       });
     }
-    if (user.status?.isaccepted === "pending") {
-      return res.status(401).json({
-        success: false,
-        message: "User approval is still pending",
-      });
-    }
+    // if (user.status?.isaccepted === "pending") {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: "User approval is still pending",
+    //   });
+    // }
 
-    if (user.status?.isaccepted === "false") {
-      return res.status(401).json({
-        success: false,
-        message: `User was rejected by ${user.status?.performedBy}`,
-      });
-    }
+    // if (user.status?.isaccepted === "false") {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: `User was rejected by ${user.status?.performedBy}`,
+    //   });
+    // }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -102,6 +102,7 @@ const login = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
+          subscription: user.subscription,
           isActive: user.isActive,
         },
         token: accessToken,

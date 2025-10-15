@@ -1,137 +1,148 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useCreatePaymentIntentMutation } from '@/features/paymentGatewayApi';
-import { useGetAllPlansQuery } from '@/features/planApi';
+import { useState, useEffect, useContext } from 'react';
+import { useGetAllPlansQuery, useChangePlanMutation } from '@/features/planApi';
+import PlanSelection from './PlanSelection';
+import PaymentForm from './PaymentForm';
+import { useGetCompanyQuery } from '@/features/CompanyApi';
+import { AuthContext } from '@/components/auth/SecureAuthProvider';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+export default function PaymentGateway() {
+  const [isSelectingPlan, setIsSelectingPlan] = useState(false);
+  const { data: plans = [], isLoading: isPlansLoading, error: plansError } = useGetAllPlansQuery();
+  const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
+  const { user } = useContext(AuthContext);
+  const [changePlan, { isLoading: isChangingPlan }] = useChangePlanMutation();
 
-function CheckoutForm({ priceId, planName }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [createPaymentIntent, { isLoading }] = useCreatePaymentIntentMutation();
+  // Get the latest plan, sorted by updatedAt
+  const lastSelectedPlan = mycompany?.data?.plan
+    ?.find((plan) => plan.status === "not started");
+  const [selectedPlan, setSelectedPlan] = useState(lastSelectedPlan?._id || '');
+  const [selectedPlanId, setSelectedPlanId] = useState(lastSelectedPlan?.planId || '');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const selectedPlanData = plans?.find((p) => p._id === selectedPlan);
+  const companyData = mycompany?.data;
+  const isCurrentPlanActive = companyData?.plan?.[0]?.isActive;
 
-    if (!stripe || !elements || !priceId) {
-      console.log(`({
+  // Log errors for debugging
+  useEffect(() => {
+    if (plansError) {
+      console.log({
         title: 'Error',
-        description: 'Please select a plan and ensure payment is ready',
+        description: 'Failed to load plans',
         variant: 'destructive',
-      })`);
-      return;
-    }
-
-    try {
-      const response = await createPaymentIntent({ priceId, currency:"PKR" }).unwrap();
-      const { clientSecret } = response;
-
-      const result = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-        },
       });
+    }
+  }, [plansError]);
 
-      if (result.error) {
-        console.log(`({
-          title: 'Payment Error',
-          description: result.error.message,
-          variant: 'destructive',
-        })`);
-      } else if (result.paymentIntent.status === 'succeeded') {
-        console.log(`({
-          title: 'Success',
-          description: 'Payment completed successfully!',
-        })`);
+  // Auto-select the company's current plan if active
+  useEffect(() => {
+    if (
+      !companyLoading &&
+      companyData?.plan?.[0]?.isActive &&
+      !selectedPlan &&
+      !isSelectingPlan
+    ) {
+      setSelectedPlan(companyData.plan[0]._id);
+      setSelectedPlanId(companyData.plan[0].planId);
+      setIsSelectingPlan(false);
+    }
+  }, [companyData, companyLoading, selectedPlan, isSelectingPlan]);
+
+  const handlePlanSelect = async (planId) => {
+    const newPlan = plans.find((p) => p._id === planId);
+    if (newPlan && lastSelectedPlan && planId !== lastSelectedPlan._id && !isCurrentPlanActive) {
+      try {
+        const response = await changePlan({
+          changingPlanId: lastSelectedPlan._id,
+          newPlanId: planId,
+        }).unwrap();
+        const newCompanyPlan = response.updatedPlans.find((p) => p._id === planId);
+        setSelectedPlanId(newCompanyPlan.planId);
+        console.log('Plan changed successfully:', response);
+      } catch (error) {
+        console.error('Failed to change plan:', error);
       }
-    } catch (error) {
-      console.log(`({
-        title: 'Payment Error',
-        description: error.data?.error || 'Failed to process payment',
-        variant: 'destructive',
-      })`);
+    }
+    setSelectedPlan(planId);
+    setIsSelectingPlan(false);
+  };
+
+  const handleBackToPlans = () => {
+    if (!isCurrentPlanActive) {
+      setSelectedPlan('');
+      setSelectedPlanId('');
+      setIsSelectingPlan(true);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium">Card Details</label>
-        <div className="border rounded-md p-3">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': { color: '#aab7c4' },
-                },
-                invalid: { color: '#9e2146' },
-              },
-            }}
-          />
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12">
+      <div className="container mx-auto px-6 max-w-5xl">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+            Manage Your Subscription Plan
+          </h1>
+          {companyData?.plan?.[0]?.name && (
+            <p className="text-lg text-gray-600 mt-3">
+              Current Plan: <span className="font-semibold">{companyData.plan[0].name}</span>
+              {isCurrentPlanActive && (
+                <span className="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  Active
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+        {isCurrentPlanActive && (
+          <Alert className="mb-8">
+            <AlertDescription>
+              Your current plan is active. To change plans, please wait until the current plan expires or contact support.
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {isSelectingPlan && !isCurrentPlanActive && (
+            <div className="space-y-6">
+              <PlanSelection
+                plans={plans}
+                selectedPlan={selectedPlan}
+                onPlanSelect={handlePlanSelect}
+                isLoading={isPlansLoading}
+              />
+            </div>
+          )}
+          <div className="space-y-6">
+            {!isCurrentPlanActive && (
+              <Button
+                onClick={handleBackToPlans}
+                className="w-full sm:w-auto bg-gray-700 text-white hover:bg-gray-800 transition-colors"
+                disabled={isPlansLoading || companyLoading || isCurrentPlanActive || isChangingPlan}
+              >
+                Select Another Plan
+              </Button>
+            )}
+            <PaymentForm
+              priceId={selectedPlan}
+              plan={selectedPlanData}
+              isLoading={isPlansLoading || isChangingPlan}
+              isSelectingPlan={isSelectingPlan}
+              currentPlanId={selectedPlanId}
+              isPlanChanged={selectedPlan !== lastSelectedPlan?._id}
+            />
+          </div>
+        </div>
+        <div className="mt-12 text-center text-gray-600">
+          <p className="text-sm">
+            Need help choosing a plan?{' '}
+            <a href="/contact" className="text-blue-600 hover:underline font-medium">
+              Contact our sales team
+            </a>
+          </p>
         </div>
       </div>
-      <Button type="submit" disabled={!stripe || isLoading || !priceId} className="w-full">
-        {isLoading ? 'Processing...' : `Pay for ${planName || 'Plan'}`}
-      </Button>
-    </form>
-  );
-}
-
-export default function PaymentGateWay() {
-  const [selectedPlan, setSelectedPlan] = useState('');
-  const { data: plans = [], isLoading: isPlansLoading, error: plansError } = useGetAllPlansQuery();
-
-  useEffect(() => {
-    if (plansError) {
-      console.log(`
-        title: 'Error',
-        description: 'Failed to load plans',
-        variant: 'destructive',
-      `);
-    }
-  }, [plansError]);
-
-  return (
-    <div className="container mx-auto p-4">
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Subscribe to a Plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium">Select Plan</label>
-              <Select onValueChange={setSelectedPlan} value={selectedPlan}>
-                <SelectTrigger>
-                  <SelectValue placeholder={isPlansLoading ? 'Loading plans...' : 'Choose a plan'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans?.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name} - {plan.amount} {plan.currency} / {plan.interval}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Elements stripe={stripePromise}>
-              <CheckoutForm
-                priceId={selectedPlan}
-                planName={plans?.find((p) => p.id === selectedPlan)?.name}
-              />
-            </Elements>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

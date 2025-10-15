@@ -83,7 +83,6 @@ const handleSubmit = async (e) => {
     // Persist auth (so Sidebar can read role & subRole later)
     try {
       sessionStorage.setItem('authUser', JSON.stringify(user));
-      localStorage.setItem('authUser', JSON.stringify(user)); // optional fallback
       // If you also use a token cookie:
       setCookie('authToken', token, { sameSite: 'lax' });
     } catch {}

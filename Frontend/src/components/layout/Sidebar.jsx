@@ -82,12 +82,6 @@ const getAuthState = () => {
       return JSON.parse(authState);
     }
 
-    // Alternative: check localStorage if sessionStorage doesn't have it
-    const localAuthState = localStorage.getItem('authUser');
-    if (localAuthState) {
-      return JSON.parse(localAuthState);
-    }
-
     return null;
   } catch (error) {
     console.error('Error reading auth state:', error);

@@ -6,6 +6,7 @@ import { generateOTP } from "../utils/generate_verifyOTP.js";
 import bcrypt from "bcrypt";
 import { upload } from "../config/multer.js";
 import path from "path";
+import {generatePlanId} from "../utils/generatePlanIdPurchased.js"
 
 const createCompany = async (req, res) => {
   try {
@@ -58,7 +59,10 @@ const createCompany = async (req, res) => {
       contactPhone: company.contactPhone,
       address: company.address,
       plan: {
+        planId: await generatePlanId(companyId, userId),
+        status: "not started",
         ...availablePlan,
+        isActive: availablePlan.price === 0,
       },
       history: [
         {
@@ -421,18 +425,17 @@ const updateCompanySettings = async (req, res) => {
 const getCompany = async (req, res) => {
   try {
     const { id } = req.query;
-    // console.log("the id from get company is : ", id, req.user.companyId)
     let company;
     if (req.user.role === "superAdmin") {
       // console.log("eh id is : ", id)
       company = await IndexModel.Company.findOne({ _id: id });
     }
+    
     company = await IndexModel.Company.findOne({
       companyId: req.user.companyId,
       deleted: false,
-      isActive: true,
     });
-
+    
     if (!company) {
       return res.status(404).json({
         success: false,

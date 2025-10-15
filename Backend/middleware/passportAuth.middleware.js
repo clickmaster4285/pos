@@ -24,32 +24,8 @@ passport.use(
       if (!user) {
         return done(null, false, { message: "User not found" });
       }
-
-      // If superAdmin, skip all checks
-      if (user.role === "superAdmin") {
-        return done(null, user);
-      }
-
-      
-      // Check if any plan is active for this module
-      // For all other roles → check status
-      if (user.status?.isaccepted === "pending") {
-        return done(null, false, { message: "User approval is still pending" });
-      }
-      
-      if (user.status?.isaccepted === "false") {
-        return done(null, false, {
-          message: `User was rejected by ${user.status?.performedBy}`,
-        });
-      }
-      
-      if (user.status?.isaccepted === "true") {
-        return done(null, user);
-      }
-      
-      // Catch-all fallback
-      return done(null, false, { message: "Invalid user status" });
-    } catch (error) {
+      return done(null, user);
+      } catch (error) {
       return done(error, false, { message: "Error during authentication" });
     }
   })

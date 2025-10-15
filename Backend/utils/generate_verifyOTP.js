@@ -72,7 +72,7 @@ export const verifyOTP = async (req, res) => {
         performedBy: user.userId,
         performedAt: new Date(),
       });
-
+      company.isActive = true
       await company.save();
     }
 

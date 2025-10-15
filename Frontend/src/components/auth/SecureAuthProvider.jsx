@@ -79,7 +79,7 @@ export default function SecureAuthProvider({ children }) {
 
   useEffect(() => {
     if (isAuthenticated && isPublicRoute(pathname)) {
-      console.log("the user are siginging: ", user)
+      // console.log("the user are siginging: ", user)
       const dashboardPath = getDashboardPath(user?.role, user?.subRole);
       router.push(dashboardPath);
     }
