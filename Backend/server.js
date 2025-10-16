@@ -138,6 +138,7 @@ server.listen(PORT, HOST, () => {
   startRealTimeListeners();
 });
 
+//unverified remove admin + there company
 cron.schedule("* * * * *", async () => {
   try {
     const now = Date.now();
@@ -161,6 +162,7 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
+//status update of plan according to there validation days
 cron.schedule("* * * * *", async () => {
   try {
     const now = Date.now();
@@ -198,6 +200,8 @@ cron.schedule("* * * * *", async () => {
   }
 });
 
+
+// unverified remove random user
 cron.schedule("* * * * *", async () => {
   try {
     const now = Date.now();

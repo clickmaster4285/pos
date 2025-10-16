@@ -1,15 +1,16 @@
 import IndexModel from '../models/indexModel.js';
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: process.env.STRIPE_APIVERSION,
-});
 
 const createPaymentIntent = async (req, res) => {
   try {
     const { userId, companyId, email } = req.user;
     const { priceId, currency, planId } = req.body;
-
+      const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
+    
+    const stripe = new Stripe(adminUser.stripeConfig.secretKey, {
+      apiVersion: process.env.STRIPE_APIVERSION,
+    });
     if (!priceId || !planId) {
       return res.status(400).json({ error: "Price ID and Plan ID are required" });
     }
@@ -48,6 +49,35 @@ const createPaymentIntent = async (req, res) => {
   }
 };
 
+
+const getstrippublishkey = async (req, res) => {
+  try {
+      const strippublishkey = await IndexModel.User.findOne({
+        role: "superAdmin",
+        deleted: false,
+      });
+      
+      if (!strippublishkey.stripeConfig.publishableKey) {
+        return res.status(404).json({
+          success: false,
+          error: "publishableKey not found",
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        data: strippublishkey.stripeConfig.publishableKey,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Server error while fetching company",
+        details: error.message,
+      });
+    }
+}
+
 export default {
   createPaymentIntent,
+  getstrippublishkey
 };

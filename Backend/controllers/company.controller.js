@@ -131,7 +131,7 @@ const createCompany = async (req, res) => {
     // Generate OTP
     const { otp, hashedOTP } = await generateOTP();
     adminUser.verificationOTP = hashedOTP;
-    adminUser.verificationExpiry = Date.now() + 1 * 60 * 1000; // 1 minute
+    adminUser.verificationExpiry = Date.now() + 60 * 1000; // 1 minute
 
     try {
       // Try to save admin
@@ -427,7 +427,6 @@ const getCompany = async (req, res) => {
     const { id } = req.query;
     let company;
     if (req.user.role === "superAdmin") {
-      // console.log("eh id is : ", id)
       company = await IndexModel.Company.findOne({ _id: id });
     }
     
@@ -536,6 +535,8 @@ const active_inactiveCompany = async (req, res) => {
     });
   }
 };
+
+
 
 export default {
   createCompany,

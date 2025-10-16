@@ -369,6 +369,7 @@ const listPayments = async (req, res) => {
       deleted: false,
       verified: true,
       role: 'staff', // exclude superAdmin users
+      companyId: req.user.companyId
     }).lean();
 
     if (!users || users.length === 0) {

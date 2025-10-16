@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function PaymentGateway() {
   const [isSelectingPlan, setIsSelectingPlan] = useState(false);
-  const { data: plans = [], isLoading: isPlansLoading, error: plansError } = useGetAllPlansQuery();
-
-  const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
-  // console.log("teh mycompanymycompanymycompany: ",mycompany)
+  const [isPlanChanged, setIsPlanChanged] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  
+  const { data: plans = [], isLoading: isPlansLoading, error: plansError, refetch: refetchPlans } = useGetAllPlansQuery();
+  const { data: mycompany, isLoading: companyLoading, refetch: refetchCompany } = useGetCompanyQuery();
+  
   const { user } = useContext(AuthContext);
   const [changePlan, { isLoading: isChangingPlan }] = useChangePlanMutation();
 
@@ -53,22 +55,42 @@ export default function PaymentGateway() {
     }
   }, [companyData, companyLoading, selectedPlan, isSelectingPlan]);
 
+  // Refresh data when payment is completed
+  useEffect(() => {
+    if (paymentCompleted) {
+      // Refresh the page after 2 seconds to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  }, [paymentCompleted]);
+
   const handlePlanSelect = async (planId) => {
     const newPlan = plans.find((p) => p._id === planId);
+    
     if (newPlan && lastSelectedPlan && planId !== lastSelectedPlan._id && !isCurrentPlanActive) {
       try {
         const response = await changePlan({
           changingPlanId: lastSelectedPlan._id,
           newPlanId: planId,
         }).unwrap();
+        
         const newCompanyPlan = response.updatedPlans.find((p) => p._id === planId);
         setSelectedPlanId(newCompanyPlan.planId);
+        setIsPlanChanged(true);
         console.log('Plan changed successfully:', response);
+        
+        // Refresh plans and company data
+        await refetchPlans();
+        await refetchCompany();
+        
       } catch (error) {
         console.error('Failed to change plan:', error);
       }
+    } else {
+      setSelectedPlan(planId);
     }
-    setSelectedPlan(planId);
+    
     setIsSelectingPlan(false);
   };
 
@@ -77,7 +99,12 @@ export default function PaymentGateway() {
       setSelectedPlan('');
       setSelectedPlanId('');
       setIsSelectingPlan(true);
+      setIsPlanChanged(false);
     }
+  };
+
+  const handlePaymentComplete = () => {
+    setPaymentCompleted(true);
   };
 
   return (
@@ -98,13 +125,23 @@ export default function PaymentGateway() {
             </p>
           )}
         </div>
-        {isCurrentPlanActive && (
+        
+        {paymentCompleted && (
+          <Alert className="mb-8 bg-green-50 border-green-200">
+            <AlertDescription className="text-green-700">
+              Payment completed successfully! Refreshing page...
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isCurrentPlanActive && !paymentCompleted && (
           <Alert className="mb-8">
             <AlertDescription>
               Your current plan is active. To change plans, please wait until the current plan expires or contact support.
             </AlertDescription>
           </Alert>
         )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {isSelectingPlan && !isCurrentPlanActive && (
             <div className="space-y-6">
@@ -113,11 +150,12 @@ export default function PaymentGateway() {
                 selectedPlan={selectedPlan}
                 onPlanSelect={handlePlanSelect}
                 isLoading={isPlansLoading}
+                isChangingPlan={isChangingPlan}
               />
             </div>
           )}
           <div className="space-y-6">
-            {!isCurrentPlanActive && (
+            {!isCurrentPlanActive && !isSelectingPlan && (
               <Button
                 onClick={handleBackToPlans}
                 className="w-full sm:w-auto bg-gray-700 text-white hover:bg-gray-800 transition-colors"
@@ -132,7 +170,8 @@ export default function PaymentGateway() {
               isLoading={isPlansLoading || isChangingPlan}
               isSelectingPlan={isSelectingPlan}
               currentPlanId={selectedPlanId}
-              isPlanChanged={selectedPlan !== lastSelectedPlan?._id}
+              isPlanChanged={isPlanChanged}
+              onPaymentComplete={handlePaymentComplete}
             />
           </div>
         </div>

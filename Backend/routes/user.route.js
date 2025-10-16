@@ -1,5 +1,6 @@
 import express from 'express';
 import passport from '../middleware/passportAuth.middleware.js';
+import {addStripeConfig} from '../config/superAdminConfig.js';
 import Indexcontroller from '../controllers/indexController.js';
 import {
   checkplan,
@@ -67,5 +68,11 @@ router.patch(
   '/active_inactive-user/:id',
   passport.authenticate('jwt', { session: false }),
   Indexcontroller.User.active_inactiveUser
+);
+
+router.put(
+  '/add-strip-configuration',
+  passport.authenticate('jwt', { session: false }),
+  addStripeConfig
 );
 export default router;

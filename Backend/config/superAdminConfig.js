@@ -49,4 +49,48 @@ const createSuperAdmin = async () => {
   }
 };
 
+export const addStripeConfig = async (req, res) => {
+  // console.log("➡ addStripeConfig triggered");
+  try {
+    const { userId, role } = req.user;
+    const { publishableKey, secretKey, webhookSigningSecret } = req.body;
+
+    // ✅ Allow only superAdmin
+    if (role !== "superAdmin") {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized — only super admins can add or update the Stripe configuration" });
+    }
+
+    // Find the user (superAdmin)
+    const user = await IndexModel.User.findOne({
+      userId,
+      deleted: false,
+      isActive: true,
+      role: "superAdmin",
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Super admin user not found" });
+    }
+    // Add or update the stripeConfig field
+    user.stripeConfig = {
+      publishableKey,
+      secretKey,
+      webhookSigningSecret,
+    };
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "✅ Stripe configuration added successfully",
+      stripeConfig: user.stripeConfig,
+    });
+  } catch (error) {
+    console.error("❌ Error adding Stripe config:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
 export default createSuperAdmin;

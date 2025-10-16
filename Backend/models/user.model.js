@@ -100,7 +100,11 @@ const userSchema = new mongoose.Schema({
       type: Date,
     },
   },
-  
+  stripeConfig:{
+    publishableKey: String,
+    secretKeysecretKey: String,
+    webhookSigningSecret: String,
+  },
   history: [
     {
       action: {

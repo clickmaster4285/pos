@@ -10,6 +10,7 @@ export default function PlanSelection({
   selectedPlan,
   onPlanSelect,
   isLoading,
+  isChangingPlan,
 }) {
   if (isLoading) {
     return (
@@ -60,8 +61,8 @@ export default function PlanSelection({
               selectedPlan === plan._id
                 ? "ring-2 ring-blue-500 border-blue-500 shadow-lg"
                 : "hover:shadow-md hover:border-gray-300"
-            }`}
-            onClick={() => onPlanSelect(plan._id)}
+            } ${isChangingPlan ? "opacity-50 pointer-events-none" : ""}`}
+            onClick={() => !isChangingPlan && onPlanSelect(plan._id)}
           >
             {index === 0 && (
               <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
@@ -112,10 +113,20 @@ export default function PlanSelection({
                   selectedPlan === plan._id
                     ? "bg-blue-600 hover:bg-blue-700"
                     : "bg-blue-900 hover:bg-blue-800"
-                }`}
+                } ${isChangingPlan ? "opacity-50 cursor-not-allowed" : ""}`}
                 variant={selectedPlan === plan._id ? "default" : "outline"}
+                disabled={isChangingPlan}
               >
-                {selectedPlan === plan._id ? "Selected" : "Select Plan"}
+                {isChangingPlan ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Changing...
+                  </div>
+                ) : selectedPlan === plan._id ? (
+                  "Selected"
+                ) : (
+                  "Select Plan"
+                )}
               </Button>
             </CardContent>
           </Card>

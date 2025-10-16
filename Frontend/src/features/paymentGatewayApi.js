@@ -7,7 +7,7 @@ const API_URL = (
 export const paymentGatewayApi = createApi({
   reducerPath: 'paymentGatewayApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: `${API_URL}/api/strip`,
+    baseUrl: `${API_URL}/api`,
         prepareHeaders: (headers, { getState }) => {
       const token =
         getState()?.auth?.token ||
@@ -23,12 +23,25 @@ export const paymentGatewayApi = createApi({
   endpoints: (builder) => ({
     createPaymentIntent: builder.mutation({
       query: (body) => ({
-        url: '/create-payment-intent',
+        url: '/strip/create-payment-intent',
         method: 'POST',
         body,
+      }),
+    }),
+    stripConfiguration: builder.mutation({
+      query: (body) => ({
+        url: '/user/add-strip-configuration',
+        method: 'PUT',
+        body,
+      }),
+    }),
+    getStripPublishKey: builder.query({
+      query: () => ({
+        url: "/strip/get-strip-publishkey",
+        method: "GET",
       }),
     }),
   }),
 });
 
-export const { useCreatePaymentIntentMutation } = paymentGatewayApi;
+export const { useCreatePaymentIntentMutation, useStripConfigurationMutation, useGetStripPublishKeyQuery} = paymentGatewayApi;

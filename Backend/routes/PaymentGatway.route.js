@@ -18,7 +18,11 @@ router.post(
   Indexcontroller.PaymentGatway.createPaymentIntent
 );
 
-
+router.get(
+  '/get-strip-publishkey',
+  passport.authenticate("jwt", { session: false }),
+  Indexcontroller.PaymentGatway.getstrippublishkey
+);
 
 
 export default router;

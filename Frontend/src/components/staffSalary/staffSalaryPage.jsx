@@ -201,16 +201,7 @@ export function StaffSalaryPage() {
   const viewCompanySummaryPermission = user?.permissions?.staffUpdate;
 
   if (isLoading) return <main className="p-6 md:p-8 lg:p-12">Loading…</main>;
-  if (error) {
-    return (
-      <main className="p-6 md:p-8 lg:p-12">
-        <div className="mb-3">Failed to load staff.</div>
-        <Button size="sm" onClick={() => refetch()}>
-          Retry
-        </Button>
-      </main>
-    );
-  }
+
 
   return (
     <main className="min-h-screen bg-background p-6 mt-6">

@@ -1,12 +1,13 @@
 import Stripe from "stripe";
 import IndexModel from '../models/indexModel.js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
 
 const stripWebhook = async (req, res) => {
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
+  const stripe = new Stripe(adminUser.stripeConfig.secretKey, {
+    apiVersion: "2023-10-16",
+  });
+  const endpointSecret = adminUser.stripeConfig.webhookSigningSecret;
   const sig = req.headers["stripe-signature"];
 
   if (!endpointSecret) {
