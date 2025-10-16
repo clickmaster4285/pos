@@ -32,7 +32,7 @@ export default function Layout({ children }) {
     
     const activePlan = mycompany?.data?.plan?.find(plan => plan?.isActive === true);
     let authorized = false;
-        const userSub = user.subscription.find(
+        const userSub = mycompany?.data?.subscription.find(
           s =>
             s.planId === activePlan?.planId &&
             s.companyId === user.companyId &&

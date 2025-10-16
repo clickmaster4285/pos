@@ -89,7 +89,6 @@ const login = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
-          subscription: user.subscription,
           isActive: user.isActive,
         },
         token: accessToken,
@@ -160,7 +159,7 @@ const logout = async (req, res, next) => {
 const getme = async (req, res, next) => {
   try {
     const user = await User.findOne({ userId: req.user.userId }).select(
-      "userId name email companyId role subRole department permissions isActive subscription"
+      "userId name email companyId role subRole department permissions isActive"
     );
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
@@ -178,7 +177,6 @@ const getme = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
-          subscription: user.subscription,
           isActive: user.isActive,
         },
       },
@@ -226,7 +224,6 @@ const refreshToken = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
-          subscription: user.subscription,
           isActive: user.isActive,
         },
       },

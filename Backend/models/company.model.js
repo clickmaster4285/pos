@@ -43,6 +43,21 @@ const CompanySchema = new Schema(
       trim: true,
     },
     plan: { type: [Schema.Types.Mixed], default: [] },
+    subscription: [
+      {
+        planId: { type: String },
+        status: {
+          type: String,
+          enum: ["complete", "cancelled", "pending"],
+          default: "pending",
+        },
+        paymentIntentId: { type: String },
+        companyId: { type: String },
+        createdby: { type: String },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
     owner: {
       type: String,
       // ref: 'User',
@@ -83,9 +98,9 @@ const CompanySchema = new Schema(
         fontSize: { type: Number, default: 12 },
         showLogo: { type: Boolean, default: true },
       },
-      terms:{
+      terms: {
         type: String,
-      }
+      },
     },
     isActive: {
       type: Boolean,

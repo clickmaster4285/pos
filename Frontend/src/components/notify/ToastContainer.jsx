@@ -20,25 +20,25 @@ export function ToastContainer() {
   });
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col space-y-4 w-96">
-      {transitions((style, toast) => (
-        <animated.div style={style}>
-          <ToastNotification
-            key={toast.id}
-            isVisible={true}
-            type={toast.type}
-            title={toast.title}
-            description={toast.description}
-            status={toast.status}
-            bgColor={toast.bgColor}
-            textColor={toast.textColor}
-            icon={toast.icon} // Now a string like "check-circle" or "alert-circle"
-            actions={toast.actions}
-            onClose={() => dispatch(removeToast(toast.id || toasts.indexOf(toast)))}
-            duration={toast.duration || 5000}
-          />
-        </animated.div>
-      ))}
-    </div>
+<div className="fixed top-4 right-4 z-[99999] flex flex-col space-y-4 w-96 pointer-events-none">
+  {transitions((style, toast) => (
+    <animated.div style={style} className="pointer-events-auto">
+      <ToastNotification
+        key={toast.id}
+        isVisible={true}
+        type={toast.type}
+        title={toast.title}
+        description={toast.description}
+        status={toast.status}
+        bgColor={toast.bgColor}
+        textColor={toast.textColor}
+        icon={toast.icon}
+        actions={toast.actions}
+        onClose={() => dispatch(removeToast(toast.id || toasts.indexOf(toast)))}
+        duration={toast.duration || 5000}
+      />
+    </animated.div>
+  ))}
+</div>
   );
 }
