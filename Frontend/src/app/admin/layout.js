@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useContext } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
@@ -17,7 +17,7 @@ export default function Layout({ children }) {
   const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
 
   const allowedRole = pathname.startsWith('/admin') ? 'admin' : 'superadmin';
-
+  
   // ✅ Role-based redirect
   useEffect(() => {
     if (!isLoading && isAuthenticated && user?.role?.toLowerCase() !== allowedRole) {
@@ -26,33 +26,30 @@ export default function Layout({ children }) {
     }
   }, [isLoading, isAuthenticated, user, pathname, logout, router, allowedRole]);
 
-  // ✅ Authorization logic in useEffect
+  // ✅ Authorization logic
+  useEffect(() => {
     if (!mycompany || !user) return;
-
+    
     const activePlan = mycompany?.data?.plan?.find(plan => plan?.isActive === true);
     let authorized = false;
-const userSub = Array.isArray(user.subscription)
-      ? user.subscription.find(
+        const userSub = user.subscription.find(
           s =>
-            s.planId === activePlan.planId &&
+            s.planId === activePlan?.planId &&
             s.companyId === user.companyId &&
             s.status?.toLowerCase() === 'complete'
         )
-      : null;
-
+      
     if (activePlan?.isActive === true) {
       if (activePlan.price === 0) {
         authorized = true;
-      } else if (
-        user?.subscription &&
-        userSub && 
-        activePlan.status === "in progress"
-      ) {
+      } else if (userSub && activePlan.status === 'in progress') {
         authorized = true;
       }
     }
 
     setIsAuthorized(authorized);
+  }, [mycompany, user]);
+
   if (isLoading || companyLoading) return <div>Loading...</div>;
   if (!isAuthenticated || user?.role?.toLowerCase() !== allowedRole) return null;
 

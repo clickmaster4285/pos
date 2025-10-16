@@ -12,7 +12,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 export default function PaymentGateway() {
   const [isSelectingPlan, setIsSelectingPlan] = useState(false);
   const { data: plans = [], isLoading: isPlansLoading, error: plansError } = useGetAllPlansQuery();
+
   const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
+  // console.log("teh mycompanymycompanymycompany: ",mycompany)
   const { user } = useContext(AuthContext);
   const [changePlan, { isLoading: isChangingPlan }] = useChangePlanMutation();
 

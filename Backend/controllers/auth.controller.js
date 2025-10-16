@@ -64,19 +64,6 @@ const login = async (req, res, next) => {
         message: "User or company is deactivated",
       });
     }
-    // if (user.status?.isaccepted === "pending") {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: "User approval is still pending",
-    //   });
-    // }
-
-    // if (user.status?.isaccepted === "false") {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: `User was rejected by ${user.status?.performedBy}`,
-    //   });
-    // }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -173,7 +160,7 @@ const logout = async (req, res, next) => {
 const getme = async (req, res, next) => {
   try {
     const user = await User.findOne({ userId: req.user.userId }).select(
-      "userId name email companyId role subRole department permissions isActive"
+      "userId name email companyId role subRole department permissions isActive subscription"
     );
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
@@ -191,6 +178,7 @@ const getme = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
+          subscription: user.subscription,
           isActive: user.isActive,
         },
       },
@@ -238,6 +226,7 @@ const refreshToken = async (req, res, next) => {
           subRole: user.subRole,
           department: user.department,
           permissions: user.permissions,
+          subscription: user.subscription,
           isActive: user.isActive,
         },
       },
