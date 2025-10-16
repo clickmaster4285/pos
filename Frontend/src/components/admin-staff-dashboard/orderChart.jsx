@@ -187,7 +187,7 @@ export function WorkOrdersTable({
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map((row) => (
+                {rows.slice(0, 5).map((row) => (
                   <tr
                     key={row.id}
                     className="hover:bg-muted/50 transition-colors"

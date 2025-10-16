@@ -22,11 +22,11 @@ import {
 const ActionIcon = ({ action }) => {
   switch (action) {
     case 'created':
-      return <UserPlus className="h-4 w-4 text-green-500" />;
+      return <UserPlus className="h-4 w-4 text-secondary-foreground" />;
     case 'deleted':
-      return <UserMinus className="h-4 w-4 text-red-500" />;
+      return <UserMinus className="h-4 w-4 text-destructive" />;
     case 'updated':
-      return <UserCog className="h-4 w-4 text-blue-500" />;
+      return <UserCog className="h-4 w-4 text-primary" />;
     case 'permission_changed':
       return <Settings className="h-4 w-4 text-amber-500" />;
     default:
@@ -71,7 +71,7 @@ export const ActivityLog = ({
         <div className="flex items-center gap-2">
           {!expanded && logs.length > initialCount ? (
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => setExpanded(true)}
             >
@@ -79,7 +79,7 @@ export const ActivityLog = ({
             </Button>
           ) : logs.length > initialCount ? (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => setExpanded(false)}
             >

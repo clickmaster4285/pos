@@ -10,6 +10,7 @@ export default function CreateInventoryModal({
   onClose,
   onCreated,
   vendors = [],
+  currencySymbol,
 }) {
   // Normalize vendors to { id, name, email, phone }
   const vendorOptions = useMemo(
@@ -422,7 +423,7 @@ export default function CreateInventoryModal({
                         onChange={(e) =>
                           updateVariant(idx, 'costPrice', e.target.value)
                         }
-                        placeholder="2000"
+                        placeholder={`2000 ${currencySymbol}`}
                         min={0}
                       />
                     </div>
@@ -438,7 +439,7 @@ export default function CreateInventoryModal({
                         onChange={(e) =>
                           updateVariant(idx, 'price', e.target.value)
                         }
-                        placeholder="2500"
+                        placeholder={`2500 ${currencySymbol}`}
                         min={0}
                       />
                     </div>

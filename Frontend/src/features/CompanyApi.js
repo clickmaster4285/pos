@@ -33,7 +33,7 @@ export const companyApi = createApi({
         return {
           status: response.status,
           message: text,
-          isHtml: text.startsWith("<!DOCTYPE html>"),
+          isHtml: text.startsWith('<!DOCTYPE html>'),
         };
       }
     },
@@ -56,9 +56,14 @@ export const companyApi = createApi({
         body,
       }),
       transformResponse: (res, meta) => {
-        if (res?.success && res?.data) return { ...res, status: meta?.response?.status || 201 };
-        if (res && res._id) return { ...res, status: meta?.response?.status || 201 };
-        throw { message: res?.message || 'Failed to create company', status: meta?.response?.status || 400 };
+        if (res?.success && res?.data)
+          return { ...res, status: meta?.response?.status || 201 };
+        if (res && res._id)
+          return { ...res, status: meta?.response?.status || 201 };
+        throw {
+          message: res?.message || 'Failed to create company',
+          status: meta?.response?.status || 400,
+        };
       },
       transformErrorResponse: (res, meta) => ({
         ...res,
@@ -70,9 +75,14 @@ export const companyApi = createApi({
     getAllCompanies: builder.query({
       query: () => '/get-all-company',
       transformResponse: (res, meta) => {
-        if (res?.success && Array.isArray(res.data)) return { ...res, status: meta?.response?.status || 200 };
-        if (Array.isArray(res)) return { data: res, status: meta?.response?.status || 200 };
-        throw { message: res?.message || 'Failed to fetch companies', status: meta?.response?.status || 400 };
+        if (res?.success && Array.isArray(res.data))
+          return { ...res, status: meta?.response?.status || 200 };
+        if (Array.isArray(res))
+          return { data: res, status: meta?.response?.status || 200 };
+        throw {
+          message: res?.message || 'Failed to fetch companies',
+          status: meta?.response?.status || 400,
+        };
       },
       transformErrorResponse: (res, meta) => ({
         ...res,
@@ -87,30 +97,35 @@ export const companyApi = createApi({
           : [{ type: 'Company', id: 'LIST' }],
     }),
 
-verifyCompanyAdmin: builder.mutation({
-  query: ({ id, action }) => ({
-    url: `/verify-company_admin?id=${encodeURIComponent(id)}&action=${encodeURIComponent(action)}`,
-    method: 'PUT',
-    body: { confirm: true },
-  }),
-  transformResponse: (res, meta) => {
-    if (!res?.success)
-      throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
-    return { ...res, status: meta?.response?.status || 200 };
-  },
-  transformErrorResponse: (res, meta) => ({
-    ...res,
-    status: meta?.response?.status || 400,
-  }),
-  invalidatesTags: (result, _error, { id }) =>
-    result
-      ? [
-          { type: 'User', id },
-          { type: 'User', id: 'LIST' },
-          { type: 'Company', id: 'LIST' },
-        ]
-      : [],
-}),
+    verifyCompanyAdmin: builder.mutation({
+      query: ({ id, action }) => ({
+        url: `/verify-company_admin?id=${encodeURIComponent(
+          id
+        )}&action=${encodeURIComponent(action)}`,
+        method: 'PUT',
+        body: { confirm: true },
+      }),
+      transformResponse: (res, meta) => {
+        if (!res?.success)
+          throw {
+            message: res?.error || res?.message || 'Verification failed',
+            status: meta?.response?.status || 400,
+          };
+        return { ...res, status: meta?.response?.status || 200 };
+      },
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
+      invalidatesTags: (result, _error, { id }) =>
+        result
+          ? [
+              { type: 'User', id: String(id) },
+              { type: 'User', id: 'LIST' },
+              { type: 'Company', id: 'LIST' },
+            ]
+          : [],
+    }),
 
     verifyEmailCode: builder.mutation({
       query: ({ email, otp }) => ({
@@ -120,7 +135,10 @@ verifyCompanyAdmin: builder.mutation({
       }),
       transformResponse: (res, meta) => {
         if (!res?.success)
-          throw { message: res?.error || res?.message || 'Verification failed', status: meta?.response?.status || 400 };
+          throw {
+            message: res?.error || res?.message || 'Verification failed',
+            status: meta?.response?.status || 400,
+          };
         return { ...res, status: meta?.response?.status || 200 };
       },
       transformErrorResponse: (res, meta) => ({
@@ -138,7 +156,10 @@ verifyCompanyAdmin: builder.mutation({
       }),
       transformResponse: (res, meta) => {
         if (!res?.success)
-          throw { message: res?.error || res?.message || 'Failed to resend code', status: meta?.response?.status || 400 };
+          throw {
+            message: res?.error || res?.message || 'Failed to resend code',
+            status: meta?.response?.status || 400,
+          };
         return { ...res, status: meta?.response?.status || 200 };
       },
       transformErrorResponse: (res, meta) => ({
@@ -163,9 +184,14 @@ verifyCompanyAdmin: builder.mutation({
       query: () => `/get-company`,
       transformResponse: (res, meta) => {
         // console.log("tehres?.success aer:  ",res)
-        if (res?.success && res?.data) return { ...res, status: meta?.response?.status || 200 };
-        if (res && res._id) return { ...res, status: meta?.response?.status || 200 };
-        throw { message: res?.message || 'Failed to fetch company', status: meta?.response?.status || 400 };
+        if (res?.success && res?.data)
+          return { ...res, status: meta?.response?.status || 200 };
+        if (res && res._id)
+          return { ...res, status: meta?.response?.status || 200 };
+        throw {
+          message: res?.message || 'Failed to fetch company',
+          status: meta?.response?.status || 400,
+        };
       },
       transformErrorResponse: (res, meta) => ({
         ...res,

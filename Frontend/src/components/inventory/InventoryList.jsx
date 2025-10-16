@@ -33,19 +33,20 @@ export function InventoryList({
   onEditInfo,
   onEditHistory,
   onDeleteItem,
+  currencySymbol,
 }) {
   const [activeItem, setActiveItem] = useState(null);
   const [barcodeDialog, setBarcodeDialog] = useState({
     open: false,
-    sku: "",
-    variantName: "",
-    itemName: "",
+    sku: '',
+    variantName: '',
+    itemName: '',
   });
   const [detailDialog, setDetailDialog] = useState({ open: false, item: null });
   const [expandedItems, setExpandedItems] = useState({});
 
   const handleBarcodeGenerate = (pdfInfo) => {
-    console.log("PDF generated:", pdfInfo);
+    console.log('PDF generated:', pdfInfo);
   };
 
   const toggleVariants = (itemId) => {
@@ -81,8 +82,8 @@ export function InventoryList({
                   <span
                     className={`rounded px-2 py-1 text-xs font-medium ${
                       it.isActive
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800"
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-rose-100 text-rose-800'
                     }`}
                   >
                     {it.status}
@@ -92,12 +93,12 @@ export function InventoryList({
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {it.description || "—"}
+                  {it.description || '—'}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setDetailDialog({ open: true, item: it })}
                 >
@@ -105,14 +106,14 @@ export function InventoryList({
                   View Details
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => onEditInfo?.(it)}
                 >
                   Edit Info
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => onEditHistory?.(it)}
                 >
@@ -130,7 +131,7 @@ export function InventoryList({
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="header"
                   size="sm"
                   onClick={() => toggleVariants(it.id)}
                 >
@@ -156,7 +157,7 @@ export function InventoryList({
                     >
                       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         <Cell label="Variant" value={v.variantName} />
-                        <Cell label="SKU" value={v.sku || "—"} mono />
+                        <Cell label="SKU" value={v.sku || '—'} mono />
                         <Cell label="Qty" value={v.quantity} />
                         <Cell label="Incoming" value={v.incomingQuantity} />
                         <Cell
@@ -187,7 +188,7 @@ export function InventoryList({
                       {v.sku && (
                         <div className="mt-2">
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={() =>
                               setBarcodeDialog({
@@ -212,20 +213,25 @@ export function InventoryList({
             <div className="mt-6 grid grid-cols-2 sm:grid-cols-6 gap-4 text-left">
               <Stat
                 label="Last update"
-                value={new Date(it.updatedAt).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
+                value={new Date(it.updatedAt).toLocaleString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
                 })}
               />
               <Stat label="Variants" value={it.variants.length} />
               <Stat label="Total Quantity" value={it.totalQuantity} />
-              <Stat label="Total Cost Price" value={it.totalCostPrice} />
+              <Stat
+                label="Total Cost Price"
+                value={it.totalCostPrice}
+                currencySymbol={currencySymbol}
+              />
               <Stat
                 label="totalPrice"
                 value={Intl.NumberFormat().format(it.totalPrice)}
+                currencySymbol={currencySymbol}
               />
               <Stat label="Location" value={it.location} />
             </div>
@@ -251,9 +257,9 @@ export function InventoryList({
           onClose={() =>
             setBarcodeDialog({
               open: false,
-              sku: "",
-              variantName: "",
-              itemName: "",
+              sku: '',
+              variantName: '',
+              itemName: '',
             })
           }
           sku={barcodeDialog.sku}
@@ -268,17 +274,21 @@ export function InventoryList({
           open={true}
           item={detailDialog.item}
           onClose={() => setDetailDialog({ open: false, item: null })}
+          currencySymbol={currencySymbol}
         />
       )}
     </>
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, currencySymbol }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-sm font-medium">{value}</div>
+      <div className="text-sm font-medium">
+        {currencySymbol}
+        {value}
+      </div>
     </div>
   );
 }

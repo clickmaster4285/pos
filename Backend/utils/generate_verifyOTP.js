@@ -67,12 +67,13 @@ export const verifyOTP = async (req, res) => {
     });
     if (company) {
       company.history = company.history || [];
+      company.isActive = true;
       company.history.push({
         action: "Company activated after OTP verification",
         performedBy: user.userId,
         performedAt: new Date(),
       });
-      company.isActive = true
+
       await company.save();
     }
 

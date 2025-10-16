@@ -28,7 +28,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
 import {
   Download,
   Search,
@@ -45,6 +44,24 @@ import {
   ChevronUp,
 } from 'lucide-react';
 
+// helpers
+const num = (v) => Number(v || 0);
+
+const getRefundedAmount = (bill = {}) => {
+  const topLevel =
+    num(bill.totalRefundAmount) || num(bill?.refundDetails?.totalRefundAmount);
+
+  if (topLevel) return topLevel;
+
+  const items = Array.isArray(bill.items) ? bill.items : [];
+  return items.reduce((sum, item) => {
+    if (item && item.refundAmount != null) return sum + num(item.refundAmount);
+    const hist = Array.isArray(item?.refundHistory) ? item.refundHistory : [];
+    const histSum = hist.reduce((s, r) => s + num(r.refundAmount), 0);
+    return sum + histSum;
+  }, 0);
+};
+
 function StatusBadge({ status }) {
   const map = {
     paid: {
@@ -58,6 +75,10 @@ function StatusBadge({ status }) {
     refunded: {
       icon: AlertCircle,
       color: 'bg-red-100 text-red-800 border-red-200',
+    },
+    pending: {
+      icon: Clock,
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     },
   };
   const cfg = map[status] || map.pending;
@@ -80,7 +101,14 @@ export function BillRow({
   onView,
   updatePermission,
   deletePermission,
+  currencySymbol,
 }) {
+  const refundedAmount = useMemo(() => getRefundedAmount(bill), [bill]);
+  const netTotal = useMemo(
+    () => Math.max(0, num(bill.total) - refundedAmount),
+    [bill, refundedAmount]
+  );
+
   return (
     <>
       <TableRow className="border-border hover:bg-muted/50">
@@ -90,6 +118,7 @@ export function BillRow({
         >
           {bill.billNumber}
         </TableCell>
+
         <TableCell onClick={() => onView(bill)}>
           <div className="flex flex-col">
             <span className="font-medium text-card-foreground">
@@ -100,6 +129,7 @@ export function BillRow({
             </span>
           </div>
         </TableCell>
+
         <TableCell onClick={() => onView(bill)}>
           <div className="flex flex-col gap-1">
             {(bill.items || []).slice(0, 2).map((item, i) => (
@@ -114,18 +144,24 @@ export function BillRow({
             )}
           </div>
         </TableCell>
+
+        {/* Net total in the main row */}
         <TableCell
           className="text-right font-semibold text-card-foreground"
           onClick={() => onView(bill)}
         >
-          ${Number(bill.total || 0).toFixed(2)}
+          {currencySymbol}
+          {netTotal.toFixed(2)}
         </TableCell>
+
         <TableCell onClick={() => onView(bill)}>
           <StatusBadge status={bill.status} />
         </TableCell>
+
         <TableCell className="text-sm text-muted-foreground">
           {new Date(bill.createdAt).toLocaleDateString()}
         </TableCell>
+
         <TableCell className="text-right">
           <div className="flex items-center justify-end gap-2">
             <Button
@@ -140,6 +176,7 @@ export function BillRow({
                 <ChevronDown className="h-4 w-4" />
               )}
             </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -151,7 +188,6 @@ export function BillRow({
                 align="end"
                 className="bg-popover border-border"
               >
-                {/* Refund submenu */}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="text-popover-foreground hover:bg-accent">
                     <Edit3 className="w-4 h-4 mr-2" />
@@ -175,7 +211,6 @@ export function BillRow({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                {/* Print */}
                 <DropdownMenuItem
                   className="text-popover-foreground hover:bg-accent"
                   onClick={() => onPrint(bill)}
@@ -184,13 +219,11 @@ export function BillRow({
                   Print
                 </DropdownMenuItem>
 
-                {/* Download */}
                 <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
                   <Download className="w-4 h-4 mr-2" />
                   Download
                 </DropdownMenuItem>
 
-                {/* Delete */}
                 <DropdownMenuItem
                   disabled={!deletePermission}
                   className="text-red-600 hover:bg-accent hover:text-red-700"
@@ -217,26 +250,48 @@ export function BillRow({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-medium">
-                      ${Number(bill.subtotal || 0).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.subtotal).toFixed(2)}
                     </span>
                   </div>
+
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
                       Tax ({bill.taxPercent}%)
                     </span>
                     <span className="font-medium">
-                      ${Number(bill.taxAmount || 0).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.taxAmount).toFixed(2)}
                     </span>
                   </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total:</span>
+                    <span className="font-medium">
+                      {currencySymbol}
+                      {num(bill.total).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Refunded:</span>
+                    <span className="font-medium">
+                      {currencySymbol}
+                      {refundedAmount.toFixed(2)}
+                    </span>
+                  </div>
+
                   <div className="flex justify-between border-t pt-2">
                     <span className="text-muted-foreground font-medium">
-                      Total:
+                      Net Total:
                     </span>
                     <span className="font-bold text-lg">
-                      ${Number(bill.total || 0).toFixed(2)}
+                      {currencySymbol}
+                      {netTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
+
                 {bill.notes && (
                   <div className="mt-4">
                     <h5 className="font-medium text-card-foreground mb-1">
@@ -248,6 +303,7 @@ export function BillRow({
                   </div>
                 )}
               </div>
+
               <div>
                 <h4 className="font-semibold text-card-foreground mb-3">
                   Items
@@ -266,11 +322,8 @@ export function BillRow({
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-sm">
-                          {item.quantity} × $
-                          {Number(item.price || 0).toFixed(2)}
-                        </p>
-                        <p className="font-semibold">
-                          ${Number(item.lineTotal || 0).toFixed(2)}
+                          {item.quantity} × {currencySymbol}
+                          {num(item.price).toFixed(2)}
                         </p>
                       </div>
                     </div>

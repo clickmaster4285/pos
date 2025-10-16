@@ -92,13 +92,13 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
 
-  --primary: oklch(70% 0.19 190);
+  --primary: oklch(0.47 0.09 196.8);
   --primary-foreground: oklch(0.985 0 0);
   --primary-hover: oklch(82.248% 0.14965 73.059);
   --primary-glow: oklch(0.5 0.2 264.243 / 0.3);
 
   --secondary: oklch(0% 0 0);
-  --secondary-foreground: oklch(26.183% 0.07814 254.85);
+  --secondary-foreground: oklch(0.82 0.18 89.9);
   --secondary-hover: oklch(0.1 0 0);
 
   --muted: oklch(0.97 0 0);
@@ -172,7 +172,7 @@
   --animation-fast: 150ms;
   --animation-normal: 300ms;
   --animation-slow: 500ms;
-  --background: oklch(1 0 0);
+  --background: oklch(0.957 0.01 118.8);
   --foreground: oklch(0.145 0 0);
 }
 

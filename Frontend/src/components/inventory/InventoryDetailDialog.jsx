@@ -36,7 +36,12 @@ function SummaryCard({ title, value, icon: Icon, className = '' }) {
   );
 }
 
-export default function InventoryDetailDialog({ open, onClose, item }) {
+export default function InventoryDetailDialog({
+  open,
+  onClose,
+  item,
+  currencySymbol,
+}) {
   const contentRef = useRef();
   const { data: inventoryData, isLoading } = useGetInventoryByIdQuery(
     item?.id || item?._id,
@@ -60,8 +65,14 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
     const summaryData = [
       ['Total Stock', inventoryItem.quantity],
       ['Incoming Stock', inventoryItem.incomingQuantity],
-      ['Total Price', `$${inventoryItem.totalPrice?.toLocaleString()}`],
-      ['Total Cost', `$${inventoryItem.totalCostPrice?.toLocaleString()}`],
+      [
+        'Total Price',
+        ` ${currencySymbol}${inventoryItem.totalPrice?.toLocaleString()}`,
+      ],
+      [
+        'Total Cost',
+        ` ${currencySymbol}${inventoryItem.totalCostPrice?.toLocaleString()}`,
+      ],
       ['Variants', inventoryItem.totalVariants],
       ['Location', inventoryItem.location],
       ['Status', inventoryItem.isActive ? 'Active' : 'Inactive'],
@@ -83,8 +94,8 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
         variant.sku,
         variant.quantity,
         variant.incomingQuantity,
-        `$${variant.price}`,
-        `$${variant.costPrice}`,
+        ` ${currencySymbol}${variant.price}`,
+        ` ${currencySymbol}${variant.costPrice}`,
         variant.quantity <= variant.lowStockThreshold ? 'LOW STOCK' : 'OK',
       ]) || [];
 
@@ -181,11 +192,11 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
               />
               <SummaryCard
                 title="Total Price"
-                value={`$${inventoryItem.totalPrice?.toLocaleString()}`}
+                value={`  ${currencySymbol}${inventoryItem.totalPrice?.toLocaleString()}`}
               />
               <SummaryCard
                 title="Total Cost"
-                value={`$${inventoryItem.totalCostPrice?.toLocaleString()}`}
+                value={` ${currencySymbol}${inventoryItem.totalCostPrice?.toLocaleString()}`}
               />
             </div>
 
@@ -243,8 +254,16 @@ export default function InventoryDetailDialog({ open, onClose, item }) {
                         <td className="p-3 font-mono text-sm">{variant.sku}</td>
                         <td className="p-3">{variant.quantity}</td>
                         <td className="p-3">{variant.incomingQuantity}</td>
-                        <td className="p-3">${variant.price}</td>
-                        <td className="p-3">${variant.costPrice}</td>
+                        <td className="p-3">
+                          {' '}
+                          {currencySymbol}
+                          {variant.price}
+                        </td>
+                        <td className="p-3">
+                          {' '}
+                         {currencySymbol}
+                          {variant.costPrice}
+                        </td>
                         <td className="p-3">
                           {variant.quantity <= variant.lowStockThreshold ? (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">

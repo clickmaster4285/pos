@@ -1,12 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useGetAllDevicesQuery, useCreateDeviceMutation, useConnectDeviceMutation } from '@/features/attendanceDeviceApi';
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  useGetAllDevicesQuery,
+  useCreateDeviceMutation,
+  useConnectDeviceMutation,
+} from '@/features/attendanceDeviceApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import Pagination from '../ui/Pagination';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
@@ -18,18 +36,35 @@ const AttendanceDevices = () => {
   const [formData, setFormData] = useState({
     deviceName: '',
     deviceIp: '',
-    devicePort: 4370,
+    devicePort: '',
     serialNumber: '',
     deviceId: '',
     firmwareVersion: '',
     macAddress: '',
   });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data, isLoading, error } = useGetAllDevicesQuery();
   const [createDevice, { isLoading: isCreating }] = useCreateDeviceMutation();
-  const [connectDevice, { isLoading: isConnecting }] = useConnectDeviceMutation();
+  const [connectDevice, { isLoading: isConnecting }] =
+    useConnectDeviceMutation();
 
   const devices = data?.data || [];
+
+  //pagination
+  const total = devices.length;
+
+  const pagedDevices = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return devices.slice(start, start + pageSize);
+  }, [devices, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [devices, pageSize]);
+
+  //------
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -51,7 +86,9 @@ const AttendanceDevices = () => {
         macAddress: '',
       });
     } catch (err) {
-      console.error(`Failed to create device: ${err?.message || 'Unknown error'}`);
+      console.error(
+        `Failed to create device: ${err?.message || 'Unknown error'}`
+      );
     }
   };
 
@@ -63,11 +100,20 @@ const AttendanceDevices = () => {
     }
   };
 
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className=" mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Attendance Devices</h1>
+        <div>
+          <h1 className="text-3xl font-medium mt-2">Attendance Devices</h1>
+          <p className="text-sm text-muted-foreground">
+            Configure and sync biometric attendance devices to ensure accurate
+            employee tracking.
+          </p>
+        </div>
         <div className="flex items-center space-x-4">
           <ToggleGroup
             type="single"
@@ -75,14 +121,28 @@ const AttendanceDevices = () => {
             onValueChange={(value) => value && setViewMode(value)}
             className="flex space-x-2"
           >
-            <ToggleGroupItem value="table" aria-label="Table view">
+            <ToggleGroupItem
+              value="table"
+              aria-label="Table view"
+              className="bg-muted text-primary data-[state=on]:bg-secondary-foreground data-[state=on]:text-primary rounded-md p-3 transition-colors"
+            >
               <List className="h-5 w-5" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
+
+            <ToggleGroupItem
+              value="grid"
+              aria-label="Grid view"
+              className="bg-muted text-primary data-[state=on]:bg-secondary-foreground data-[state=on]:text-primary rounded-md p-3 transition-colors"
+            >
               <Grid className="h-5 w-5" />
             </ToggleGroupItem>
           </ToggleGroup>
-          <Button onClick={() => setIsFormOpen(true)} className="flex items-center space-x-2">
+
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            variant="header"
+            className="flex items-center space-x-2"
+          >
             <Plus className="h-5 w-5" />
             <span>Add New Device</span>
           </Button>
@@ -91,7 +151,7 @@ const AttendanceDevices = () => {
 
       {/* Add Device Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Add New Device</DialogTitle>
           </DialogHeader>
@@ -99,6 +159,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="deviceName">Device Name</Label>
               <Input
+                placeholder="Enter device name"
                 id="deviceName"
                 name="deviceName"
                 value={formData.deviceName}
@@ -109,6 +170,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="deviceIp">Device IP</Label>
               <Input
+                placeholder="Enter device IP address"
                 id="deviceIp"
                 name="deviceIp"
                 value={formData.deviceIp}
@@ -120,6 +182,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="devicePort">Device Port</Label>
               <Input
+                placeholder="e.g, 4370"
                 id="devicePort"
                 name="devicePort"
                 type="number"
@@ -133,6 +196,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="serialNumber">Serial Number (Optional)</Label>
               <Input
+                placeholder="Enter serial number"
                 id="serialNumber"
                 name="serialNumber"
                 value={formData.serialNumber}
@@ -142,6 +206,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="deviceId">Device ID</Label>
               <Input
+                placeholder="Enter device ID"
                 id="deviceId"
                 name="deviceId"
                 value={formData.deviceId}
@@ -150,8 +215,11 @@ const AttendanceDevices = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="firmwareVersion">Firmware Version (Optional)</Label>
+              <Label htmlFor="firmwareVersion">
+                Firmware Version (Optional)
+              </Label>
               <Input
+                placeholder="Enter firmware version"
                 id="firmwareVersion"
                 name="firmwareVersion"
                 value={formData.firmwareVersion}
@@ -161,6 +229,7 @@ const AttendanceDevices = () => {
             <div className="space-y-2">
               <Label htmlFor="macAddress">MAC Address (Optional)</Label>
               <Input
+                placeholder="Enter MAC address"
                 id="macAddress"
                 name="macAddress"
                 value={formData.macAddress}
@@ -169,7 +238,11 @@ const AttendanceDevices = () => {
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFormOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isCreating}>
@@ -204,7 +277,7 @@ const AttendanceDevices = () => {
 
       {/* Table View */}
       {viewMode === 'table' && devices.length > 0 && (
-        <div className="rounded-md border">
+        <div className="rounded-md border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -218,7 +291,7 @@ const AttendanceDevices = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {devices.map((device) => (
+              {pagedDevices.map((device) => (
                 <TableRow key={device._id}>
                   <TableCell>{device.deviceName}</TableCell>
                   <TableCell>{device.deviceIp}</TableCell>
@@ -238,7 +311,7 @@ const AttendanceDevices = () => {
                   </TableCell>
                   <TableCell>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => handleConnect(device._id)}
                       disabled={isConnecting || device.status === 'connected'}
@@ -317,6 +390,28 @@ const AttendanceDevices = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {total > 0 && (
+        <div className="mt-4">
+          <div className="text-sm text-muted-foreground mb-2">
+            {`Showing ${start}–${end} of ${total} devices`}
+          </div>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={(p) => {
+              const max = Math.max(1, Math.ceil(total / pageSize));
+              setPage(Math.min(Math.max(1, p), max));
+            }}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 20, 50]}
+          />
         </div>
       )}
     </div>

@@ -273,7 +273,7 @@ export default function AdminDashboard() {
                 {/* <ProfitChart data={series14} /> */}
               </>
             )}
-            {isRecieptionist && <WorkOrdersChart data={series14} />}
+            {/* {isRecieptionist && <WorkOrdersChart data={series14} />} */}
 
             {BillAcess && <BillingChart bills={bills} />}
           </div>
@@ -291,14 +291,14 @@ export default function AdminDashboard() {
             {(isRecieptionist || BillAcess) && <RevenuePie data={pieData} />}
 
             {/* Orders table (your existing child) */}
-            {isRecieptionist && (
+            {/* {isRecieptionist && (
               <WorkOrdersTable
                 orders={orders}
                 loading={ordersLoading || ordersFetching}
                 error={ordersError}
                 onRetry={refetchOrders}
               />
-            )}
+            )} */}
 
             {/* Bills table (new) */}
             {BillAcess && (

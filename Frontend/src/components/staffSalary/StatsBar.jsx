@@ -8,6 +8,7 @@ export default function StatsBar({
   totalMonthlyPayroll = 0,
   totalBonus = 0,
   totalDeductions = 0,
+  currencySymbol,
 }) {
   const fmtMoney = (n) =>
     typeof n === 'number' && isFinite(n)
@@ -38,7 +39,8 @@ export default function StatsBar({
           </div>
         </div>
         <p className="text-3xl font-bold text-foreground">
-          ${fmtMoney(Math.round(totalPaid))}
+          {currencySymbol}
+          {fmtMoney(Math.round(totalPaid))}
         </p>
       </div>
 
@@ -51,7 +53,11 @@ export default function StatsBar({
             <Wallet className="h-5 w-5 text-destructive" />
           </div>
         </div>
-        <p className="text-3xl font-bold text-foreground">{totalBonus}</p>
+        <p className="text-3xl font-bold text-foreground">
+          {' '}
+          {currencySymbol}
+          {totalBonus}
+        </p>
       </div>
 
       <div className="bg-card border border-border rounded-lg p-6">
@@ -64,7 +70,8 @@ export default function StatsBar({
           </div>
         </div>
         <p className="text-3xl font-bold text-foreground">
-          ${fmtMoney(totalDeductions)}
+          {currencySymbol}
+          {fmtMoney(totalDeductions)}
         </p>
       </div>
     </div>

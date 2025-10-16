@@ -11,12 +11,20 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
+import { Calendar, Filter } from 'lucide-react';
 
 import { VendorModal } from './vendor-modal';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { VendorGrid } from './vendor-grid';
 import { VendorList } from './vendor-list';
 import { VendorDetailsSheet } from './vendor-details-sheet'; // adjust path
+import Pagination from '@/components/ui/Pagination';
 
 import {
   useGetAllVendorsQuery,
@@ -45,7 +53,12 @@ function normalizeVendor(v) {
 
 export function VendorManagement() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  //
+  const [quickRange, setQuickRange] = useState('all'); //
+  const [statusFilter, setStatusFilter] = useState('all');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [modalMode, setModalMode] = useState('create'); // "create" | "edit" | "view"
@@ -56,6 +69,60 @@ export function VendorManagement() {
   const [pendingId, setPendingId] = useState(null);
   const [view, setView] = useState('grid'); // "grid" | "list"
   const itemsPerPage = 12;
+  // --- date helpers ---
+  function startOfDay(d) {
+    const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+  function endOfDay(d) {
+    const x = new Date(d);
+    x.setHours(23, 59, 59, 999);
+    return x;
+  }
+  function addDays(d, days) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + days);
+    return x;
+  }
+  function getVendorDate(v) {
+    const raw = v?.createdAt || v?.updatedAt || v?.joinedAt || v?.date;
+    return raw ? new Date(raw) : null;
+  }
+  function getVendorStatus(v) {
+    const s = (v?.status || '').toLowerCase();
+    if (s === 'active' || v?.isActive) return 'active';
+    if (s === 'inactive' || v?.isActive === false) return 'inactive';
+    return 'inactive';
+  }
+
+  // Compute quick date range
+  const { fromDate, toDate } = useMemo(() => {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+
+    switch (quickRange) {
+      case 'today':
+        return { fromDate: todayStart, toDate: todayEnd };
+      case 'yesterday': {
+        const y = addDays(todayStart, -1);
+        return { fromDate: startOfDay(y), toDate: endOfDay(y) };
+      }
+      case 'last7':
+        return {
+          fromDate: startOfDay(addDays(todayStart, -6)),
+          toDate: todayEnd,
+        };
+      case 'last30':
+        return {
+          fromDate: startOfDay(addDays(todayStart, -29)),
+          toDate: todayEnd,
+        };
+      default:
+        return { fromDate: null, toDate: null };
+    }
+  }, [quickRange]);
 
   // RTK Query hooks
   const {
@@ -65,7 +132,6 @@ export function VendorManagement() {
     refetch,
   } = useGetAllVendorsQuery();
 
-
   const [createVendor, { isLoading: creating }] = useCreateVendorMutation();
   const [updateVendor, { isLoading: updating }] = useUpdateVendorMutation();
   const [deleteVendor, { isLoading: deleting }] = useDeleteVendorMutation();
@@ -73,30 +139,51 @@ export function VendorManagement() {
     useToggleVendorStatusMutation();
   // search
   const filteredVendors = useMemo(() => {
-    if (!searchTerm) return vendors;
+    let list = vendors;
 
-    const q = searchTerm.toLowerCase();
-    return vendors.filter((v) => {
-      const name = norm(v?.name).toLowerCase();
-      const email = norm(v?.email).toLowerCase();
-      const category = norm(v?.category).toLowerCase();
-      const idStr = getId(v).toLowerCase();
-      return (
-        name.includes(q) ||
-        email.includes(q) ||
-        category.includes(q) ||
-        idStr.includes(q)
-      );
-    });
-  }, [vendors, searchTerm]);
+    // search
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter((v) => {
+        const name = norm(v?.name).toLowerCase();
+        const email = norm(v?.email).toLowerCase();
+        const category = norm(v?.category).toLowerCase();
+        const idStr = getId(v).toLowerCase();
+        return (
+          name.includes(q) ||
+          email.includes(q) ||
+          category.includes(q) ||
+          idStr.includes(q)
+        );
+      });
+    }
+
+    // date filter
+    if (fromDate || toDate) {
+      list = list.filter((v) => {
+        const d = getVendorDate(v);
+        if (!d || isNaN(d.getTime())) return false;
+        if (fromDate && d < fromDate) return false;
+        if (toDate && d > toDate) return false;
+        return true;
+      });
+    }
+
+    // status filter
+    if (statusFilter !== 'all') {
+      list = list.filter((v) => getVendorStatus(v) === statusFilter);
+    }
+
+    return list;
+  }, [vendors, searchTerm, fromDate, toDate, statusFilter]);
 
   // paginate
+  const total = filteredVendors.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const paginatedVendors = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredVendors.slice(start, start + itemsPerPage);
-  }, [filteredVendors, currentPage]);
-
-  const totalPages = Math.ceil(filteredVendors.length / itemsPerPage);
+    const start = (page - 1) * pageSize;
+    return filteredVendors.slice(start, start + pageSize);
+  }, [filteredVendors, page, pageSize]);
 
   // actions
   const handleCreateVendor = () => {
@@ -225,8 +312,8 @@ export function VendorManagement() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur">
-        <div className="max-w-full mx-auto px-6 py-6">
+      <div className=" ">
+        <div className="max-w-full mx-auto px-6 pt-6">
           <div className="flex items-center justify-between mt-4">
             <div>
               <h1 className="text-3xl font-semibold text-foreground ">
@@ -239,13 +326,13 @@ export function VendorManagement() {
 
             <div className="flex items-center gap-2">
               <Button
-                variant={view === 'grid' ? 'default' : 'outline'}
+                variant={view === 'grid' ? 'default' : 'secondary'}
                 onClick={() => setView('grid')}
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               <Button
-                variant={view === 'list' ? 'default' : 'outline'}
+                variant={view === 'list' ? 'default' : 'secondary'}
                 onClick={() => setView('list')}
               >
                 <List className="h-4 w-4" />
@@ -255,6 +342,7 @@ export function VendorManagement() {
                 onClick={handleCreateVendor}
                 className="gap-2"
                 disabled={creating || updating}
+                variant={'header'}
               >
                 <Plus className="h-4 w-4" />
                 Add Vendor
@@ -268,7 +356,7 @@ export function VendorManagement() {
       <div className="max-w-full mx-auto px-6 py-6">
         {/* Search */}
         <div className="flex flex-col lg:flex-row gap-6 mb-6">
-          <div className="flex-1">
+          <div className="flex-1 bg-card rounded-md ">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -277,11 +365,72 @@ export function VendorManagement() {
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
+                  setPage(1);
                 }}
                 className="pl-10 border-border focus:ring-ring"
               />
             </div>
           </div>
+          {/* filters */}
+          {/* Date filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                {quickRange === 'all'
+                  ? 'All dates'
+                  : quickRange === 'today'
+                  ? 'Today'
+                  : quickRange === 'yesterday'
+                  ? 'Yesterday'
+                  : quickRange === 'last7'
+                  ? 'Last 7 days'
+                  : 'Last 30 days'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44 ">
+              <DropdownMenuItem onClick={() => setQuickRange('all')}>
+                All dates
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('today')}>
+                Today
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('yesterday')}>
+                Yesterday
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('last7')}>
+                Last 7 days
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('last30')}>
+                Last 30 days
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Status filter dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                {statusFilter === 'all'
+                  ? 'All statuses'
+                  : statusFilter === 'active'
+                  ? 'Active'
+                  : 'Inactive'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('active')}>
+                Active
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>
+                Inactive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Content */}
@@ -310,57 +459,22 @@ export function VendorManagement() {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-              {Math.min(currentPage * itemsPerPage, filteredVendors.length)} of{' '}
-              {filteredVendors.length} vendors
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum =
-                    currentPage <= 3 ? i + 1 : currentPage - 2 + i;
-                  if (pageNum > totalPages) return null;
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={pageNum === currentPage ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setCurrentPage(pageNum)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="gap-1"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={(p) =>
+            setPage(
+              Math.min(Math.max(1, p), Math.max(1, Math.ceil(total / pageSize)))
+            )
+          }
+          onPageSizeChange={(s) => {
+            setPageSize(s);
+            setPage(1);
+          }}
+          siblingCount={1}
+          boundaryCount={1}
+        />
       </div>
 
       {/* Modals */}

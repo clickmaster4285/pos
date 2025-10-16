@@ -48,7 +48,7 @@ export default function RegisterPage() {
             <>
               <div className="text-center mb-6">
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-                  Create Account
+                  Create Accountss
                 </h2>
                 <p className="text-gray-600">
                   Choose the type of account you want to create

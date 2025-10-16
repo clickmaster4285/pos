@@ -21,7 +21,7 @@ import { Car, FileText, Settings, Users } from 'lucide-react';
 import Home from '../landing/Hero';
 import { Button } from '../ui/button';
 
-export default function Navbar({setErrorMessage}) {
+export default function Navbar({ setErrorMessage }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -62,27 +62,21 @@ export default function Navbar({setErrorMessage}) {
     { id: 3, text: 'New feature available', time: '2 days ago', read: true },
   ];
 
-const handleLogOut = async () => {
-  try {
-    sessionStorage.removeItem('authUser'); 
-    await logout().unwrap();
-
-    // ✅ Remove the auth user session
-    sessionStorage.removeItem('authUser'); 
-
-    setIsProfileOpen(false);
-    router.push('/login');
-  } catch (error) {
-    console.error('Logout failed:', error);
-    setErrorMessage('Logout failed. Please try again.');
-    toast.error('Logout failed. Please try again.');
-  }
-};
-
+  const handleLogOut = async () => {
+    try {
+      await logout().unwrap();
+      setIsProfileOpen(false);
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setErrorMessage('Logout failed. Please try again.');
+      toast.error('Logout failed. Please try again.');
+    }
+  };
 
   return (
-    <nav className="w-full bg-background border-b border-gray-200">
-      <div className="h-16 flex justify-between px-6 relative mt-3">
+    <nav className="p-3 w-full bg-sidebar border-b border-gray-200">
+      <div className="h-16 flex justify-between px-6 relative ">
         {/* Mobile menu button */}
         <div className="flex ">
           <Button
@@ -103,12 +97,12 @@ const handleLogOut = async () => {
           </div> */}
 
           {/* Search Bar */}
-          <div className="hidden md:flex items-center align-middle gap-2 bg-muted rounded-lg mx-6 mt-2 px-3 py-2 h-11 w-96">
+          <div className="hidden md:flex items-center align-middle gap-2 rounded-lg mx-6 mt-2 px-3 py-2 h-11 w-96 bg-muted-foreground/20">
             <FiSearch className="w-5 h-5 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search vehicles, dealers, reports..."
-              className="bg-transparent border-none outline-none flex-1 text-sm"
+              className=" border-none outline-none flex-1 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

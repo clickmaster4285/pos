@@ -145,7 +145,7 @@ export function PlanForm({
         </div>
         <div className="col-span-4 space-y-2">
           <Label htmlFor={isEditMode ? 'edit-maxStaff' : 'maxStaff'}>
-            Max Users
+            Max Staff
           </Label>
           <Input
             id={isEditMode ? 'edit-maxStaff' : 'maxStaff'}

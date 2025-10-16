@@ -2,21 +2,33 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, List, Package, MapPin, AlertTriangle, Barcode } from 'lucide-react';
+import {
+  LayoutGrid,
+  List,
+  Package,
+  MapPin,
+  AlertTriangle,
+  Barcode,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-const BarcodeDialog = dynamic(
-  () => import('../barcode/BarcodeDialog'),
-  { ssr: false }
-);
+const BarcodeDialog = dynamic(() => import('../barcode/BarcodeDialog'), {
+  ssr: false,
+});
 
 export function InventoryGrid({
   items = [],
   onEditInfo,
   onEditHistory,
   onDeleteItem,
+  currencySymbol,
 }) {
-  const [barcodeDialog, setBarcodeDialog] = useState({ open: false, sku: '', variantName: '', itemName: '' });
+  const [barcodeDialog, setBarcodeDialog] = useState({
+    open: false,
+    sku: '',
+    variantName: '',
+    itemName: '',
+  });
 
   const handleBarcodeGenerate = (pdfInfo) => {
     console.log('PDF generated:', pdfInfo);
@@ -31,9 +43,9 @@ export function InventoryGrid({
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ">
         {items.map((it) => (
-          <div key={it.id} className="rounded-lg border p-4">
+          <div key={it.id} className="rounded-lg border p-4 bg-card ">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
@@ -64,6 +76,7 @@ export function InventoryGrid({
               <Stat
                 label="Inventory Value"
                 value={Intl.NumberFormat().format(it.totalPrice)}
+                currencySymbol={currencySymbol}
               />
             </div>
 
@@ -115,7 +128,14 @@ export function InventoryGrid({
       {barcodeDialog.open && (
         <BarcodeDialog
           open={true}
-          onClose={() => setBarcodeDialog({ open: false, sku: '', variantName: '', itemName: '' })}
+          onClose={() =>
+            setBarcodeDialog({
+              open: false,
+              sku: '',
+              variantName: '',
+              itemName: '',
+            })
+          }
           sku={barcodeDialog.sku}
           variantName={barcodeDialog.variantName}
           itemName={barcodeDialog.itemName}
@@ -126,11 +146,15 @@ export function InventoryGrid({
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, currencySymbol }) {
   return (
     <div>
       <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="text-sm font-medium">{value}</div>
+      <div className="text-sm font-medium">
+        {' '}
+        {currencySymbol}
+        {value}
+      </div>
     </div>
   );
 }

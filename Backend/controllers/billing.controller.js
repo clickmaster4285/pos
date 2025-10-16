@@ -14,19 +14,13 @@ const createBill = async (req, res) => {
       paymentMethod,
       paymentNumber,
     } = req.body ?? {};
-// console.log("the body", req.body);
+    // console.log("the body", req.body);
     // Top-level validation
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('Items must be a non-empty array');
     }
 
-    if (
-      ![
-        'cash',
-        'credit_card',
-        'bank_transfer',
-      ].includes(paymentMethod)
-    ) {
+    if (!['cash', 'credit_card', 'bank_transfer'].includes(paymentMethod)) {
       throw new Error('Invalid payment method');
     }
 
@@ -40,7 +34,11 @@ const createBill = async (req, res) => {
     }
 
     // Fetch company settings to get tax rates
-    const company = await IndexModel.Company.findOne({ companyId: req.user.companyId, deleted: false, isActive: true });
+    const company = await IndexModel.Company.findOne({
+      companyId: req.user.companyId,
+      deleted: false,
+      isActive: true,
+    });
     if (!company) {
       throw new Error('Company not found');
     }
@@ -53,13 +51,16 @@ const createBill = async (req, res) => {
     let taxPercent;
     if (paymentMethod === 'cash') {
       taxPercent = taxRates.taxRateCash;
-    } else if (paymentMethod === 'credit_card' || paymentMethod === 'bank_transfer') {
+    } else if (
+      paymentMethod === 'credit_card' ||
+      paymentMethod === 'bank_transfer'
+    ) {
       taxPercent = taxRates.taxRateCard;
     } else {
       taxPercent = 0;
     }
-    
-    console.log("teh tax rates", taxPercent, providedTaxPercent);
+
+    console.log('teh tax rates', taxPercent, providedTaxPercent);
     // Validate provided taxPercent, if any
     if (taxPercent !== undefined) {
       if (typeof taxPercent !== 'number' || taxPercent < 0) {
@@ -67,10 +68,13 @@ const createBill = async (req, res) => {
       }
       if (
         (paymentMethod === 'cash' && taxPercent !== taxRates.taxRateCash) ||
-        ((paymentMethod === 'credit_card' || paymentMethod === 'bank_transfer') &&
+        ((paymentMethod === 'credit_card' ||
+          paymentMethod === 'bank_transfer') &&
           taxPercent !== taxRates.taxRateCard)
       ) {
-        throw new Error('Provided taxPercent does not match company tax settings for the selected payment method');
+        throw new Error(
+          'Provided taxPercent does not match company tax settings for the selected payment method'
+        );
       }
     }
 
@@ -343,30 +347,26 @@ const getBills = async (req, res) => {
 //  - If refundItems missing/empty -> FULL refund
 //  - Else PARTIAL refund
 //  - If after partial all items are fully refunded -> flip to FULL
-
 const updateItemStatus = async (req, res) => {
   try {
     const { userId, companyId } = req.user;
     const billId = req.params.billId || req.params.id;
     const { refundItems = [], notes = '' } = req.body || {};
 
-    // Find the bill
     const bill = await IndexModel.Bill.findOne({
       _id: billId,
       companyId,
       deleted: false,
     });
+    if (!bill) throw new Error('Bill not found');
 
-    if (!bill) {
-      throw new Error('Bill not found');
-    }
-
-    // Prevent duplicate full refunds
     if (bill.status === 'refunded') {
       throw new Error('Bill is already fully refunded');
     }
 
-    // Helper: push to bill.history
+    // ---------------- helpers ----------------
+    const n = (v) => Number(v || 0);
+
     const pushHistory = (action, note = '') => {
       bill.history.push({
         action,
@@ -375,7 +375,6 @@ const updateItemStatus = async (req, res) => {
       });
     };
 
-    // Helper: update inventory and history for a single line
     const restockVariant = async ({
       inventoryItemId,
       variantId,
@@ -404,68 +403,100 @@ const updateItemStatus = async (req, res) => {
       }
     };
 
+    const alreadyRefundedQty = (item) =>
+      (Array.isArray(item.refundHistory) ? item.refundHistory : []).reduce(
+        (s, r) => s + n(r.refundQuantity),
+        0
+      );
+
+    // Sum of full line totals for NON-cancelled & NON-fully-returned lines
+    const recomputeBillTotalsByFullyReturnedLines = () => {
+      const subtotal = bill.items.reduce((sum, it) => {
+        const fullyReturned = it.status === 'returned_accept';
+        const cancelled = it.status === 'cancelled';
+        return fullyReturned || cancelled ? sum : sum + n(it.total);
+      }, 0);
+      const taxPct = n(bill.taxPercent) / 100;
+      bill.subtotal = +subtotal.toFixed(2);
+      bill.taxAmount = +(subtotal * taxPct).toFixed(2);
+      bill.total = +(bill.subtotal + bill.taxAmount).toFixed(2);
+    };
+
+    // --------------- main logic ----------------
+    let deltaRefundAmount = 0;
     let refundedItems = [];
-    let totalRefundAmount = 0;
 
     const isFullRefundRequested =
       !Array.isArray(refundItems) || refundItems.length === 0;
 
     if (isFullRefundRequested) {
-      // ---------- FULL REFUND: refund all remaining items ----------
+      // FULL REFUND of all remaining quantities
       for (const item of bill.items) {
-        if (item.status !== 'returned_accept') {
-          // Restock everything for this item
-          await restockVariant({
-            inventoryItemId: item.inventoryItem,
-            variantId: item.variantId,
-            qty: item.quantity,
-            label: `Refund: Bill ${bill.billNumber} - ${item.quantity} units of ${item.sku} returned to inventory`,
-          });
+        const prevQty = alreadyRefundedQty(item);
+        const remainingQty = Math.max(0, n(item.quantity) - prevQty);
+        if (remainingQty <= 0 || item.status === 'returned_accept') continue;
 
-          // Mark item refunded
-          item.status = 'returned_accept';
-          item.refundAmount = item.total;
+        await restockVariant({
+          inventoryItemId: item.inventoryItem,
+          variantId: item.variantId,
+          qty: remainingQty,
+          label: `Refund: Bill ${bill.billNumber} - ${remainingQty} units of ${item.sku} returned to inventory`,
+        });
 
-          // Item refund history
-          item.refundHistory.push({
-            refundQuantity: item.quantity,
-            refundAmount: item.total,
-            refundReason: notes || 'Full bill refund',
-            refundedBy: userId,
-          });
+        const unitPrice = n(item.price);
+        const lineDelta = unitPrice * remainingQty;
 
-          totalRefundAmount += item.total;
-          refundedItems.push({
-            sku: item.sku,
-            itemName: item.itemName,
-            quantity: item.quantity,
-            refundAmount: item.total,
-          });
-        }
+        item.status = 'returned_accept';
+        item.refundAmount = n(item.refundAmount) + lineDelta;
+        item.refundHistory = Array.isArray(item.refundHistory)
+          ? item.refundHistory
+          : [];
+        item.refundHistory.push({
+          refundQuantity: remainingQty,
+          refundAmount: lineDelta,
+          refundReason: notes || 'Full bill refund',
+          refundedBy: userId,
+        });
+
+        deltaRefundAmount += lineDelta;
+        refundedItems.push({
+          sku: item.sku,
+          itemName: item.itemName,
+          quantity: remainingQty,
+          refundAmount: lineDelta,
+        });
       }
 
-      // Zero out totals and mark bill fully refunded
-      bill.subtotal = 0;
-      bill.taxAmount = 0;
-      bill.total = 0;
-      bill.status = 'refunded';
+      // Recompute totals (now all lines fully returned -> subtotal becomes 0)
+      recomputeBillTotalsByFullyReturnedLines();
+
+      // cumulative total
+      const prevTotalRefund = n(bill?.refundDetails?.totalRefundAmount);
+      const cumulativeRefund = prevTotalRefund + deltaRefundAmount;
+
+      bill.status = bill.total === 0 ? 'refunded' : 'partially_refunded';
       bill.refundDetails = {
-        totalRefundAmount,
+        ...(bill.refundDetails || {}),
+        totalRefundAmount: cumulativeRefund,
         refundedAt: new Date(),
         refundedBy: userId,
         refundReason: notes || 'Full refund',
       };
 
       pushHistory(
-        `Bill refunded - Total refund: $${totalRefundAmount.toFixed(2)}`,
+        `Bill ${
+          bill.status
+        } - Total refund (this op): $${deltaRefundAmount.toFixed(2)}`,
         notes
       );
     } else {
-      // ---------- PARTIAL REFUND: validate + group duplicates ----------
-      // Group by SKU in case UI sends multiple rows for same SKU
+      // PARTIAL REFUND — do NOT change bill subtotal by partial amounts
+      // Only drop a line from subtotal when that line becomes fully returned.
+
+      // Group by SKU (UI may send duplicates)
       const skuMap = new Map();
       for (const r of refundItems) {
-        const q = Number(r.quantity || 0);
+        const q = n(r.quantity);
         if (q <= 0) continue;
         const prev = skuMap.get(r.sku) || { quantity: 0, reasons: [] };
         skuMap.set(r.sku, {
@@ -480,30 +511,31 @@ const updateItemStatus = async (req, res) => {
       }));
 
       if (groupedRefunds.length === 0) {
-        // No positive quantities after sanitization -> treat as FULL refund
+        // treat as full refund of remaining
         req.body.refundItems = [];
         return await updateItemStatus(req, res);
       }
 
-      // Process each grouped refund
       for (const refundItem of groupedRefunds) {
         const billItem = bill.items.find(
           (it) => it.sku === refundItem.sku && it.status !== 'returned_accept'
         );
-
         if (!billItem) {
           throw new Error(
             `Item with SKU ${refundItem.sku} not found or already fully refunded`
           );
         }
 
-        if (refundItem.quantity > billItem.quantity) {
+        const prevQty = alreadyRefundedQty(billItem);
+        const remainingQty = Math.max(0, n(billItem.quantity) - prevQty);
+
+        if (refundItem.quantity > remainingQty) {
           throw new Error(
-            `Refund quantity (${refundItem.quantity}) exceeds purchased quantity (${billItem.quantity}) for ${billItem.sku}`
+            `Refund qty (${refundItem.quantity}) exceeds remaining refundable qty (${remainingQty}) for ${billItem.sku}`
           );
         }
 
-        // Restock partial qty
+        // Restock the partial quantity
         await restockVariant({
           inventoryItemId: billItem.inventoryItem,
           variantId: billItem.variantId,
@@ -511,88 +543,80 @@ const updateItemStatus = async (req, res) => {
           label: `Partial Refund: Bill ${bill.billNumber} - ${refundItem.quantity} units of ${billItem.sku} returned to inventory`,
         });
 
-        // Money math
-        const unitPrice = Number(billItem.price || 0);
-        const itemRefundAmount = unitPrice * refundItem.quantity;
+        const unitPrice = n(billItem.price);
+        const lineDelta = unitPrice * refundItem.quantity;
 
-        // Status at line level
-        if (refundItem.quantity === billItem.quantity) {
-          billItem.status = 'returned_accept';
+        // Update line refund state
+        if (refundItem.quantity === remainingQty) {
+          billItem.status = 'returned_accept'; // now fully returned -> will be excluded from subtotal
         } else {
-          // Partially refunded but not fully
-          billItem.status = 'returned_request';
+          billItem.status = 'returned_request'; // still counts in subtotal at full line total
         }
 
-        billItem.refundAmount =
-          Number(billItem.refundAmount || 0) + itemRefundAmount;
-
-        // Line refund history
+        billItem.refundAmount = n(billItem.refundAmount) + lineDelta;
+        billItem.refundHistory = Array.isArray(billItem.refundHistory)
+          ? billItem.refundHistory
+          : [];
         billItem.refundHistory.push({
           refundQuantity: refundItem.quantity,
-          refundAmount: itemRefundAmount,
+          refundAmount: lineDelta,
           refundReason: refundItem.reason || 'Partial refund',
           refundedBy: userId,
         });
 
-        totalRefundAmount += itemRefundAmount;
+        deltaRefundAmount += lineDelta;
         refundedItems.push({
           sku: billItem.sku,
           itemName: billItem.itemName,
           quantity: refundItem.quantity,
-          refundAmount: itemRefundAmount,
+          refundAmount: lineDelta,
         });
       }
 
-      // Recalculate bill totals based on non-fully-refunded items
-      const remainingItemsTotal = bill.items.reduce((sum, it) => {
-        return it.status === 'returned_accept'
-          ? sum
-          : sum + (Number(it.total) || 0);
-      }, 0);
+      // Recompute totals based ONLY on fully returned/cancelled lines
+      recomputeBillTotalsByFullyReturnedLines();
 
-      bill.subtotal = remainingItemsTotal;
-      bill.taxAmount = +(
-        remainingItemsTotal *
-        (Number(bill.taxPercent || 0) / 100)
-      ).toFixed(2);
-      bill.total = +(bill.subtotal + bill.taxAmount).toFixed(2);
+      const prevTotalRefund = n(bill?.refundDetails?.totalRefundAmount);
+      const cumulativeRefund = prevTotalRefund + deltaRefundAmount;
 
-      // If everything is now fully refunded, flip to FULL
-      const allFullyRefunded = bill.items.every(
-        (it) => it.status === 'returned_accept'
+      const allFullyReturned = bill.items.every(
+        (it) => it.status === 'returned_accept' || it.status === 'cancelled'
       );
-      bill.status = allFullyRefunded ? 'refunded' : 'partially_refunded';
+      bill.status = allFullyReturned ? 'refunded' : 'partially_refunded';
 
       bill.refundDetails = {
-        totalRefundAmount,
+        ...(bill.refundDetails || {}),
+        totalRefundAmount: cumulativeRefund,
         refundedAt: new Date(),
         refundedBy: userId,
         refundReason:
           notes ||
-          (allFullyRefunded ? 'Full refund via partials' : 'Partial refund'),
+          (allFullyReturned ? 'Full refund via partials' : 'Partial refund'),
       };
 
       pushHistory(
-        `Bill ${bill.status} - Total refund: $${totalRefundAmount.toFixed(2)}`,
+        `Bill ${
+          bill.status
+        } - Total refund (this op): $${deltaRefundAmount.toFixed(2)}`,
         notes
       );
     }
 
-    // Save
     await bill.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: `Bill successfully ${bill.status}`,
       data: {
         bill: bill.toObject(),
         refundedItems,
-        totalRefundAmount,
+        deltaRefundAmount,
+        cumulativeRefundAmount: bill.refundDetails.totalRefundAmount,
       },
     });
   } catch (error) {
     console.error('Error changing bill status:', error);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: 'Error processing refund',
       error: error.message,

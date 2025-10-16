@@ -180,7 +180,7 @@ const StaffCard = ({
                   <Badge
                     key={key}
                     variant="outline"
-                    className="text-xs h-7 leading-7 bg-background border-secondary/20 text-secondary-foreground px-2"
+                    className="text-xs h-7 leading-7  bg-muted text-primary px-2"
                     title={permissionLabels[key] || key}
                   >
                     <span className="truncate max-w-[140px]">
@@ -192,7 +192,7 @@ const StaffCard = ({
                 {restCount > 0 && (
                   <Badge
                     variant="outline"
-                    className="text-xs h-7 leading-7 bg-background border-secondary/20 text-secondary-foreground px-2"
+                    className="text-xs h-7 leading-7 bg-muted/30  text-secondary-foreground px-2"
                     title={`${restCount} more`}
                   >
                     +{restCount} more

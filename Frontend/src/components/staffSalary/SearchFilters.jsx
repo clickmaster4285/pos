@@ -54,11 +54,11 @@ export default function SearchFilters({
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 bg-card rounded-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground " />
           <Input
             placeholder="Search staff by name, role and department"
-            className="pl-9 bg-background w-full"
+            className="pl-9 w-full"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -70,7 +70,7 @@ export default function SearchFilters({
             onDepartmentChange(val === '__ALL__' ? null : val)
           }
         >
-          <SelectTrigger className="w-[200px] shrink-0 bg-background">
+          <SelectTrigger className="w-[200px] shrink-0 bg-card">
             <SelectValue placeholder="Filter dept." />
           </SelectTrigger>
           <SelectContent>

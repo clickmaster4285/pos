@@ -19,6 +19,7 @@ import {
   Users,
   BarChart,
   Briefcase,
+  Truck,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -42,6 +43,8 @@ const iconMap = {
   'Live Store': Store,
   Attendance: ClipboardList,
   'Staff Salaries': CreditCard,
+  Couriers: ShoppingCart,
+  Warehouse: Truck,
 };
 
 function SidebarFooter({ userName, userRole }) {
@@ -82,6 +85,12 @@ const getAuthState = () => {
       return JSON.parse(authState);
     }
 
+    // Alternative: check localStorage if sessionStorage doesn't have it
+    const localAuthState = localStorage.getItem('authUser');
+    if (localAuthState) {
+      return JSON.parse(localAuthState);
+    }
+
     return null;
   } catch (error) {
     console.error('Error reading auth state:', error);
@@ -119,7 +128,14 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors'])) {
+  if (
+    hasAny(user, [
+      'createVendors',
+      'updateVendors',
+      'deleteVendors',
+      'viewVendors',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/vendors`,
       label: 'Vendors',
@@ -127,7 +143,14 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['createInventory', 'updateInventory', 'deleteInventory', 'viewInventory'])) {
+  if (
+    hasAny(user, [
+      'createInventory',
+      'updateInventory',
+      'deleteInventory',
+      'viewInventory',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/inventory`,
       label: 'Inventory',
@@ -135,7 +158,9 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])) {
+  if (
+    hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])
+  ) {
     links.push({
       href: `${staffBase}/billing`,
       label: 'Billing',
@@ -151,7 +176,9 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])) {
+  if (
+    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
+  ) {
     links.push({
       href: `${staffBase}/staff`,
       label: 'Staff',
@@ -159,7 +186,8 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, [
+  if (
+    hasAny(user, [
       'createPayment',
       'viewAllStaffSalaries',
       'updateSalary',
@@ -167,7 +195,8 @@ function buildStaffLinks(user) {
       'staffSummary',
       'viewActiveLog',
       'viewCompanySummary',
-    ])) {
+    ])
+  ) {
     links.push({
       href: `${staffBase}/staff-salaries`,
       label: 'Payments',
@@ -257,6 +286,7 @@ export default function Sidebar() {
           icon: iconMap['Payment / Billing'],
         },
         { href: '#', label: 'Settings', icon: iconMap['Settings'] },
+        { href: '/superadmin/payment-gateway-config', label: 'Payment GateWay Configuration', icon: iconMap['Settings'] },
       ],
       admin: [
         {
@@ -270,13 +300,19 @@ export default function Sidebar() {
           label: 'Permission',
           icon: iconMap['Permission'],
         },
+        { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
         {
           href: '/admin/inventory',
           label: 'Inventory',
           icon: iconMap['Inventory'],
         },
+        {
+          href: '/admin/warehouse',
+          label: 'Warehouse',
+          icon: iconMap['Warehouse'],
+        },
         { href: '/admin/billing', label: 'Billing', icon: iconMap['Billing'] },
-        { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
+
         {
           href: '/admin/attendance-devices',
           label: 'Attendance Devices Setting',
@@ -291,6 +327,11 @@ export default function Sidebar() {
           href: '/admin/staff-salaries',
           label: 'Staff Salaries',
           icon: iconMap['Staff Salaries'],
+        },
+        {
+          href: '/admin/couriers',
+          label: 'Couriers & Shipment',
+          icon: iconMap['Couriers'],
         },
         {
           href: '/admin/setting',
@@ -359,7 +400,7 @@ export default function Sidebar() {
                           href={href}
                           className={`group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
                             active
-                              ? 'bg-gradient-to-r from-secondary-foreground/20 to-secondary-foreground/10 text-secondary-foreground border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+                              ? 'bg-gradient-to-r from-secondary-foreground to-secondary-foreground text-primary font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
                               : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
                           } ${collapsed ? 'justify-center' : ''}`}
                           aria-current={active ? 'page' : undefined}

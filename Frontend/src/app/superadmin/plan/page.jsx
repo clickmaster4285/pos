@@ -253,7 +253,7 @@ export default function PlanManagement() {
 
 function HeaderSection({ onCreatePlanClick }) {
   return (
-    <div className="bg-card">
+    <div className="">
       <div className="mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div>

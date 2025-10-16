@@ -19,7 +19,7 @@ export function PlanFilters({
 }) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
-      <div className="relative flex-1">
+      <div className="relative flex-1 bg-card rounded-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
         <Input
           placeholder="Search plans..."
@@ -31,7 +31,7 @@ export function PlanFilters({
       <div className="flex gap-2">
         <Select value={filterStatus} onValueChange={onFilterStatusChange}>
           <SelectTrigger className="w-32">
-            <Filter className="w-4 h-4 mr-2" />
+            <Filter className="w-4 h-4 mr-2 text-primary" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

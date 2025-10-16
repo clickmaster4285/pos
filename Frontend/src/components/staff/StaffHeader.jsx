@@ -62,10 +62,7 @@ const StaffHeader = ({
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow transition-all duration-300"
-              disabled={!addPermission}
-            >
+            <Button variant={'header'} disabled={!addPermission}>
               <Plus className="mr-2 h-4 w-4" />
               Add Staff Member
             </Button>

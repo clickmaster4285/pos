@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '../ui/Pagination';
 import {
   Table,
   TableBody,
@@ -27,6 +28,22 @@ export default function UsersTable({
   onShowDetails,
   onShowHistory,
 }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const pagedUsers = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, page, pageSize]);
+
+  // Reset to first page whenever the source list changes
+  useEffect(() => {
+    setPage(1);
+  }, [filteredUsers]);
+
   return (
     <div className="px-6">
       {isLoading ? (
@@ -48,7 +65,7 @@ export default function UsersTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => {
+                {pagedUsers.map((user) => {
                   const userId = getUserId(user);
                   const active = isUserActive(user);
                   const roleLabel = user?.subRole || user?.role || '—';
@@ -97,7 +114,7 @@ export default function UsersTable({
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -108,7 +125,7 @@ export default function UsersTable({
                           Manage
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -133,6 +150,16 @@ export default function UsersTable({
           )}
         </>
       )}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={total}
+        onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }

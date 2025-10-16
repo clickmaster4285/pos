@@ -12,8 +12,6 @@ import { Shield, Lock, CreditCard, CheckCircle } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
 
-// Initialize Stripe promise
-
 
 function CheckoutForm({ 
   priceId, 
@@ -250,8 +248,8 @@ export default function PaymentForm({
   onPaymentComplete 
 }) {
   const { data: publishKey } = useGetStripPublishKeyQuery();
-// console.log(":the data publishKey is : ", publishKey)
-const stripePromise = loadStripe(publishKey?.data);
+  // console.log(":the data publishKey is : ", publishKey)
+  const stripePromise = loadStripe(publishKey?.data);
   return (
     <Elements stripe={stripePromise}>
       <CheckoutForm

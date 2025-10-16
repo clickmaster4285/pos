@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -18,14 +18,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Search,
   Trash2,
@@ -33,11 +33,11 @@ import {
   CreditCard,
   Loader,
   Package,
-} from "lucide-react";
-import PropTypes from "prop-types";
-import { useClickOutside } from "@/utils/useClickOutside";
-import { useDebounce } from "@/utils/useDebounce";
-import { PAYMENT_METHODS } from "@/utils/paymentMethods";
+} from 'lucide-react';
+import PropTypes from 'prop-types';
+import { useClickOutside } from '@/utils/useClickOutside';
+import { useDebounce } from '@/utils/useDebounce';
+import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 
 CreateBillDialog.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -117,6 +117,8 @@ export function CreateBillDialog({
   companyId,
   taxRates,
   companyLoading,
+  currencySymbol,
+
 }) {
   const debouncedSearchInventory = useDebounce(searchInventory, 300);
   useClickOutside(searchRef, () => setShowSearchResults(false));
@@ -166,8 +168,8 @@ export function CreateBillDialog({
 
   const draftBill = useMemo(
     () => ({
-      _id: "PREVIEW",
-      billNumber: "(Preview)",
+      _id: 'PREVIEW',
+      billNumber: '(Preview)',
       createdAt: new Date().toISOString(),
       buyer,
       items: items.map((it) => ({
@@ -184,7 +186,7 @@ export function CreateBillDialog({
       total: grandTotal,
       paymentMethod,
       paymentNumber,
-      status: "pending",
+      status: 'pending',
     }),
     [
       buyer,
@@ -278,15 +280,16 @@ export function CreateBillDialog({
                               </div>
                               <div className="text-right">
                                 <div className="font-semibold text-foreground">
-                                  ${Number(item.price || 0).toFixed(2)}
+                                  {currencySymbol}
+                                  {Number(item.price || 0).toFixed(2)}
                                 </div>
                                 <Badge
                                   variant="outline"
                                   className="mt-1 text-xs"
                                 >
-                                  {item.type === "variant"
-                                    ? "Variant"
-                                    : "Product"}
+                                  {item.type === 'variant'
+                                    ? 'Variant'
+                                    : 'Product'}
                                 </Badge>
                               </div>
                             </div>
@@ -337,7 +340,8 @@ export function CreateBillDialog({
                               </div>
                             </TableCell>
                             <TableCell className="text-right text-card-foreground">
-                              ${Number(item.price).toFixed(2)}
+                              {currencySymbol}
+                              {Number(item.price).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
                               <Input
@@ -359,7 +363,8 @@ export function CreateBillDialog({
                               />
                             </TableCell>
                             <TableCell className="text-right font-semibold">
-                              ${Number(item.lineTotal).toFixed(2)}
+                              {currencySymbol}
+                              {Number(item.lineTotal).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -411,7 +416,7 @@ export function CreateBillDialog({
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-name"
                   >
-                    Buyer Name{" "}
+                    Buyer Name{' '}
                     {buyerDetailsRequired && (
                       <span className="text-red-500">*</span>
                     )}
@@ -419,7 +424,7 @@ export function CreateBillDialog({
                   <Input
                     id="buyer-name"
                     placeholder="Enter buyer name"
-                    value={buyer.name || ""}
+                    value={buyer.name || ''}
                     onChange={(e) =>
                       setBuyer((b) => ({ ...b, name: e.target.value }))
                     }
@@ -432,7 +437,7 @@ export function CreateBillDialog({
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-email"
                   >
-                    Email{" "}
+                    Email{' '}
                     {buyerDetailsRequired && (
                       <span className="text-red-500">*</span>
                     )}
@@ -440,7 +445,7 @@ export function CreateBillDialog({
                   <Input
                     id="buyer-email"
                     placeholder="buyer@email.com"
-                    value={buyer.email || ""}
+                    value={buyer.email || ''}
                     onChange={(e) =>
                       setBuyer((b) => ({ ...b, email: e.target.value }))
                     }
@@ -453,7 +458,7 @@ export function CreateBillDialog({
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-phone"
                   >
-                    Phone{" "}
+                    Phone{' '}
                     {buyerDetailsRequired && (
                       <span className="text-red-500">*</span>
                     )}
@@ -461,7 +466,7 @@ export function CreateBillDialog({
                   <Input
                     id="buyer-phone"
                     placeholder="+92 3XX XXXXXXX"
-                    value={buyer.phone || ""}
+                    value={buyer.phone || ''}
                     onChange={(e) =>
                       setBuyer((b) => ({ ...b, phone: e.target.value }))
                     }
@@ -523,7 +528,7 @@ export function CreateBillDialog({
                         e.target.value === PAYMENT_METHODS.CASH &&
                         setPaymentNumber
                       ) {
-                        setPaymentNumber("");
+                        setPaymentNumber('');
                       }
                     }}
                     aria-label="Payment method"
@@ -544,31 +549,31 @@ export function CreateBillDialog({
                       htmlFor="payment-number"
                     >
                       {paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                        ? "Card Number"
-                        : "Bank Account Number"}{" "}
+                        ? 'Card Number'
+                        : 'Bank Account Number'}{' '}
                       <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="payment-number"
                       placeholder={
                         paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                          ? "1234 5678 9012 3456"
-                          : "PK1234567890123456"
+                          ? '1234 5678 9012 3456'
+                          : 'PK1234567890123456'
                       }
-                      value={paymentNumber || ""}
+                      value={paymentNumber || ''}
                       onChange={(e) => setPaymentNumber?.(e.target.value)}
                       required={buyerDetailsRequired}
                       aria-label={
                         paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                          ? "Card number"
-                          : "Bank account number"
+                          ? 'Card number'
+                          : 'Bank account number'
                       }
                     />
                     {!paymentNumber?.trim() && buyerDetailsRequired && (
                       <p className="text-xs text-red-500">
                         {paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                          ? "Card number is required"
-                          : "Bank account number is required"}
+                          ? 'Card number is required'
+                          : 'Bank account number is required'}
                       </p>
                     )}
                   </div>
@@ -583,7 +588,7 @@ export function CreateBillDialog({
                   <Input
                     id="notes"
                     placeholder="Optional notes"
-                    value={notes || ""}
+                    value={notes || ''}
                     onChange={(e) => setNotes(e.target.value)}
                     aria-label="Bill notes"
                   />
@@ -592,18 +597,27 @@ export function CreateBillDialog({
                 <div className="pt-4 border-t space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    <span className="font-medium">
+                      {' '}
+                      {currencySymbol}
+                      {subtotal.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       Tax ({taxPercent || 0}%):
                     </span>
-                    <span className="font-medium">${taxAmount.toFixed(2)}</span>
+                    <span className="font-medium">
+                      {' '}
+                      {currencySymbol}
+                      {taxAmount.toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-2 border-t">
                     <span className="text-foreground">Total:</span>
                     <span className="text-primary">
-                      ${grandTotal.toFixed(2)}
+                      {currencySymbol}
+                      {grandTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -613,17 +627,17 @@ export function CreateBillDialog({
 
           <div className="flex gap-3 justify-end pt-4 border-t">
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => onOpenChange(false)}
               aria-label="Cancel bill creation"
             >
               Cancel
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => {
                 if (
-                  window.confirm("Are you sure you want to reset all fields?")
+                  window.confirm('Are you sure you want to reset all fields?')
                 ) {
                   onReset();
                 }
@@ -633,7 +647,7 @@ export function CreateBillDialog({
               Reset Form
             </Button>
             <Button
-              variant="outline"
+              variant="header"
               onClick={() => {
                 onSave?.();
                 onPrintReceipt?.(draftBill);
@@ -646,11 +660,8 @@ export function CreateBillDialog({
             </Button>
             <div className="relative">
               <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={onSave}
-                disabled={
-                  creating || items.length === 0
-                }
+                disabled={creating || items.length === 0}
                 aria-label="Save bill"
               >
                 {creating && <Loader className="w-4 h-4 mr-2 animate-spin" />}

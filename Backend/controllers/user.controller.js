@@ -399,6 +399,7 @@ const getAllAdminUsers = async (req, res) => {
         return {
           ...user,
           plan: company ? company.plan : null,
+          company_id: company._id || company.id,
         };
       })
     );

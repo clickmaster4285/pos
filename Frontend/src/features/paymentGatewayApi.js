@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3455'
+  process.env.NEXT_PUBLIC_API_URL
 ).replace(/\/$/, '');
 
 export const paymentGatewayApi = createApi({

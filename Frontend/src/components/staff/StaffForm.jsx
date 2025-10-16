@@ -279,7 +279,7 @@ const StaffForm = ({
     setStaff({ ...staff, password: out });
   }
 
-    // Handle device selection
+  // Handle device selection
   function handleDeviceToggle(deviceId, checked) {
     setStaff({
       ...staff,
@@ -392,7 +392,7 @@ const StaffForm = ({
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="shrink-0"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
@@ -405,7 +405,7 @@ const StaffForm = ({
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="shrink-0"
                   onClick={() => generatePassword()}
                 >
@@ -485,7 +485,7 @@ const StaffForm = ({
 
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setAddingCustomRole((s) => !s)}
                   className="shrink-0"
                 >
@@ -508,7 +508,11 @@ const StaffForm = ({
                     }}
                     placeholder="e.g., Floor Supervisor"
                   />
-                  <Button type="button" onClick={addCustomRole}>
+                  <Button
+                    type="button"
+                    variant={'header'}
+                    onClick={addCustomRole}
+                  >
                     Add
                   </Button>
                 </div>
@@ -539,7 +543,7 @@ const StaffForm = ({
 
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setAddingCustomDept((s) => !s)}
                   className="shrink-0"
                 >
@@ -562,7 +566,11 @@ const StaffForm = ({
                     }}
                     placeholder="e.g., Front Desk"
                   />
-                  <Button type="button" onClick={addCustomDept}>
+                  <Button
+                    type="button"
+                    variant={'header'}
+                    onClick={addCustomDept}
+                  >
                     Add
                   </Button>
                 </div>
@@ -658,7 +666,7 @@ const StaffForm = ({
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="header"
                 size="sm"
                 onClick={handleSelectAllPermissions}
                 disabled={permissionKeys.length === 0}
@@ -667,7 +675,7 @@ const StaffForm = ({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={handleClearAllPermissions}
                 disabled={permissionKeys.length === 0}
@@ -727,7 +735,7 @@ const StaffForm = ({
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSelectAllStaff}
                   disabled={staffKeys.length === 0}
@@ -741,7 +749,7 @@ const StaffForm = ({
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSelectAllBilling}
                   disabled={billingKeys.length === 0}
@@ -755,7 +763,7 @@ const StaffForm = ({
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSelectAllOther}
                   disabled={otherKeys.length === 0}
@@ -769,7 +777,7 @@ const StaffForm = ({
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSelectAllSalary}
                   disabled={salaryKeys.length === 0}
@@ -828,14 +836,10 @@ const StaffForm = ({
 
       {/* Footer actions */}
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button
-          onClick={onSubmit}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={isSubmitting}
-        >
+        <Button onClick={onSubmit} disabled={isSubmitting}>
           {isSubmitting
             ? isEditMode
               ? 'Updating...'

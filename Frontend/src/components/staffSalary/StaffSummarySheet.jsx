@@ -64,7 +64,7 @@ const TypeIcon = ({ type }) => {
   return <DollarSign className="h-4 w-4 text-blue-600" />;
 };
 
-const PaymentCard = ({ payment }) => {
+const PaymentCard = ({ payment, currencySymbol }) => {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const history = payment.history || [];
   const displayHistory = showAllHistory ? history : history.slice(0, 7);
@@ -86,7 +86,8 @@ const PaymentCard = ({ payment }) => {
         <div className="text-right">
           <div className="text-sm text-muted-foreground">Total Paid</div>
           <div className="text-lg font-bold text-foreground">
-            ${fmtMoney(payment.totalPaid)}
+            {currencySymbol}
+            {fmtMoney(payment.totalPaid)}
           </div>
         </div>
       </div>
@@ -96,14 +97,15 @@ const PaymentCard = ({ payment }) => {
         <div>
           <Label className="text-muted-foreground text-xs">Base Salary</Label>
           <div className="font-medium text-foreground">
-            ${fmtMoney(payment.baseSalary)}
+            {currencySymbol} {fmtMoney(payment.baseSalary)}
           </div>
         </div>
         {payment.bonusAmount > 0 && (
           <div>
             <Label className="text-muted-foreground text-xs">Bonus</Label>
             <div className="font-medium text-green-600">
-              +${fmtMoney(payment.bonusAmount)}
+              + {currencySymbol}
+              {fmtMoney(payment.bonusAmount)}
             </div>
           </div>
         )}
@@ -138,7 +140,12 @@ const PaymentCard = ({ payment }) => {
   );
 };
 
-export default function StaffSummarySheet({ open, onOpenChange, staffId }) {
+export default function StaffSummarySheet({
+  open,
+  onOpenChange,
+  staffId,
+  currencySymbol,
+}) {
   const { data, isLoading, isError } = useGetStaffSummaryQuery(
     staffId ? { staffId, limit: 10 } : { staffId: '' },
     { skip: !open || !staffId }
@@ -230,7 +237,8 @@ export default function StaffSummarySheet({ open, onOpenChange, staffId }) {
                         Base Salary (Monthly)
                       </Label>
                       <div className="font-bold text-foreground text-lg">
-                        ${fmtMoney(staff.baseSalaryMonthly || 0)}
+                        {currencySymbol}
+                        {fmtMoney(staff.baseSalaryMonthly || 0)}
                       </div>
                     </div>
                     <div>
@@ -267,7 +275,11 @@ export default function StaffSummarySheet({ open, onOpenChange, staffId }) {
                 ) : (
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                     {payments.map((payment) => (
-                      <PaymentCard key={payment._id} payment={payment} />
+                      <PaymentCard
+                        key={payment._id}
+                        payment={payment}
+                        currencySymbol={currencySymbol}
+                      />
                     ))}
                   </div>
                 )}

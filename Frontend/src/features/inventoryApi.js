@@ -1,28 +1,29 @@
 // src/features/inventoryApi.js
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3455"
-).replace(/\/$/, "");
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3455'
+).replace(/\/$/, '');
 
 export const inventoryApi = createApi({
-  reducerPath: "inventoryApi",
+  reducerPath: 'inventoryApi',
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_URL}/api/inventory`,
-    credentials: "include",
+    credentials: 'include',
     prepareHeaders: (headers, { getState }) => {
       const token =
         getState()?.auth?.token ||
-        (typeof window !== "undefined" &&
-          sessionStorage.getItem("authToken")) ||
+        (typeof window !== 'undefined' &&
+          (sessionStorage.getItem('authToken') ||
+            localStorage.getItem('accessToken'))) ||
         null;
 
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      headers.set("Content-Type", "application/json");
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
-  tagTypes: ["Inventory"],
+  tagTypes: ['Inventory'],
   endpoints: (builder) => ({
     // GET /api/inventory/get-all-inventories
     getInventory: builder.query({
@@ -32,38 +33,38 @@ export const inventoryApi = createApi({
       providesTags: (result) =>
         Array.isArray(result)
           ? [
-              ...result.map((i) => ({ type: "Inventory", id: i._id || i.id })),
-              { type: "Inventory", id: "LIST" },
+              ...result.map((i) => ({ type: 'Inventory', id: i._id || i.id })),
+              { type: 'Inventory', id: 'LIST' },
             ]
-          : [{ type: "Inventory", id: "LIST" }],
+          : [{ type: 'Inventory', id: 'LIST' }],
     }),
 
     // GET /api/inventory/get-inventory-by-id/:id
     getInventoryById: builder.query({
       query: (id) => `/get-inventory-by-id/${id}`,
-      providesTags: (_res, _err, id) => [{ type: "Inventory", id }],
+      providesTags: (_res, _err, id) => [{ type: 'Inventory', id }],
     }),
 
     // POST /api/inventory/create-inventory
     createInventoryItem: builder.mutation({
       query: (body) => ({
         url: `/create-inventory`,
-        method: "POST",
+        method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: "Inventory", id: "LIST" }],
+      invalidatesTags: [{ type: 'Inventory', id: 'LIST' }],
     }),
 
     // PATCH /api/inventory/update-info-inventory/:id
     updateInventoryInfo: builder.mutation({
       query: ({ id, ...patch }) => ({
         url: `/update-info-inventory/${id}`,
-        method: "PATCH",
+        method: 'PATCH',
         body: patch,
       }),
       invalidatesTags: (_res, _err, { id }) => [
-        { type: "Inventory", id },
-        { type: "Inventory", id: "LIST" },
+        { type: 'Inventory', id },
+        { type: 'Inventory', id: 'LIST' },
       ],
     }),
 
@@ -71,12 +72,12 @@ export const inventoryApi = createApi({
     addStock: builder.mutation({
       query: ({ id, ...body }) => ({
         url: `/add-stock-inventory/${id}`,
-        method: "PUT",
+        method: 'PUT',
         body, // { variants: [...], reason, source, comments }
       }),
       invalidatesTags: (_res, _err, { id }) => [
-        { type: "Inventory", id },
-        { type: "Inventory", id: "LIST" },
+        { type: 'Inventory', id },
+        { type: 'Inventory', id: 'LIST' },
       ],
     }),
 
@@ -84,12 +85,12 @@ export const inventoryApi = createApi({
     updateInventoryItem: builder.mutation({
       query: ({ inventoryId, historyId, ...patch }) => ({
         url: `/update-inventory-item/${inventoryId}/${historyId}`,
-        method: "PATCH",
+        method: 'PATCH',
         body: patch,
       }),
       invalidatesTags: (_res, _err, { inventoryId }) => [
-        { type: "Inventory", id: inventoryId },
-        { type: "Inventory", id: "LIST" },
+        { type: 'Inventory', id: inventoryId },
+        { type: 'Inventory', id: 'LIST' },
       ],
     }),
 
@@ -97,11 +98,11 @@ export const inventoryApi = createApi({
     deleteInventoryItem: builder.mutation({
       query: (id) => ({
         url: `/delete-inventory-item/${id}`,
-        method: "DELETE",
+        method: 'DELETE',
       }),
       invalidatesTags: (_res, _err, id) => [
-        { type: "Inventory", id },
-        { type: "Inventory", id: "LIST" },
+        { type: 'Inventory', id },
+        { type: 'Inventory', id: 'LIST' },
       ],
     }),
   }),

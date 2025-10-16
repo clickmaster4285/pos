@@ -243,8 +243,6 @@ export function HandlePermissions() {
 
   return (
     <div className="mx-auto p-6 max-w-full">
-      <Toaster position="top-right" richColors />
-
       <PageHeader />
       <StatsCards
         isLoading={isLoading}

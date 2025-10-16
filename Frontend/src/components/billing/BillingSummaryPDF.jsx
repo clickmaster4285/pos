@@ -183,7 +183,7 @@ export default function BillingSummaryPDF() {
 
   return (
     <>
-      <Button onClick={() => setIsDateDialogOpen(true)} variant="secondary">
+      <Button onClick={() => setIsDateDialogOpen(true)} variant="default">
         <Download className="w-4 h-4 mr-2" />
         Download Summary
       </Button>

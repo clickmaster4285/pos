@@ -11,15 +11,17 @@ import AddressBook from './addressBook.route.js';
 import Bill from './billing.route.js';
 import ActiveLog from './activeLog.route.js';
 import StaffSalary from './staffSalary.route.js';
-import Attendance from "./attendance.router.js";
-import AttendanceDevice from "./attendanceDevice.router.js";
+import Attendance from './attendance.router.js';
+import AttendanceDevice from './attendanceDevice.router.js';
+import Courier from './courier.routes.js';
 import PaymentGatway from "./PaymentGatway.route.js";
+import Shippment from './shipment.routes.js';
 
 const router = express.Router();
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: 100,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
@@ -33,7 +35,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 15,
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later.',
@@ -62,8 +64,10 @@ router.use('/address-book', AddressBook);
 router.use('/billing', Bill);
 router.use('/activity', ActiveLog);
 router.use('/staff-salary', StaffSalary);
-router.use("/attendance-device", AttendanceDevice);
-router.use("/attendance", Attendance);
+router.use('/attendance-device', AttendanceDevice);
+router.use('/attendance', Attendance);
+router.use('/courier', Courier);
+router.use('/shippment', Shippment);
 router.use("/strip", PaymentGatway);
 
 export default router;

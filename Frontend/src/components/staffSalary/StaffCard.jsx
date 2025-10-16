@@ -28,6 +28,7 @@ export function StaffCard({
   createPaymentPermission,
   updateSalaryPermission,
   staffSummaryPermission,
+  currencySymbol,
 }) {
   const statusColors = {
     active: 'bg-accent/10 text-accent border-accent/20',
@@ -130,7 +131,7 @@ export function StaffCard({
         }}
       >
         <div className="flex items-center gap-2 text-sm">
-          <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Briefcase className="h-4 w-4 text-secondary-foreground shrink-0" />
           <span className="text-muted-foreground">Department:</span>
           <span
             className="font-medium text-foreground truncate"
@@ -141,10 +142,10 @@ export function StaffCard({
         </div>
 
         <div className="flex items-center gap-2 text-sm">
-          <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+          <DollarSign className="h-4 w-4 text-secondary-foreground shrink-0" />
           <span className="text-muted-foreground">Monthly Salary:</span>
           <span className="font-semibold text-foreground">
-            $
+            {currencySymbol}
             {Number(staff.salary).toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
@@ -152,7 +153,7 @@ export function StaffCard({
         </div>
 
         <div className="flex items-center gap-2 text-sm">
-          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Calendar className="h-4 w-4 text-secondary-foreground shrink-0" />
           <span className="text-muted-foreground">Last Payment:</span>
           <span className="font-medium text-foreground">{lastPaymentText}</span>
         </div>
@@ -166,7 +167,7 @@ export function StaffCard({
         <Button
           onClick={() => onPaymentClick(staff)}
           size="sm"
-          variant="secondary"
+          variant="header"
           aria-label={`Make payment for ${staff.name}`}
           disabled={!createPaymentPermission}
         >

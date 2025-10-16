@@ -190,7 +190,7 @@ const interval = setInterval(async () => {
 
     // Optional: clear logs after confirmed processing
     // console.log(`🧹 Clearing attendance logs on device ${deviceId}`);
-    // await zkInstance.clearAttendanceLog();
+    await zkInstance.clearAttendanceLog();
 
   } catch (err) {
     // console.error(`❌ Polling error on ${deviceId}:`, err.message);

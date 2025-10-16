@@ -192,7 +192,7 @@ export function BillsTable({
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {rows.map((row) => (
+                {rows.slice(0, 5).map((row) => (
                   <tr
                     key={row.id}
                     className="hover:bg-muted/30 transition-colors"

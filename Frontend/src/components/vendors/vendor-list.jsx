@@ -87,8 +87,8 @@ export function VendorList({
               onClick={() => onOpenSheet(v)}
             >
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                  <Building2 className="h-4 w-4 text-primary" />
+                <div className="p-2  bg-primary text-background  rounded-lg shrink-0">
+                  <Building2 className="h-4 w-4 " />
                 </div>
                 <p className="text-sm font-medium leading-tight truncate">
                   {v.name}

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Search, User, Calendar } from "lucide-react";
 import AttendanceDetailModal from "./AttendanceDetailModal";
 
+
 const AttendanceTable = ({ records, rawRecords }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -5,18 +5,49 @@ import {
   useGetCompanySettingsQuery,
   useUpdateCompanySettingsMutation,
 } from '@/features/settingsApi';
-import { Building2, Upload, Receipt, FileText, Save, Loader2, CheckCircle2, Eye, EyeOff, Download, Printer, Phone, MapPin } from 'lucide-react';
+import {
+  Building2,
+  Upload,
+  Receipt,
+  FileText,
+  Save,
+  Loader2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Download,
+  Printer,
+  Phone,
+  MapPin,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Currency options
 const currencyOptions = [
@@ -30,14 +61,45 @@ const currencyOptions = [
 // Field configurations
 const fieldConfigs = {
   companySettings: [
-    { key: 'companyName', label: 'Company Name', type: 'text', placeholder: 'Enter company name', icon: Building2 },
-    { key: 'contactPhone', label: 'Contact Phone', type: 'text', placeholder: 'Enter contact phone number', icon: Phone },
-    { key: 'address', label: 'Address', type: 'text', placeholder: 'Enter company address', icon: MapPin },
-    { key: 'companyLogo', label: 'Company Logo', type: 'file', accept: 'image/*', description: 'PNG, JPG up to 2MB', icon: Upload },
+    {
+      key: 'companyName',
+      label: 'Company Name',
+      type: 'text',
+      placeholder: 'Enter company name',
+      icon: Building2,
+    },
+    {
+      key: 'contactPhone',
+      label: 'Contact Phone',
+      type: 'text',
+      placeholder: 'Enter contact phone number',
+      icon: Phone,
+    },
+    {
+      key: 'address',
+      label: 'Address',
+      type: 'text',
+      placeholder: 'Enter company address',
+      icon: MapPin,
+    },
+    {
+      key: 'companyLogo',
+      label: 'Company Logo',
+      type: 'file',
+      accept: 'image/*',
+      description: 'PNG, JPG up to 2MB',
+      icon: Upload,
+    },
   ],
   invoiceSettings: {
     format: [
-      { key: 'prefix', label: 'Invoice Prefix', type: 'text', placeholder: 'INV-', icon: FileText },
+      {
+        key: 'prefix',
+        label: 'Invoice Prefix',
+        type: 'text',
+        placeholder: 'INV-',
+        icon: FileText,
+      },
       {
         key: 'numbering',
         label: 'Numbering System',
@@ -48,7 +110,13 @@ const fieldConfigs = {
         ],
         icon: Receipt,
       },
-      { key: 'startNumber', label: 'Start Number', type: 'number', min: 1, icon: '123' },
+      {
+        key: 'startNumber',
+        label: 'Start Number',
+        type: 'number',
+        min: 1,
+        icon: '123',
+      },
     ],
     currency: [
       {
@@ -66,15 +134,51 @@ const fieldConfigs = {
         conditional: 'code:CUSTOM',
         icon: 'C',
       },
-      { key: 'symbol', label: 'Currency Symbol', type: 'text', placeholder: '$', maxLength: 3, icon: 'S' },
+      {
+        key: 'symbol',
+        label: 'Currency Symbol',
+        type: 'text',
+        placeholder: '$',
+        maxLength: 3,
+        icon: 'S',
+      },
     ],
     tax: [
-      { key: 'isTaxPayerRegistered', label: 'Registered Tax Payer', type: 'switch', icon: Eye },
-      { key: 'taxRateCash', label: 'Tax Cash Rate (%)', type: 'number', min: 0, max: 100, step: 0.1, conditional: 'isTaxPayerRegistered', icon: '%' },
-      { key: 'taxRateCard', label: 'Tax Card Rate (%)', type: 'number', min: 0, max: 100, step: 0.1, conditional: 'isTaxPayerRegistered', icon: '%' },
+      {
+        key: 'isTaxPayerRegistered',
+        label: 'Registered Tax Payer',
+        type: 'switch',
+        icon: Eye,
+      },
+      {
+        key: 'taxRateCash',
+        label: 'Tax Cash Rate (%)',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 0.1,
+        conditional: 'isTaxPayerRegistered',
+        icon: '%',
+      },
+      {
+        key: 'taxRateCard',
+        label: 'Tax Card Rate (%)',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 0.1,
+        conditional: 'isTaxPayerRegistered',
+        icon: '%',
+      },
     ],
   },
-  terms: { key: 'terms', label: 'Terms Text', type: 'textarea', placeholder: 'Enter your terms and conditions', icon: FileText },
+  terms: {
+    key: 'terms',
+    label: 'Terms Text',
+    type: 'textarea',
+    placeholder: 'Enter your terms and conditions',
+    icon: FileText,
+  },
 };
 
 // Enhanced Field Renderer Component
@@ -124,13 +228,18 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
+            <Label
+              htmlFor={id}
+              className="text-sm font-semibold text-foreground"
+            >
+              {config.label}
+            </Label>
           </div>
-          <Input 
-            type={config.type} 
-            {...commonProps} 
-            min={config.min} 
-            max={config.max} 
+          <Input
+            type={config.type}
+            {...commonProps}
+            min={config.min}
+            max={config.max}
             step={config.step}
             className="h-11 rounded-lg border border-input bg-background px-4 py-2 text-sm focus:ring-2 focus:ring-primary/30 transition-all duration-200"
           />
@@ -149,7 +258,12 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
+            <Label
+              htmlFor={id}
+              className="text-sm font-semibold text-foreground"
+            >
+              {config.label}
+            </Label>
           </div>
           <Select value={value?.toString()} onValueChange={onChange}>
             <SelectTrigger className="h-11 rounded-lg border border-input bg-background px-4 py-2 text-sm focus:ring-2 focus:ring-primary/30 transition-all duration-200">
@@ -157,7 +271,11 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             </SelectTrigger>
             <SelectContent className="rounded-lg bg-background border border-input">
               {config.options.map((option) => (
-                <SelectItem key={option.value} value={option.value} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary/5">
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-primary/5"
+                >
                   {option.label}
                 </SelectItem>
               ))}
@@ -173,15 +291,22 @@ const RenderField = ({ config, value, onChange, section, values }) => {
               {renderIcon()}
             </div>
             <div>
-              <Label htmlFor={id} className="text-sm font-semibold text-foreground cursor-pointer">{config.label}</Label>
+              <Label
+                htmlFor={id}
+                className="text-sm font-semibold text-foreground cursor-pointer"
+              >
+                {config.label}
+              </Label>
               {config.description && (
-                <p className="text-xs text-muted-foreground mt-1">{config.description}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {config.description}
+                </p>
               )}
             </div>
           </div>
-          <Switch 
-            checked={value} 
-            onCheckedChange={onChange} 
+          <Switch
+            checked={value}
+            onCheckedChange={onChange}
             id={id}
             className="data-[state=checked]:bg-primary h-6 w-11"
           />
@@ -194,12 +319,17 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
+            <Label
+              htmlFor={id}
+              className="text-sm font-semibold text-foreground"
+            >
+              {config.label}
+            </Label>
           </div>
           <div className="relative">
-            <Textarea 
-              {...commonProps} 
-              value={typeof value === 'string' ? value : ''} 
+            <Textarea
+              {...commonProps}
+              value={typeof value === 'string' ? value : ''}
               className="min-h-[180px] rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
             />
             <div className="absolute bottom-3 right-3 px-2 py-1 bg-muted/80 rounded text-xs text-muted-foreground">
@@ -215,13 +345,22 @@ const RenderField = ({ config, value, onChange, section, values }) => {
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               {renderIcon()}
             </div>
-            <Label htmlFor={id} className="text-sm font-semibold text-foreground">{config.label}</Label>
+            <Label
+              htmlFor={id}
+              className="text-sm font-semibold text-foreground"
+            >
+              {config.label}
+            </Label>
           </div>
           <div className="flex items-center gap-4 p-4 rounded-lg border border-input bg-background/50">
             {value ? (
               <div className="relative group">
                 <div className="h-20 w-20 rounded-lg border border-input overflow-hidden bg-background shadow-sm">
-                  <img src={`${API_URL}${value?.replace(/\\/g, "/")}`} alt="Company logo" className="h-full w-full object-cover" />
+                  <img
+                    src={`${API_URL}${value?.replace(/\\/g, '/')}`}
+                    alt="Company logo"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
                   <Eye className="h-5 w-5 text-white" />
@@ -233,15 +372,14 @@ const RenderField = ({ config, value, onChange, section, values }) => {
               </div>
             )}
             <div className="flex-1 space-y-2">
-              <Input 
-                type="file" 
-                accept={config.accept} 
+              <Input
+                type="file"
+                accept={config.accept}
                 {...commonProps}
-                className="file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 transition-colors duration-200"
+                className="file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-secondary-foreground  file:text-primary hover:file:bg-secondary-foreground/90 transition-colors duration-200"
               />
               {config.description && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <span>📝</span>
                   {config.description}
                 </p>
               )}
@@ -263,44 +401,58 @@ const SettingsPreview = ({ companySettings, invoiceSettings }) => {
           <Eye className="h-5 w-5 text-primary" />
           Live Preview
         </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">How your settings will appear</CardDescription>
+        <CardDescription className="text-sm text-muted-foreground">
+          How your settings will appear
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
           {companySettings.companyLogo && (
             <div className="h-14 w-14 rounded-lg border border-input overflow-hidden bg-white shadow-sm">
-              <img 
-                src={companySettings.companyLogo} 
-                alt="Company logo" 
+              <img
+                src={companySettings.companyLogo}
+                alt="Company logo"
                 className="h-full w-full object-cover"
               />
             </div>
           )}
           <div>
-            <h3 className="font-semibold text-foreground">{companySettings.companyName || 'Your Company'}</h3>
-            <p className="text-xs text-muted-foreground mt-1">{companySettings.contactPhone || 'No phone number'}</p>
-            <p className="text-xs text-muted-foreground">{companySettings.address || 'No address'}</p>
-            <p className="text-xs text-muted-foreground">Next Invoice: {invoiceSettings.format.prefix || 'INV-'}001</p>
+            <h3 className="font-semibold text-foreground">
+              {companySettings.companyName || 'Your Company'}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {companySettings.contactPhone || 'No phone number'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {companySettings.address || 'No address'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Next Invoice: {invoiceSettings.format.prefix || 'INV-'}001
+            </p>
           </div>
         </div>
-        
+
         <Separator className="bg-input/50" />
-        
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-xs text-muted-foreground">Currency</p>
             <p className="font-medium text-foreground">
-              {invoiceSettings.currency.code === 'CUSTOM' 
-                ? invoiceSettings.currency.customCode 
-                : invoiceSettings.currency.code} 
+              {invoiceSettings.currency.code === 'CUSTOM'
+                ? invoiceSettings.currency.customCode
+                : invoiceSettings.currency.code}
               ({invoiceSettings.currency.symbol})
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Tax Registered</p>
-            <Badge 
-              variant={invoiceSettings.tax.isTaxPayerRegistered ? "default" : "secondary"} 
-              className="text-xs font-medium px-2 py-1"
+            <Badge
+              variant={
+                invoiceSettings.tax.isTaxPayerRegistered
+                  ? 'default'
+                  : 'secondary'
+              }
+              className="text-xs font-medium px-2 py-2"
             >
               {invoiceSettings.tax.isTaxPayerRegistered ? 'Yes' : 'No'}
             </Badge>
@@ -336,15 +488,26 @@ export default function Settings({ companyId }) {
     if (data?.invoiceSettings && data?.companyInfo) {
       setInvoiceSettings({
         ...data.invoiceSettings,
-        terms: typeof data.invoiceSettings.terms === 'string' ? data.invoiceSettings.terms : '',
+        terms:
+          typeof data.invoiceSettings.terms === 'string'
+            ? data.invoiceSettings.terms
+            : '',
         currency: {
           ...data.invoiceSettings.currency,
-          customCode: data.invoiceSettings.currency.code && !currencyOptions.some(c => c.code === data.invoiceSettings.currency.code) 
-            ? data.invoiceSettings.currency.code 
-            : '',
-          code: data.invoiceSettings.currency.code && !currencyOptions.some(c => c.code === data.invoiceSettings.currency.code) 
-            ? 'CUSTOM' 
-            : data.invoiceSettings.currency.code,
+          customCode:
+            data.invoiceSettings.currency.code &&
+            !currencyOptions.some(
+              (c) => c.code === data.invoiceSettings.currency.code
+            )
+              ? data.invoiceSettings.currency.code
+              : '',
+          code:
+            data.invoiceSettings.currency.code &&
+            !currencyOptions.some(
+              (c) => c.code === data.invoiceSettings.currency.code
+            )
+              ? 'CUSTOM'
+              : data.invoiceSettings.currency.code,
         },
       });
       setCompanySettings({
@@ -371,7 +534,7 @@ export default function Settings({ companyId }) {
 
   const handleInvoiceChange = (section, field, value) => {
     if (section === 'currency' && field === 'code') {
-      const selectedCurrency = currencyOptions.find(c => c.code === value);
+      const selectedCurrency = currencyOptions.find((c) => c.code === value);
       if (selectedCurrency && value !== 'CUSTOM') {
         setInvoiceSettings((prev) => ({
           ...prev,
@@ -415,11 +578,18 @@ export default function Settings({ companyId }) {
         ...invoiceSettings,
         currency: {
           ...invoiceSettings.currency,
-          code: invoiceSettings.currency.code === 'CUSTOM' ? invoiceSettings.currency.customCode : invoiceSettings.currency.code,
+          code:
+            invoiceSettings.currency.code === 'CUSTOM'
+              ? invoiceSettings.currency.customCode
+              : invoiceSettings.currency.code,
         },
       };
       const settings = { invoiceSettings: finalSettings, companySettings };
-      const result = await updateCompanySettings({ companyId, settings, logoFile }).unwrap();
+      const result = await updateCompanySettings({
+        companyId,
+        settings,
+        logoFile,
+      }).unwrap();
       if (result.companySettings?.logoUrl) {
         handleCompanyChange('companyLogo', result.companySettings.logoUrl);
         if (companySettings.companyLogo?.startsWith('blob:')) {
@@ -441,7 +611,9 @@ export default function Settings({ companyId }) {
       <div className="flex justify-center items-center min-h-[400px] bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground font-medium">Loading your settings...</p>
+          <p className="text-sm text-muted-foreground font-medium">
+            Loading your settings...
+          </p>
         </div>
       </div>
     );
@@ -449,27 +621,25 @@ export default function Settings({ companyId }) {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 sticky top-0 z-20 shadow-sm">
-          <div className="container mx-auto px-4 py-4 sm:px-6 lg:px-8">
+      <div className=" ">
+        <header className=" ">
+          <div className=" mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/80 to-primary shadow-md">
-                  <Building2 className="h-6 w-6 text-primary-foreground" />
-                </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground tracking-tight">Company Settings</h1>
+                  <h1 className="text-3xl font-medium mt-4 text-foreground tracking-tight">
+                    Company Settings
+                  </h1>
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-                    <span>⚙️</span>
                     Manage your company configuration and invoice settings
                   </p>
                 </div>
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    onClick={handleSave} 
-                    className="gap-2 px-6 py-2 h-11 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200"
+                  <Button
+                    onClick={handleSave}
+                   
                     disabled={loading || isLoading}
                   >
                     {loading ? (
@@ -498,115 +668,136 @@ export default function Settings({ companyId }) {
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-10 sm:px-6 lg:px-8 max-w-7xl">
+        <main className=" mx-auto px-4 py-4  max-w-full">
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-6">
               <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
-                <CardHeader className="pb-4">
+                <CardHeader className="">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
                     <div>
-                      <CardTitle className="text-xl font-semibold text-foreground">Company Profile</CardTitle>
+                      <CardTitle className="text-xl font-semibold text-foreground">
+                        Company Profile
+                      </CardTitle>
                       <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-                        <span>🏢</span>
                         Update your company information and branding
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-5 p-6">
+                <CardContent className="space-y-5">
                   {fieldConfigs.companySettings.map((config) => (
                     <RenderField
                       key={config.key}
                       config={config}
                       value={companySettings[config.key]}
-                      onChange={(value) => handleCompanyChange(config.key, value)}
+                      onChange={(value) =>
+                        handleCompanyChange(config.key, value)
+                      }
                     />
                   ))}
                 </CardContent>
               </Card>
 
               <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
-                <CardHeader className="pb-4">
+                <CardHeader className="">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      <Receipt className="h-5 w-5 text-blue-500" />
-                    </div>
                     <div>
-                      <CardTitle className="text-xl font-semibold text-foreground">Invoice Settings</CardTitle>
+                      <CardTitle className="text-xl font-semibold text-foreground">
+                        Invoice Settings
+                      </CardTitle>
                       <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-                        <span>🧾</span>
                         Configure invoice format, currency, tax, and printing
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
-                  <Tabs defaultValue={Object.keys(fieldConfigs.invoiceSettings)[0]} className="space-y-5">
+                <CardContent className="">
+                  <Tabs
+                    defaultValue={Object.keys(fieldConfigs.invoiceSettings)[0]}
+                    className="space-y-5"
+                  >
                     <TabsList className="grid w-full grid-cols-4 p-1 bg-muted/40 rounded-lg h-11">
-                      {Object.keys(fieldConfigs.invoiceSettings).map((section) => (
-                        <TabsTrigger 
-                          key={section} 
-                          value={section}
-                          className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
-                        >
-                          {section.charAt(0).toUpperCase() + section.slice(1)}
-                        </TabsTrigger>
-                      ))}
+                      {Object.keys(fieldConfigs.invoiceSettings).map(
+                        (section) => (
+                          <TabsTrigger
+                            key={section}
+                            value={section}
+                            className="text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all duration-200"
+                          >
+                            {section.charAt(0).toUpperCase() + section.slice(1)}
+                          </TabsTrigger>
+                        )
+                      )}
                     </TabsList>
-                    {Object.entries(fieldConfigs.invoiceSettings).map(([section, fields]) => (
-                      <TabsContent key={section} value={section} className="space-y-5 animate-in fade-in-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                          {fields.map((config) => (
-                            <RenderField
-                              key={config.key}
-                              config={config}
-                              value={invoiceSettings[section][config.key]}
-                              onChange={(value) => handleInvoiceChange(section, config.key, value)}
-                              section={section}
-                              values={invoiceSettings[section]}
-                            />
-                          ))}
-                        </div>
-                      </TabsContent>
-                    ))}
+                    {Object.entries(fieldConfigs.invoiceSettings).map(
+                      ([section, fields]) => (
+                        <TabsContent
+                          key={section}
+                          value={section}
+                          className="space-y-5 animate-in fade-in-50"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {fields.map((config) => (
+                              <RenderField
+                                key={config.key}
+                                config={config}
+                                value={invoiceSettings[section][config.key]}
+                                onChange={(value) =>
+                                  handleInvoiceChange(
+                                    section,
+                                    config.key,
+                                    value
+                                  )
+                                }
+                                section={section}
+                                values={invoiceSettings[section]}
+                              />
+                            ))}
+                          </div>
+                        </TabsContent>
+                      )
+                    )}
                   </Tabs>
                 </CardContent>
               </Card>
 
               <Card className="border border-input shadow-sm hover:shadow-md transition-shadow duration-300">
-                <CardHeader className="pb-4">
+                <CardHeader className="">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500/10">
-                      <FileText className="h-5 w-5 text-green-500" />
-                    </div>
+                  
                     <div>
-                      <CardTitle className="text-xl font-semibold text-foreground">Terms and Conditions</CardTitle>
+                      <CardTitle className="text-xl font-semibold text-foreground">
+                        Terms and Conditions
+                      </CardTitle>
                       <CardDescription className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-                        <span>📄</span>
+                       
                         Define your company's terms and conditions
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="">
                   <RenderField
                     config={fieldConfigs.terms}
                     value={invoiceSettings.terms}
-                    onChange={(value) => handleInvoiceChange('terms', fieldConfigs.terms.key, value)}
+                    onChange={(value) =>
+                      handleInvoiceChange(
+                        'terms',
+                        fieldConfigs.terms.key,
+                        value
+                      )
+                    }
                   />
                 </CardContent>
               </Card>
             </div>
 
             <div className="space-y-6">
-              <SettingsPreview 
-                companySettings={companySettings} 
-                invoiceSettings={invoiceSettings} 
+              <SettingsPreview
+                companySettings={companySettings}
+                invoiceSettings={invoiceSettings}
               />
-              
+
               <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border border-amber-200 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2 text-amber-800">

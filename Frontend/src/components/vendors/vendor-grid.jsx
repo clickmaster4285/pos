@@ -76,7 +76,7 @@ export function VendorGrid({
             {/* Top row: icon + name + status + menu */}
             <div className="flex items-start gap-3">
               <div
-                className="h-10 w-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0"
+                className="h-10 w-10 rounded-xl bg-primary text-background grid place-items-center shrink-0"
                 onClick={() => onOpenSheet(vendor)}
               >
                 <Building2 className="h-5 w-5" />

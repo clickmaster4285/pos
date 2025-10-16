@@ -12,6 +12,7 @@ export function PendingVerifications() {
   const {
     data: users = [],
     isLoading,
+    refetch,
     isError,
     error,
   } = useGetAllUsersQuery();
@@ -45,6 +46,7 @@ export function PendingVerifications() {
   const handleVerify = async (id, action) => {
     try {
       await verifyCompanyAdmin({ id, action }).unwrap();
+      await refetch();
     } catch (e) {
       console.error('Verification error:', e);
     }
@@ -74,9 +76,7 @@ export function PendingVerifications() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-red-500">
-            No admins available
-          </div>
+          <div className="text-sm text-red-500">No admins available</div>
         </CardContent>
       </Card>
     );
@@ -135,9 +135,10 @@ export function PendingVerifications() {
                 </div>
 
                 <div className="flex gap-2 pt-2">
+                  {/* {console.log('eh the cverifingt id is: ', u)} */}
                   <Button
                     size="sm"
-                    onClick={() => handleVerify(u._id, 'approve')}
+                    onClick={() => handleVerify(u.company_id, 'approve')}
                     variant="success"
                   >
                     <CheckCircle className="h-4 w-4 mr-1" />
@@ -146,7 +147,7 @@ export function PendingVerifications() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => handleVerify(u._id, 'reject')}
+                    onClick={() => handleVerify(u.company_id, 'reject')}
                   >
                     <XCircle className="h-4 w-4 mr-1" />
                     Reject

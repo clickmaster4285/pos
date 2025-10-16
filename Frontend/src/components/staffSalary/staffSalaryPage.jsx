@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 //
 import { useContext } from 'react';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
+import { useGetCompanySettingsQuery } from '@/features/settingsApi';
 //
 import {
   useCreatePaymentMutation,
@@ -12,7 +13,7 @@ import {
   useUpdateSalaryMutation,
   useGetAllPaymentLogQuery,
 } from '@/features/staffSalaryApi';
-
+import Pagination from '../ui/Pagination';
 import { StaffCard } from './StaffCard';
 import { PaymentDialog } from './PaymentDialog';
 import { AdjustSalaryDialog } from './AdjustSalaryDialog';
@@ -41,10 +42,28 @@ export function StaffSalaryPage() {
     refetch,
   } = useGetAllPaymentsInfoQuery();
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12); // pick your default
+
   const [updateSalary] = useUpdateSalaryMutation();
   const [createPayment] = useCreatePaymentMutation();
 
   const { data: items = [] } = useGetAllPaymentLogQuery();
+
+  const { data: company } = useGetCompanySettingsQuery();
+  //---------------------------
+  const settingsRaw = company?.invoiceSettings ?? {};
+
+  // safe defaults so children never crash
+  const safeSettings = {
+    currency: {
+      code: settingsRaw?.currency?.code ?? 'PKR',
+      symbol: settingsRaw?.currency?.symbol ?? '₨',
+    },
+  };
+  const currencySymbol = safeSettings.currency.symbol;
+
+  //---------------------------
   // Map backend -> UI
   const staff = useMemo(() => {
     if (!Array.isArray(apiUsers)) return [];
@@ -200,8 +219,31 @@ export function StaffSalaryPage() {
   const viewActiveLogPermission = user?.permissions?.viewActiveLog;
   const viewCompanySummaryPermission = user?.permissions?.staffUpdate;
 
-  if (isLoading) return <main className="p-6 md:p-8 lg:p-12">Loading…</main>;
+  //for pagination
+  const total = filteredStaff.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const pagedStaff = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredStaff.slice(start, start + pageSize);
+  }, [filteredStaff, page, pageSize]);
+
+  // reset to first page when filters / page size change
+  useEffect(() => {
+    setPage(1);
+  }, [search, department, pageSize, filteredStaff]);
+
+  if (isLoading) return <main className="p-6 md:p-8 lg:p-12">Loading…</main>;
+  if (error) {
+    return (
+      <main className="p-6 md:p-8 lg:p-12">
+        <div className="mb-3">Failed to load staff.</div>
+        <Button size="sm" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-background p-6 mt-6">
@@ -218,6 +260,7 @@ export function StaffSalaryPage() {
 
         {/* Stats */}
         <StatsBar
+          currencySymbol={currencySymbol}
           totalStaff={staff?.length || 0}
           totalMonthlyPayroll={totalSalaryPaid}
           totalBonus={totalBonus}
@@ -239,8 +282,9 @@ export function StaffSalaryPage() {
         <div className="grid gap-6 lg:grid-cols-12">
           <section className="lg:col-span-8">
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {(filteredStaff || []).map((member) => (
+              {(pagedStaff || []).map((member) => (
                 <StaffCard
+                  currencySymbol={currencySymbol}
                   key={member.id}
                   staff={member}
                   onPaymentClick={handlePaymentClick}
@@ -252,10 +296,29 @@ export function StaffSalaryPage() {
                 />
               ))}
             </div>
+            <div className="mt-4 lg:col-span-8">
+              <div className="text-sm text-muted-foreground mb-2">
+                Showing {total === 0 ? 0 : (page - 1) * pageSize + 1} to{' '}
+                {Math.min(page * pageSize, total)} of {total} staff
+              </div>
+              <Pagination
+                page={page}
+                pageSize={pageSize}
+                total={total}
+                onPageChange={(p) =>
+                  setPage(Math.min(Math.max(1, p), totalPages))
+                }
+                onPageSizeChange={(s) => {
+                  setPageSize(s);
+                  setPage(1);
+                }}
+              />
+            </div>
           </section>
 
           {/* Right: activity log */}
           <ActivityLog
+            currencySymbol={currencySymbol}
             limit={25}
             page={1}
             viewActiveLogPermission={viewActiveLogPermission}
@@ -290,6 +353,7 @@ export function StaffSalaryPage() {
         companyName="Alpha AutoMotive Industry"
       />
       <StaffSummarySheet
+        currencySymbol={currencySymbol}
         open={summaryOpen}
         onOpenChange={setSummaryOpen}
         staffId={summaryStaffId}

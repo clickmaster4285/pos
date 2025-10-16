@@ -49,7 +49,11 @@ export function VendorModal({ isOpen, onClose, onSave, vendor, mode }) {
 
   useEffect(() => {
     if (vendor) {
-      setFormData({ ...vendor, notes: vendor.notes || '', paymentType: vendor.paymentType || '' });
+      setFormData({
+        ...vendor,
+        notes: vendor.notes || '',
+        paymentType: vendor.paymentType || '',
+      });
     } else {
       setFormData({
         id: '',
@@ -92,10 +96,9 @@ export function VendorModal({ isOpen, onClose, onSave, vendor, mode }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-card border-border">
+      <DialogContent className="max-w-2xl border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
-            <Building2 className="h-5 w-5 text-primary" />
             {mode === 'create' && 'Add New Vendor'}
             {mode === 'edit' && 'Edit Vendor'}
             {mode === 'view' && 'Vendor Details'}
@@ -184,7 +187,10 @@ export function VendorModal({ isOpen, onClose, onSave, vendor, mode }) {
                 onValueChange={(value) => handleChange('paymentType', value)}
                 disabled={isReadOnly}
               >
-                <SelectTrigger id="paymentType" className="border-border focus:ring-ring">
+                <SelectTrigger
+                  id="paymentType"
+                  className="border-border focus:ring-ring"
+                >
                   <SelectValue placeholder="Select payment type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,7 +232,7 @@ export function VendorModal({ isOpen, onClose, onSave, vendor, mode }) {
           )}
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               {isReadOnly ? 'Close' : 'Cancel'}
             </Button>
             {!isReadOnly && (

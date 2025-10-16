@@ -83,19 +83,19 @@ const Staff = () => {
 
   // ---------- Pagination state ----------
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12); // options below
+  const [pageSize, setPageSize] = useState(10); // options below
 
   // Reset to page 1 when search, pageSize, or data changes
   useEffect(() => {
     setPage(1);
   }, [searchTerm, pageSize, staff.length]);
 
-const subRoles = [
-  { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
-  { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
-  { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-5' },
-  { value: 'seller', label: 'Seller', color: 'bg-chart-6' },
-];
+  const subRoles = [
+    { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
+    { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
+    { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-5' },
+    { value: 'seller', label: 'Seller', color: 'bg-chart-6' },
+  ];
   const departments = [
     'Engineering',
     'Front Office',
@@ -262,9 +262,9 @@ const subRoles = [
           viewReports: false,
           manageInventory: false,
           createVendors: false,
-      updateVendors: false,
-      deleteVendors: false,
-      viewVendors: false,
+          updateVendors: false,
+          deleteVendors: false,
+          viewVendors: false,
           assignTasks: false,
           approveRequests: false,
           manageAppointments: false,
@@ -478,7 +478,7 @@ const subRoles = [
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[6, 12, 24, 48, 96].map((n) => (
+                {[5, 10, 20, 50].map((n) => (
                   <SelectItem key={n} value={String(n)}>
                     {n}
                   </SelectItem>

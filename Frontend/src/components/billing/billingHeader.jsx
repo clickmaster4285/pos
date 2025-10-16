@@ -50,11 +50,11 @@ import {
 import BillingSummaryPDF from './BillingSummaryPDF'; // Import the BillingSummaryPDF component
 export function Header({ onCreate, addPermission }) {
   return (
-    <header className="bg-card">
+    <header className="">
       <div className="mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl mt-4 font-medium text-foreground">
+            <h1 className="text-3xl mt-6 font-medium text-foreground">
               Billing Management
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -62,15 +62,15 @@ export function Header({ onCreate, addPermission }) {
             </p>
           </div>
           <div className="flex gap-2">
+            <BillingSummaryPDF /> {/* Rendered as a standalone component */}
             <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              variant="header"
               onClick={onCreate}
               disabled={!addPermission}
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Bill
             </Button>
-            <BillingSummaryPDF /> {/* Rendered as a standalone component */}
           </div>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function Header({ onCreate, addPermission }) {
   );
 }
 
-export function StatsCards({ summary }) {
+export function StatsCards({ summary, currencySymbol }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <Card className="bg-card border-border">
@@ -143,7 +143,8 @@ export function StatsCards({ summary }) {
                 Today&apos;s Revenue
               </p>
               <p className="text-2xl font-bold text-foreground">
-                ${Number(summary.todayRevenue || 0).toFixed(2)}
+                {currencySymbol}
+                {Number(summary.todayRevenue || 0).toFixed(2)}
               </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
@@ -166,9 +167,9 @@ export function FilterBar({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 ">
         {/* Search */}
-        <div className="relative flex-1">
+        <div className="relative flex-1 bg-card rounded-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
           <Input
             placeholder="Search bills by number, buyer, or email..."
@@ -183,7 +184,7 @@ export function FilterBar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="hover:bg-primary/10 transition-all duration-300"
+              className="bg-card rounded-md hover:bg-primary/10 transition-all duration-300"
             >
               <FilterIcon className="mr-2 h-4 w-4 text-primary" />
               Filter

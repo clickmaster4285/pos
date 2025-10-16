@@ -57,6 +57,7 @@ export default function ActivityLog({
   title = 'Recent Payroll Activity',
   viewActiveLogPermission,
   deletePaymentPermission,
+  currencySymbol,
 }) {
   // companyId auto-appended by your baseQuery wrapper
   const {
@@ -160,30 +161,30 @@ export default function ActivityLog({
                       <div className="mt-1 text-sm text-foreground">
                         {a.paymentType === 'bonus' && (
                           <>
-                            Bonus added: $
+                            Bonus added:   {currencySymbol}
                             {fmtMoney(a.bonusAmount || a.amount || 0)}
                           </>
                         )}
                         {a.paymentType === 'decrement' && (
                           <>
-                            Decrement applied: $
+                            Decrement applied:   {currencySymbol}
                             {fmtMoney(a.decrementAmount || a.amount || 0)}
                           </>
                         )}
                         {a.paymentType === 'salary' && (
                           <>
-                            Salary paid: $
+                            Salary paid:   {currencySymbol}
                             {fmtMoney(a.baseSalary || a.amount || 0)}
                           </>
                         )}
                         {typeof a.totalPaid === 'number' && (
-                          <> — Total paid: ${fmtMoney(a.totalPaid)}</>
+                          <> — Total paid:   {currencySymbol}{fmtMoney(a.totalPaid)}</>
                         )}
                       </div>
 
                       <div className="mt-1 text-xs text-muted-foreground">
                         <Clock className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
-                        {fmtDateTime(a.processedAt)} 
+                        {fmtDateTime(a.processedAt)}
                       </div>
 
                       <div className="mt-2 text-xs">

@@ -64,10 +64,9 @@ export default function BillDetailsSheet({
   bill,
   onPrint,
   totalRefundQty,
+  currencySymbol,
 }) {
   const [activeTab, setActiveTab] = useState('items');
-
-
 
   const totals = useMemo(
     () => ({
@@ -224,10 +223,12 @@ export default function BillDetailsSheet({
                             {it.quantity ?? it.qty ?? 0}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">
-                            {fmtMoney(it.price)}
+                            {currencySymbol}
+                            {it.price}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {fmtMoney(it.total)}
+                            {currencySymbol}
+                            {it.total}
                           </TableCell>
                         </TableRow>
                       ))
@@ -243,19 +244,27 @@ export default function BillDetailsSheet({
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{fmtMoney(totals.subtotal)}</span>
+                    <span>
+                      {' '}
+                      {currencySymbol}
+                      {totals.subtotal}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       Tax ({totals.taxPercent}%)
                     </span>
-                    <span>{fmtMoney(totals.taxAmount)}</span>
+                    <span>
+                      {' '}
+                      {currencySymbol}
+                      {totals.taxAmount}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span className="text-primary">
-                      {fmtMoney(totals.total)}
+                      {currencySymbol} {totals.total}
                     </span>
                   </div>
                 </div>
@@ -341,7 +350,11 @@ export default function BillDetailsSheet({
                   <div className="pt-2 border-t">
                     <div className="flex justify-between items-center text-sm font-semibold">
                       <span>Total Amount</span>
-                      <span className="text-lg">{fmtMoney(totals.total)}</span>
+                      <span className="text-lg">
+                        {' '}
+                        {currencySymbol}
+                        {totals.total}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -371,7 +384,8 @@ export default function BillDetailsSheet({
                       Total Refunded
                     </span>
                     <span className="font-semibold text-amber-800">
-                      {fmtMoney(bill.refundDetails.totalRefundAmount)}
+                      {currencySymbol}
+                      {bill.refundDetails.totalRefundAmount}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">

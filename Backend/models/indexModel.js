@@ -10,6 +10,8 @@ import Bill from './billing.model.js';
 import StaffSalary from './staffSalary.model.js';
 import Attendance from './Attendance.model.js';
 import AttendanceDevice from './AttendanceDevice.model.js';
+import Shipment from './shipment.model.js';
+import Courier from './courier.model.js';
 
 export default {
   User,
@@ -24,4 +26,6 @@ export default {
   StaffSalary,
   Attendance,
   AttendanceDevice,
+  Shipment,
+  Courier,
 };

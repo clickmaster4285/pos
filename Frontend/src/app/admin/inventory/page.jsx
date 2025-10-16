@@ -10,10 +10,11 @@ import {
   useUpdateInventoryItemMutation,
   useDeleteInventoryItemMutation,
 } from '@/features/inventoryApi';
+import Pagination from '@/components/ui/Pagination';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
+import { useGetCompanySettingsQuery } from '@/features/settingsApi';
 // Dynamic imports
 const InventoryGrid = dynamic(
   () =>
@@ -141,12 +142,12 @@ function filterItems(items, query, status, fromDate, toDate) {
 function generatePDF(items, fromDate, toDate) {
   const doc = new jsPDF();
   const config = getPDFConfig();
-  
+
   setupDocumentHeader(doc, config, fromDate, toDate);
   const tableData = prepareTableData(items);
   renderDataTable(doc, config, tableData);
   renderSummarySection(doc, config, items);
-  
+
   const fileName = generateFileName(fromDate);
   doc.save(fileName);
 }
@@ -158,28 +159,28 @@ function getPDFConfig() {
     fonts: {
       title: 18,
       subtitle: 11,
-      body: 12
+      body: 12,
     },
     colors: {
       primary: [41, 128, 185],
       white: [255, 255, 255],
       text: [44, 62, 80],
-      alternateRow: [240, 248, 255]
+      alternateRow: [240, 248, 255],
     },
     spacing: {
       line: 8,
-      section: 10
-    }
+      section: 10,
+    },
   };
 }
 
 // Document header setup
 function setupDocumentHeader(doc, config, fromDate, toDate) {
   const { margins, fonts, colors } = config;
-  
+
   doc.setFontSize(fonts.title);
   doc.text('Inventory Variants Summary', margins.x, margins.y);
-  
+
   doc.setFontSize(fonts.subtitle);
   const subtitle = generateSubtitle(fromDate, toDate);
   doc.text(subtitle, margins.x, margins.y + config.spacing.line);
@@ -188,7 +189,7 @@ function setupDocumentHeader(doc, config, fromDate, toDate) {
 // Generate appropriate subtitle based on date filters
 function generateSubtitle(fromDate, toDate) {
   const currentDate = new Date().toISOString().slice(0, 10);
-  
+
   if (fromDate && toDate) {
     return `Date Range: ${fromDate} to ${toDate}`;
   } else if (fromDate && !toDate) {
@@ -203,12 +204,18 @@ function generateSubtitle(fromDate, toDate) {
 // Prepare table data from items
 function prepareTableData(items) {
   const headers = [
-    'Item Name', 'Variant Name', 'SKU', 'Quantity', 
-    'Cost Price', 'Selling Price', 'Low Stock Threshold', 'Date'
+    'Item Name',
+    'Variant Name',
+    'SKU',
+    'Quantity',
+    'Cost Price',
+    'Selling Price',
+    'Low Stock Threshold',
+    'Date',
   ];
 
-  const data = items.flatMap(item => 
-    item.variants.map(variant => [
+  const data = items.flatMap((item) =>
+    item.variants.map((variant) => [
       item.itemName || 'N/A',
       variant.variantName || 'N/A',
       variant.sku || 'N/A',
@@ -216,7 +223,7 @@ function prepareTableData(items) {
       formatCurrency(variant.costPrice),
       formatCurrency(variant.price),
       variant.lowStockThreshold || 10,
-      formatDate(variant.updatedAt)
+      formatDate(variant.updatedAt),
     ])
   );
 
@@ -225,12 +232,12 @@ function prepareTableData(items) {
 
 // Format date consistently
 function formatDate(dateString) {
-  return new Date(dateString).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(dateString).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -242,21 +249,21 @@ function formatCurrency(value) {
 // Render the main data table
 function renderDataTable(doc, config, tableData) {
   const { colors, spacing } = config;
-  
+
   autoTable(doc, {
     head: tableData.headers,
     body: tableData.body,
     startY: 35,
     theme: 'grid',
-    headStyles: { 
-      fillColor: colors.primary, 
-      textColor: colors.white 
+    headStyles: {
+      fillColor: colors.primary,
+      textColor: colors.white,
     },
-    bodyStyles: { 
-      textColor: colors.text 
+    bodyStyles: {
+      textColor: colors.text,
     },
-    alternateRowStyles: { 
-      fillColor: colors.alternateRow 
+    alternateRowStyles: {
+      fillColor: colors.alternateRow,
     },
   });
 }
@@ -272,19 +279,25 @@ function renderSummarySection(doc, config, items) {
   // Title
   doc.setFontSize(fonts.header || 14);
   // doc.setFont("helvetica", "bold");
-  doc.text("Summary", margins.x, finalY);
+  doc.text('Summary', margins.x, finalY);
 
   // Prepare summary lines
   const summaryLines = [
-    { label: "Total Quantity", value: summary.totalQuantity },
-    { label: "Total Value (at Selling Price)", value: formatCurrency(summary.totalValue) },
-    { label: "Total Cost Value", value: formatCurrency(summary.totalCostValue) },
-    { label: "Total Profit", value: formatCurrency(summary.totalProfit) }
+    { label: 'Total Quantity', value: summary.totalQuantity },
+    {
+      label: 'Total Value (at Selling Price)',
+      value: formatCurrency(summary.totalValue),
+    },
+    {
+      label: 'Total Cost Value',
+      value: formatCurrency(summary.totalCostValue),
+    },
+    { label: 'Total Profit', value: formatCurrency(summary.totalProfit) },
   ];
 
   // Styling for values
   doc.setFontSize(fonts.body || 11);
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
 
   // Column positioning (labels left, values right)
   const labelX = margins.x;
@@ -292,11 +305,10 @@ function renderSummarySection(doc, config, items) {
 
   summaryLines.forEach((line, index) => {
     const yPos = finalY + spacing.line * (index + 1);
-    doc.text(line.label + ":", labelX, yPos);
-    doc.text(String(line.value), valueX, yPos, { align: "right" });
+    doc.text(line.label + ':', labelX, yPos);
+    doc.text(String(line.value), valueX, yPos, { align: 'right' });
   });
 }
-
 
 // Calculate summary statistics
 function calculateSummary(items) {
@@ -304,12 +316,12 @@ function calculateSummary(items) {
   let totalValue = 0;
   let totalCostValue = 0;
 
-  items.forEach(item => {
-    item.variants.forEach(variant => {
+  items.forEach((item) => {
+    item.variants.forEach((variant) => {
       const quantity = variant.quantity || 0;
       const sellingPrice = variant.price || 0;
       const costPrice = variant.costPrice || 0;
-      
+
       totalQuantity += quantity;
       totalValue += quantity * sellingPrice;
       totalCostValue += quantity * costPrice;
@@ -320,7 +332,7 @@ function calculateSummary(items) {
     totalQuantity,
     totalValue,
     totalCostValue,
-    totalProfit: totalValue - totalCostValue
+    totalProfit: totalValue - totalCostValue,
   };
 }
 
@@ -336,7 +348,7 @@ export default function InventoryPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [openCreate, setOpenCreate] = useState(false);
   const [openStockPicker, setOpenStockPicker] = useState(false);
   const [openAddDialog, setOpenAddDialog] = useState(false);
@@ -351,6 +363,21 @@ export default function InventoryPage() {
   const { data: vendors = [] } = useGetAllVendorsQuery();
   const [updateInfo] = useUpdateInventoryInfoMutation();
   const [deleteItem] = useDeleteInventoryItemMutation();
+
+  const { data: company } = useGetCompanySettingsQuery();
+  //-------------------------------
+  const settingsRaw = company?.invoiceSettings ?? {};
+
+  // safe defaults so children never crash
+  const safeSettings = {
+    currency: {
+      code: settingsRaw?.currency?.code ?? 'PKR',
+      symbol: settingsRaw?.currency?.symbol ?? '₨',
+    },
+  };
+  const currencySymbol = safeSettings.currency.symbol;
+
+  //------------------------------
   const pickerItems = useMemo(
     () =>
       Array.isArray(data)
@@ -374,8 +401,11 @@ export default function InventoryPage() {
     () => filterItems(data, query, status, fromDate, toDate),
     [data, query, status, fromDate, toDate]
   );
-
+  const total = filtered.length;
+  
   const totalPages = Math.ceil((filtered?.length || 0) / pageSize);
+
+
   const current = useMemo(
     () =>
       filtered.slice((page - 1) * pageSize, page * pageSize).map((it) => ({
@@ -405,6 +435,10 @@ export default function InventoryPage() {
       })),
     [filtered, page, pageSize]
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, status, fromDate, toDate, pageSize, data]);
 
   const onEditInfo = (item) => {
     setActiveEditItem(item);
@@ -455,37 +489,52 @@ export default function InventoryPage() {
   const handleDatePickerSubmit = (selectedFromDate, selectedToDate) => {
     setOpenDatePickerDialog(false);
     // Filter items specifically for the PDF using the selected dates
-    const pdfItems = filterItems(data, query, status, selectedFromDate, selectedToDate);
+    const pdfItems = filterItems(
+      data,
+      query,
+      status,
+      selectedFromDate,
+      selectedToDate
+    );
     generatePDF(pdfItems, selectedFromDate, selectedToDate);
   };
 
   return (
     <main className="p-4">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventory</h1>
+        <div>
+          <h1 className="text-3xl mt-4 font-medium">Inventory Management</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage parts, suppliers, and stock levels for your automotive
+            inventory with ease.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            onClick={() => setOpenStockPicker(true)}
-            disabled={isLoading}
-          >
-            Add Stock
-          </Button>
-          <Button onClick={() => setOpenCreate(true)} disabled={isLoading}>
-            Create Item
-          </Button>
-          <Button
-            variant="secondary"
             onClick={() => setOpenDatePickerDialog(true)}
             disabled={isLoading || filtered.length === 0}
           >
             Download PDF Summary
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setOpenStockPicker(true)}
+            disabled={isLoading}
+          >
+            Add Stock
+          </Button>
+          <Button
+            variant="header"
+            onClick={() => setOpenCreate(true)}
+            disabled={isLoading}
+          >
+            Create Item
+          </Button>
         </div>
       </header>
 
       <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1 md:max-w-md">
+        <div className="relative flex-1 md:max-w-md bg-card rounded-md">
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           <input
             className="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
@@ -521,16 +570,7 @@ export default function InventoryPage() {
               onChange={(e) => setToDate(e.target.value)}
             />
           </div>
-          <select
-            className="h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-            value={pageSize}
-            onChange={handlePageSizeChange}
-          >
-            <option value="10">10 per page</option>
-            <option value="25">25 per page</option>
-            <option value="50">50 per page</option>
-            <option value="100">100 per page</option>
-          </select>
+
           <Button
             variant={view === 'grid' ? 'default' : 'outline'}
             size="icon"
@@ -557,6 +597,7 @@ export default function InventoryPage() {
               onEditInfo={onEditInfo}
               onEditHistory={onEditViaHistory}
               onDeleteItem={onDeleteItem}
+              currencySymbol={currencySymbol}
             />
           ) : (
             <InventoryList
@@ -565,6 +606,7 @@ export default function InventoryPage() {
               onEditInfo={onEditInfo}
               onEditHistory={onEditViaHistory}
               onDeleteItem={onDeleteItem}
+              currencySymbol={currencySymbol}
             />
           )
         ) : (
@@ -572,24 +614,26 @@ export default function InventoryPage() {
             Component failed to load. Check exports/paths.
           </div>
         )}
-        <div className="mt-4 flex items-center justify-between">
-          <Button
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
+        <div className="mt-4">
+          <div className="text-sm text-muted-foreground mb-2">
+            Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}
+            {'–'}
+            {Math.min(page * pageSize, total)} of {total} items
+          </div>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={(p) => {
+              const max = Math.max(1, Math.ceil(total / pageSize));
+              setPage(Math.min(Math.max(1, p), max));
+            }}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+            pageSizeOptions={[5, 10, 25, 50, 100]}
+          />
         </div>
       </div>
 
@@ -599,6 +643,7 @@ export default function InventoryPage() {
           onClose={() => setOpenCreate(false)}
           onCreated={handleCreated}
           vendors={vendors}
+          currencySymbol={currencySymbol}
         />
       )}
 
@@ -638,6 +683,7 @@ export default function InventoryPage() {
           onClose={handleAddDialogClose}
           item={pickedItem}
           initialVariant={pickedVariant || undefined}
+          currencySymbol={currencySymbol}
         />
       )}
 

@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAddStockMutation } from '@/features/inventoryApi';
+import { useGetCompanySettingsQuery } from '@/features/settingsApi';
 
 export function AddStockDialog({ open, onClose, item }) {
   const EMPTY_ROW = {
@@ -32,6 +33,19 @@ export function AddStockDialog({ open, onClose, item }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [addStock, { isLoading }] = useAddStockMutation();
 
+  const { data: company } = useGetCompanySettingsQuery();
+  //-------------------------------
+  const settingsRaw = company?.invoiceSettings ?? {};
+
+  // safe defaults so children never crash
+  const safeSettings = {
+    currency: {
+      code: settingsRaw?.currency?.code ?? 'PKR',
+      symbol: settingsRaw?.currency?.symbol ?? '₨',
+    },
+  };
+  const currencySymbol = safeSettings.currency.symbol;
+  //-------------------------
   const existingByName = React.useMemo(() => {
     const map = {};
     (item.variants || []).forEach((v) => {
@@ -211,8 +225,8 @@ export function AddStockDialog({ open, onClose, item }) {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-lg border p-3">
+        <form onSubmit={handleSubmit} className="space-y-4 ">
+          <div className="rounded-lg border p-3 ">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-medium">Variants</div>
               <Button
@@ -262,7 +276,9 @@ export function AddStockDialog({ open, onClose, item }) {
                       <select
                         className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                         value={v.isCustom ? 'custom' : v.variantName}
-                        onChange={(e) => handleVariantChange(idx, e.target.value)}
+                        onChange={(e) =>
+                          handleVariantChange(idx, e.target.value)
+                        }
                       >
                         <option value="custom">Custom</option>
                         {existingVariantNames.map((vn) => (
@@ -275,7 +291,9 @@ export function AddStockDialog({ open, onClose, item }) {
                         <input
                           className="h-9 w-full rounded-md border bg-background px-3 text-sm mt-2"
                           value={v.variantName}
-                          onChange={(e) => setRow(idx, { variantName: e.target.value })}
+                          onChange={(e) =>
+                            setRow(idx, { variantName: e.target.value })
+                          }
                           placeholder="Enter custom variant name"
                           autoComplete="off"
                           name={`variant-name-${idx}-${item.id || item._id}`}
@@ -291,7 +309,9 @@ export function AddStockDialog({ open, onClose, item }) {
                         <input
                           className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                           value={v.customSku}
-                          onChange={(e) => setRow(idx, { customSku: e.target.value })}
+                          onChange={(e) =>
+                            setRow(idx, { customSku: e.target.value })
+                          }
                           placeholder="Enter unique SKU (e.g., SKU-123)"
                         />
                       </div>
@@ -304,18 +324,18 @@ export function AddStockDialog({ open, onClose, item }) {
                       placeholder="20"
                       min={0}
                     />
-                      <NumField
-                        label="Cost price"
-                        value={v.costPrice}
-                        onChange={(val) => setRow(idx, { costPrice: val })}
-                        placeholder="2000"
-                        min={0}
-                      />
+                    <NumField
+                      label="Cost price"
+                      value={v.costPrice}
+                      onChange={(val) => setRow(idx, { costPrice: val })}
+                      placeholder={`2000 ${currencySymbol}`}
+                      min={0}
+                    />
                     <NumField
                       label="Price"
                       value={v.price}
                       onChange={(val) => setRow(idx, { price: val })}
-                      placeholder="2500"
+                      placeholder={`2500 ${currencySymbol}`}
                       min={0}
                     />
                     <NumField

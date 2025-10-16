@@ -35,7 +35,7 @@ const StaffFilter = ({
       <div className="">
         <div className="flex items-center space-x-4">
           {/* Search */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 bg-card rounded-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
             <Input
               placeholder="Search staff by name, email, role, or department..."
@@ -50,7 +50,7 @@ const StaffFilter = ({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="hover:bg-primary/10 transition-all duration-300"
+                className=" bg-card rounded-md hover:bg-primary/10 transition-all duration-300 "
               >
                 <Filter className="mr-2 h-4 w-4 text-primary" />
                 Filter by Department
@@ -78,7 +78,7 @@ const StaffFilter = ({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="hover:bg-primary/10 transition-all duration-300"
+                className=" bg-card rounded-md hover:bg-primary/10 transition-all duration-300"
               >
                 <Filter className="mr-2 h-4 w-4 text-primary" />
                 Filter by Role

@@ -143,7 +143,7 @@ export default function PermissionDialog({
                   key={key}
                   className={`flex items-center justify-between p-4 rounded-lg border transition-all duration-200 ${
                     isOn
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800'
+                      ? 'bg-secondary-foreground/20 border-secondary-foreground/20 dark:bg-secondary-foreground/950/20 dark:border-secondary-foreground/800'
                       : 'bg-card hover:bg-accent/50'
                   }`}
                 >
@@ -151,7 +151,7 @@ export default function PermissionDialog({
                     <div
                       className={`p-2 rounded-full mt-0.5 ${
                         isOn
-                          ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
+                          ? 'bg-primary/10 text-primary dark:bg-primary-900 dark:text-primary-400'
                           : 'bg-muted text-muted-foreground'
                       }`}
                     >
@@ -174,8 +174,8 @@ export default function PermissionDialog({
                       variant="outline"
                       className={
                         isOn
-                          ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-300'
-                          : 'text-muted-foreground'
+                          ? 'bg-primary/10 text-primary border-primary/30 dark:bg-primary-900 dark:text-primary'
+                          : 'text-primary'
                       }
                     >
                       {isOn ? 'Enabled' : 'Disabled'}
@@ -186,9 +186,7 @@ export default function PermissionDialog({
                       onCheckedChange={() =>
                         onToggle(userId, key, !!perms[key], perms, user)
                       }
-                      className={
-                        isOn ? 'data-[state=checked]:bg-green-600' : ''
-                      }
+                      className={isOn ? 'data-[state=checked]:bg-primary' : ''}
                     />
                   </div>
                 </div>
@@ -205,7 +203,7 @@ export default function PermissionDialog({
           </span>
           <span className="flex items-center gap-2">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full" />
+              <span className="w-2 h-2 bg-primary rounded-full" />
               {enabledCount} enabled
             </span>
             <span className="flex items-center gap-1">
