@@ -503,10 +503,9 @@ export default function InventoryPage() {
     <main className="p-4">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl mt-4 font-medium">Inventory Management</h1>
+          <h1 className="text-3xl mt-4 font-medium">Product Category</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage parts, suppliers, and stock levels for your automotive
-            inventory with ease.
+            Manage parts, suppliers, and stock levels for your Category with ease.
           </p>
         </div>
         <div className="flex gap-2">
@@ -528,7 +527,7 @@ export default function InventoryPage() {
             onClick={() => setOpenCreate(true)}
             disabled={isLoading}
           >
-            Create Item
+            Create Category
           </Button>
         </div>
       </header>
@@ -538,7 +537,7 @@ export default function InventoryPage() {
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           <input
             className="h-10 w-full rounded-lg border border-gray-300 pl-10 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-            placeholder="Search inventory..."
+            placeholder="Search Category..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

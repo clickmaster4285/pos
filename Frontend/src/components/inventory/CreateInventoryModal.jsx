@@ -180,7 +180,7 @@ export default function CreateInventoryModal({
         err?.data?.message ||
           err?.data?.error ||
           err?.message ||
-          'Failed to create inventory'
+          'Failed to create Category'
       );
     }
   };
@@ -194,7 +194,7 @@ export default function CreateInventoryModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-3xl rounded-xl border bg-background p-4 shadow-xl max-h-[85vh] overflow-y-auto">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Create Inventory Item</h2>
+          <h2 className="text-lg font-semibold">Create Category Item</h2>
           <Button variant="outline" onClick={onClose}>
             <X size={20} />
           </Button>

@@ -20,6 +20,7 @@ import { attendanceApi } from '@/features/attendanceApi';
 import { shipmentsApi } from '@/features/shipmentsApi';
 import {couriersApi} from '@/features/couriersApi'
 import { paymentGatewayApi } from '@/features/paymentGatewayApi';
+import { categoryApi } from '@/features/categoryApi';
 
 export const store = configureStore({
   reducer: {
@@ -43,7 +44,7 @@ export const store = configureStore({
     [shipmentsApi.reducerPath]: shipmentsApi.reducer,
     [couriersApi.reducerPath]: couriersApi.reducer,
         [paymentGatewayApi.reducerPath]: paymentGatewayApi.reducer,
-
+[categoryApi.reducerPath]: categoryApi.reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -66,6 +67,7 @@ export const store = configureStore({
       shipmentsApi.middleware,
       couriersApi.middleware,
       paymentGatewayApi.middleware,
+      categoryApi.middleware
     ),
 });
 

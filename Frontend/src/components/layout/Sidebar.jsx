@@ -302,12 +302,17 @@ export default function Sidebar() {
         },
         { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
         {
-          href: '/admin/inventory',
-          label: 'Inventory',
+          href: '/admin/category',//             /admin/inventory
+          label: 'Category',
           icon: iconMap['Inventory'],
         },
         {
-          href: '/admin/warehouse',
+          href: '/admin/product',
+          label: 'Product',
+          icon: iconMap['Inventory'],
+        },
+        {
+          href: '#',
           label: 'Warehouse',
           icon: iconMap['Warehouse'],
         },

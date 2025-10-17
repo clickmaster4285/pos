@@ -16,7 +16,7 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import IndexModel from "./models/indexModel.js";
-import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
+// import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
 import bodyParser from "body-parser";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -70,34 +70,34 @@ app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
 app.use("/api", apiRouter);
 
 // Automatically start real-time listeners for all devices
-const startRealTimeListeners = async () => {
-  try {
-    // console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
+// const startRealTimeListeners = async () => {
+//   try {
+//     // console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
     
-    const devices = await IndexModel.AttendanceDevice.find({ 
-      deleted: false 
-    });
+//     const devices = await IndexModel.AttendanceDevice.find({ 
+//       deleted: false 
+//     });
 
-    let successful = 0;
-    let failed = 0;
+//     let successful = 0;
+//     let failed = 0;
 
-    for (const device of devices) {
-      try {
-        await ZKDeviceService.listenForRealTimeAttendance(device._id);
-        successful++;
-        // console.log(`✅ Listening: ${device.deviceName} (${device.deviceIp})`);
-      } catch (error) {
-        failed++;
-        console.error(`❌ Failed: ${device.deviceName} - ${error.message}`);
-      }
-    }
+//     for (const device of devices) {
+//       try {
+//         await ZKDeviceService.listenForRealTimeAttendance(device._id);
+//         successful++;
+//         // console.log(`✅ Listening: ${device.deviceName} (${device.deviceIp})`);
+//       } catch (error) {
+//         failed++;
+//         console.error(`❌ Failed: ${device.deviceName} - ${error.message}`);
+//       }
+//     }
 
-    // console.log(`📊 Real-time listeners: ${successful} successful, ${failed} failed`);
+//     // console.log(`📊 Real-time listeners: ${successful} successful, ${failed} failed`);
 
-  } catch (error) {
-    // console.error("❌ Failed to start real-time listeners:", error.message);
-  }
-};
+//   } catch (error) {
+//     // console.error("❌ Failed to start real-time listeners:", error.message);
+//   }
+// };
 
 
 if (NODE_ENV === "production") {
@@ -135,7 +135,7 @@ process.stdout.write = function (chunk, encoding, callback) {
 server.listen(PORT, HOST, () => {
   const scheme = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? "https" : "http";
   console.log(`🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`);
-  startRealTimeListeners();
+  // startRealTimeListeners();
 });
 
 //unverified remove admin + there company

@@ -1,8 +1,8 @@
 import express from "express";
 import passport from "../middleware/passportAuth.middleware.js";
 import Indexcontroller from "../controllers/indexController.js";
-import { validateRequest } from "../middleware/validation.middleware.js";
-import ZKLib from "zklib-js";
+// import { validateRequest } from "../middleware/validation.middleware.js";
+// import ZKLib from "zklib-js";
 
 const router = express.Router();
 

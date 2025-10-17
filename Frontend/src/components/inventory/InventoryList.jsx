@@ -59,7 +59,7 @@ export function InventoryList({
   if (!items.length)
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        No inventory found.
+        No Category found.
       </div>
     );
 

@@ -16,6 +16,7 @@ import AttendanceDevice from './attendanceDevice.router.js';
 import Courier from './courier.routes.js';
 import PaymentGatway from "./PaymentGatway.route.js";
 import Shippment from './shipment.routes.js';
+import Category from './category.route.js';
 
 const router = express.Router();
 
@@ -69,5 +70,6 @@ router.use('/attendance', Attendance);
 router.use('/courier', Courier);
 router.use('/shippment', Shippment);
 router.use("/strip", PaymentGatway);
+router.use("/category", Category);
 
 export default router;

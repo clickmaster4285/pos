@@ -16,7 +16,7 @@ import { SummaryCard } from '@/components/couriers/SummaryCard';
 import { CouriersGrid } from '@/components/couriers/CouriersGrid';
 import { ShipmentsTable } from '@/components/couriers/ShipmentsTable';
 import { CreateShipmentForm } from '@/components/couriers/CreateShipmentForm';
-import { seedCouriers } from '@/components/couriers/shipmentUtils';
+
 //
 import { useGetCompanySettingsQuery } from '@/features/settingsApi';
 
@@ -38,7 +38,7 @@ function PageInner() {
   }, [data]);
 
   const [createOpen, setCreateOpen] = React.useState(false);
-  const [couriers] = React.useState(seedCouriers);
+
 
   const summary = React.useMemo(() => {
     const total = shipments.length;
@@ -116,7 +116,7 @@ function PageInner() {
           </DialogHeader>
           <CreateShipmentForm
             currencySymbol={currencySymbol}
-            couriers={couriers}
+          
             onClose={() => setCreateOpen(false)}
           />
         </DialogContent>

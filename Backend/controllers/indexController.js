@@ -14,6 +14,7 @@ import AttendanceDevice from './attendanceDevice.controller.js';
 import Courier from './courier.controller.js';
 import Shippment from './shipment.controller.js';
 import PaymentGatway from './PaymentGatway.controller.js';
+import Category from './category.controller.js';
 
 export default {
   Company,
@@ -31,5 +32,6 @@ export default {
   AttendanceDevice,
   Courier,
   Shippment,
-  PaymentGatway
+  PaymentGatway,
+  Category,
 };

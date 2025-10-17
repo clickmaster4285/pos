@@ -62,7 +62,7 @@ const getAllVendors = async (req, res) => {
     const vendors = await IndexModel.Vendor.find({
       companyId,
       deleted: false,
-    });
+    }).sort({ createdAt: -1 });
     res.status(200).json(vendors);
   } catch (error) {
     res

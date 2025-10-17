@@ -94,7 +94,7 @@ const Staff = () => {
     { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
     { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
     { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-5' },
-    { value: 'seller', label: 'Seller', color: 'bg-chart-6' },
+    { value: 'seller', label: 'Seller', color: 'bg-chart-4' },
   ];
   const departments = [
     'Engineering',

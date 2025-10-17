@@ -25,7 +25,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { toast } from '@/components/ui/sonner';
 import { ChevronDownIcon, PrinterIcon } from 'lucide-react';
 //
 
@@ -82,10 +81,10 @@ export function ShipmentsTable({ currencySymbol }) {
 
       refetch();
     } catch (e) {
-      toast({
+      console.log(`({
         title: 'Update failed',
         description: e?.data?.message || 'Unable to update status',
-      });
+      })`);
     }
   };
 
@@ -112,13 +111,13 @@ export function ShipmentsTable({ currencySymbol }) {
   const handleRestore = async (shipment) => {
     try {
       await restore(shipment._id).unwrap();
-      toast({ title: 'Restored', description: shipment.awb });
+      console.log(`({ title: 'Restored', description: shipment.awb })`);
       refetch();
     } catch (e) {
-      toast({
+      console.log(`({
         title: 'Restore failed',
         description: e?.data?.message || 'Unable to restore',
-      });
+      })`);
     }
   };
   // inside ShipmentsTable component:

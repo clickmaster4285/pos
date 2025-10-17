@@ -356,25 +356,20 @@ const getCompanyMonthSummary = async (req, res) => {
 //its getting staff data with staff salary papulted to show staff cards
 const listPayments = async (req, res) => {
   try {
-    // Only superAdmin can access
-    if (req.user.role === 'Admin') {
-      return res.status(401).json({
-        success: false,
-        error: "Unauthorized: you can't access this",
-      });
-    }
+
 
     // Get all verified, not-deleted users
     const users = await IndexModel.User.find({
       deleted: false,
       verified: true,
       role: 'staff', // exclude superAdmin users
+      companyId:req.user.companyId,
     }).lean();
 
     if (!users || users.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'company Admin not found',
+        message: 'company Admin not found',
       });
     }
 
@@ -382,7 +377,7 @@ const listPayments = async (req, res) => {
     const data = await Promise.all(
       users.map(async (user) => {
         const company = await IndexModel.Company.findOne({
-          owner: user.userId,
+          // owner: user.userId,
           companyId: user.companyId,
           deleted: false,
         }).lean();

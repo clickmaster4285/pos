@@ -148,23 +148,23 @@ const Attendance = () => {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
-          <p className="text-red-600 font-medium mb-4">
-            Failed to fetch attendance records
-          </p>
-          <Button
-            onClick={() => refetch()}
-            className="bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+  //       <div className="text-center bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
+  //         <p className="text-red-600 font-medium mb-4">
+  //           Failed to fetch attendance records
+  //         </p>
+  //         <Button
+  //           onClick={() => refetch()}
+  //           className="bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+  //         >
+  //           Retry
+  //         </Button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">

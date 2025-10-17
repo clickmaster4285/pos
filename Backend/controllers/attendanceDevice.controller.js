@@ -1,7 +1,7 @@
 import ZKDeviceService from "../utils/zkDeviceService.js";
 import IndexModel from "../models/indexModel.js";
 import { NotFoundError, InternalServerError } from "../utils/errors.js";
-import ZKLib from "zklib-js";
+// import ZKLib from "zklib-js";
 
 export default {
   /**
