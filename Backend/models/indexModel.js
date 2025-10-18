@@ -13,6 +13,7 @@ import AttendanceDevice from './AttendanceDevice.model.js';
 import Shipment from './shipment.model.js';
 import Courier from './courier.model.js';
 import Category from './category.model.js';
+import Product from './product.model.js';
 
 export default {
   User,
@@ -30,4 +31,5 @@ export default {
   Shipment,
   Courier,
   Category,
+  Product,
 };

@@ -11,17 +11,17 @@ export const generateSKU = async (itemType, companyId, count = 1) => {
     let sequence = 1;
 
     // Helper function to check if SKU exists in Inventory
-    const checkExists = async (sku) => {
-      const inventoryExists = await indexModel.Inventory.findOne({ "variants.sku": sku });
-      return !!inventoryExists; // true if found, false otherwise
+    const checkExists = async (SKU) => {
+      const productExists = await indexModel.Product.findOne({SKU });
+      return !!productExists; // true if found, false otherwise
     };
 
     while (skus.length < count) {
-      const sku = `${prefix}-${companyPrefix}-${timestamp}-${sequence.toString().padStart(3, "0")}`;
-      const exists = await checkExists(sku);
+      const SKU = `${prefix}-${companyPrefix}-${timestamp}-${sequence.toString().padStart(3, "0")}`;
+      const exists = await checkExists(SKU);
 
       if (!exists) {
-        skus.push(sku);
+        skus.push(SKU);
       }
 
       sequence++;
