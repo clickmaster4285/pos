@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -30,11 +29,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Download,
-  Search,
   MoreVertical,
-  Plus,
   Trash2,
-  Filter as FilterIcon,
+  FilterIcon,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -43,8 +40,10 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { ThermalPrintSlip } from './ThermalPrintSlip';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-// helpers
 const num = (v) => Number(v || 0);
 
 const getRefundedAmount = (bill = {}) => {
@@ -97,17 +96,69 @@ export function BillRow({
   onToggleExpand,
   onEdit,
   onPrint,
+  onPrintThermal,
   onDelete,
   onView,
   updatePermission,
   deletePermission,
-  currencySymbol,
+  currencySymbol = '€',
 }) {
   const refundedAmount = useMemo(() => getRefundedAmount(bill), [bill]);
   const netTotal = useMemo(
     () => Math.max(0, num(bill.total) - refundedAmount),
     [bill, refundedAmount]
   );
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(12);
+    doc.text(`Bill #${bill.billNumber}`, 14, 20);
+    doc.text(`Date: ${new Date(bill.createdAt).toLocaleString()}`, 14, 30);
+
+    // Define table columns and rows
+    const tableColumn = ['Item', 'Category', 'Subcategory', 'SKU', 'Qty', 'Price', 'Total'];
+    const tableRows = bill.items.map((item) => [
+      item.itemName,
+      item.categoryName,
+      item.subCategory || '—',
+      item.sku,
+      item.quantity.toString(),
+      `${currencySymbol}${num(item.price).toFixed(2)}`,
+      `${currencySymbol}${num(item.total).toFixed(2)}`,
+    ]);
+
+    // Add table using autoTable
+    doc.autoTable({
+      startY: 40,
+      head: [tableColumn],
+      body: tableRows,
+      theme: 'striped',
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [200, 200, 200] },
+      margin: { top: 40 },
+    });
+
+    // Add summary
+    const finalY = doc.lastAutoTable.finalY || 40;
+    doc.text(`Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`, 14, finalY + 10);
+    doc.text(`Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`, 14, finalY + 20);
+    doc.text(`Total: ${currencySymbol}${num(bill.total).toFixed(2)}`, 14, finalY + 30);
+    doc.text(`Refunded: ${currencySymbol}${refundedAmount.toFixed(2)}`, 14, finalY + 40);
+    doc.text(`Net Total: ${currencySymbol}${netTotal.toFixed(2)}`, 14, finalY + 50);
+
+    // Buyer details
+    doc.text('Buyer:', 14, finalY + 60);
+    doc.text(`Name: ${bill.buyer?.name || '—'}`, 14, finalY + 70);
+    doc.text(`Email: ${bill.buyer?.email || '—'}`, 14, finalY + 80);
+    doc.text(`Phone: ${bill.buyer?.phone || '—'}`, 14, finalY + 90);
+    doc.text(`Payment: ${bill.paymentMethod.replace('_', ' ')}`, 14, finalY + 100);
+    if (bill.paymentNumber) {
+      doc.text(`Ref: ${bill.paymentNumber}`, 14, finalY + 110);
+    }
+
+    // Save the PDF
+    doc.save(`bill_${bill.billNumber}.pdf`);
+  };
 
   return (
     <>
@@ -134,7 +185,7 @@ export function BillRow({
           <div className="flex flex-col gap-1">
             {(bill.items || []).slice(0, 2).map((item, i) => (
               <div key={i} className="text-sm text-card-foreground">
-                {item.quantity}x {item.itemName} ({item.variantName})
+                {item.quantity}x {item.itemName} ({item.categoryName})
               </div>
             ))}
             {(bill.items || []).length > 2 && (
@@ -145,13 +196,11 @@ export function BillRow({
           </div>
         </TableCell>
 
-        {/* Net total in the main row */}
         <TableCell
           className="text-right font-semibold text-card-foreground"
           onClick={() => onView(bill)}
         >
-          {currencySymbol}
-          {netTotal.toFixed(2)}
+          {currencySymbol}{netTotal.toFixed(2)}
         </TableCell>
 
         <TableCell onClick={() => onView(bill)}>
@@ -213,13 +262,16 @@ export function BillRow({
 
                 <DropdownMenuItem
                   className="text-popover-foreground hover:bg-accent"
-                  onClick={() => onPrint(bill)}
+                  onClick={() => onPrintThermal(bill)}
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   Print
                 </DropdownMenuItem>
 
-                <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
+                <DropdownMenuItem
+                  className="text-popover-foreground hover:bg-accent"
+                  onClick={handleDownloadPDF}
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Download
                 </DropdownMenuItem>
@@ -250,34 +302,30 @@ export function BillRow({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-medium">
-                      {currencySymbol}
-                      {num(bill.subtotal).toFixed(2)}
+                      {currencySymbol}{num(bill.subtotal).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      Tax ({bill.taxPercent}%)
+                      Tax ({bill.taxPercent}%):
                     </span>
                     <span className="font-medium">
-                      {currencySymbol}
-                      {num(bill.taxAmount).toFixed(2)}
+                      {currencySymbol}{num(bill.taxAmount).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-medium">
-                      {currencySymbol}
-                      {num(bill.total).toFixed(2)}
+                      {currencySymbol}{num(bill.total).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Refunded:</span>
                     <span className="font-medium">
-                      {currencySymbol}
-                      {refundedAmount.toFixed(2)}
+                      {currencySymbol}{refundedAmount.toFixed(2)}
                     </span>
                   </div>
 
@@ -286,8 +334,7 @@ export function BillRow({
                       Net Total:
                     </span>
                     <span className="font-bold text-lg">
-                      {currencySymbol}
-                      {netTotal.toFixed(2)}
+                      {currencySymbol}{netTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -317,13 +364,12 @@ export function BillRow({
                       <div>
                         <p className="font-medium text-sm">{item.itemName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.variantName} · {item.sku}
+                          {item.categoryName} {item.subCategory ? `· ${item.subCategory}` : ''} · {item.sku}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-sm">
-                          {item.quantity} × {currencySymbol}
-                          {num(item.price).toFixed(2)}
+                          {item.quantity} × {currencySymbol}{num(item.price).toFixed(2)}
                         </p>
                       </div>
                     </div>

@@ -104,8 +104,8 @@ function ItemsBlock({ items }) {
   const list = Array.isArray(items)
     ? items.map((it) => ({
         id: it._id || it.id,
-        name: it.inventoryItem?.itemName || it.itemName || '—',
-        sku: it.inventoryItem?.sku || it.sku || '—',
+        name: it.productItem?.itemName || it.itemName || '—',
+        sku: it.productItem?.sku || it.sku || '—',
         qty: it.quantity ?? 1,
         price: it.price ?? 0,
         total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),

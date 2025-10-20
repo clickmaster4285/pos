@@ -38,7 +38,7 @@ export default function PlanSelection({
   const getPlanFeatures = (plan) => [
     `${plan.limitations?.maxStaff || 0} Staff Members`,
     `${plan.limitations?.maxVendors || 0} Vendors`,
-    `${plan.limitations?.maxInventoryItems || 0} Inventory Items`,
+    `${plan.limitations?.maxProductItems || 0} Product Items`,
     ...(plan.limitations?.features || []).map((feature) =>
       feature.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
     ),

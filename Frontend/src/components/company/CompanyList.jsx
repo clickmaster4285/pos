@@ -88,7 +88,7 @@ export function CompanyList({
           
           const usersCount = Array.isArray(c?.gain?.staff) ? c.gain.staff.length : 0;
           const vendorsCount = c?.gain?.vendor || 0;
-          const inventoryCount = c?.gain?.inventory || 0;
+          const productCount = c?.gain?.product || 0;
 
           return (
             <div
@@ -169,7 +169,7 @@ export function CompanyList({
                   </div>
                   <div className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
-                    <span className="font-medium text-foreground">{inventoryCount}</span>
+                    <span className="font-medium text-foreground">{productCount}</span>
                   </div>
                 </div>
               </div>

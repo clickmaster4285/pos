@@ -175,7 +175,7 @@ export function ProductModal({ isOpen, onClose, onSave, product, mode, categorie
             {mode === 'view' && 'Product Details'}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground mb-3">
-            {mode === 'create' && 'Create a new product for inventory.'}
+            {mode === 'create' && 'Create a new product for product.'}
             {mode === 'edit' && 'Update product information and settings.'}
             {mode === 'view' && 'View complete product profile and details.'}
           </DialogDescription>
@@ -392,43 +392,43 @@ export function ProductModal({ isOpen, onClose, onSave, product, mode, categorie
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-foreground">Custom Attributes</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newCustomAttribute.key}
-                onChange={(e) => handleCustomAttributeChange('key', e.target.value)}
-                placeholder="Attribute name"
-                disabled={isReadOnly}
-                className="border-border focus:ring"
-              />
-              <Input
-                value={newCustomAttribute.value}
-                onChange={(e) => handleCustomAttributeChange('value', e.target.value)}
-                placeholder="Attribute value"
-                disabled={isReadOnly}
-                className="border-border focus:ring"
-              />
-              <Button
-                type="button"
-                onClick={addCustomAttribute}
-                disabled={isReadOnly || !newCustomAttribute.key.trim() || !newCustomAttribute.value.trim()}
-                className="gap-2"
-              >
-                <PlusCircle className="h-4 w-4" /> Add
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.customAttributes.map((attr, index) => (
-                <Badge key={index} className="flex items-center gap-1">
-                  {attr.key}: {attr.value}
-                  {!isReadOnly && (
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => removeCustomAttribute(index)} />
-                  )}
-                </Badge>
-              ))}
-            </div>
-          </div>
+            {/* <div className="space-y-2">
+              <Label className="text-foreground">Custom Attributes</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newCustomAttribute.key}
+                  onChange={(e) => handleCustomAttributeChange('key', e.target.value)}
+                  placeholder="Attribute name"
+                  disabled={isReadOnly}
+                  className="border-border focus:ring"
+                />
+                <Input
+                  value={newCustomAttribute.value}
+                  onChange={(e) => handleCustomAttributeChange('value', e.target.value)}
+                  placeholder="Attribute value"
+                  disabled={isReadOnly}
+                  className="border-border focus:ring"
+                />
+                <Button
+                  type="button"
+                  onClick={addCustomAttribute}
+                  disabled={isReadOnly || !newCustomAttribute.key.trim() || !newCustomAttribute.value.trim()}
+                  className="gap-2"
+                >
+                  <PlusCircle className="h-4 w-4" /> Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {formData.customAttributes.map((attr, index) => (
+                  <Badge key={index} className="flex items-center gap-1">
+                    {attr.key}: {attr.value}
+                    {!isReadOnly && (
+                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeCustomAttribute(index)} />
+                    )}
+                  </Badge>
+                ))}
+              </div>
+            </div> */}
 
           <div className="space-y-2">
             <Label className="text-foreground">Tags</Label>

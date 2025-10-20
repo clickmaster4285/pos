@@ -1,15 +1,15 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -19,268 +19,152 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Download,
-  MoreVertical,
-  Trash2,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Edit3,
-  Printer,
-  ChevronDown,
-  ChevronUp,
-  Loader,
-} from 'lucide-react';
+import { Search, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import PropTypes from 'prop-types';
 
-function StatusBadge({ status }) {
-  const map = {
-    paid: {
-      icon: CheckCircle2,
-      color: 'bg-green-100 text-green-800 border-green-200',
-    },
-    partially_refunded: {
-      icon: AlertCircle,
-      color: 'bg-red-100 text-red-800 border-red-200',
-    },
-    refunded: {
-      icon: AlertCircle,
-      color: 'bg-red-100 text-red-800 border-red-200',
-    },
-    pending: {
-      icon: Clock,
-      color: 'bg-amber-100 text-amber-800 border-amber-200',
-    },
-  };
-  const cfg = map[status] || map.pending;
-  const Icon = cfg.icon;
-  return (
-    <Badge variant="outline" className={`${cfg.color} capitalize`}>
-      <Icon className="w-3 h-3 mr-1" />
-      {status}
-    </Badge>
+BillingTableDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onOpenChange: PropTypes.func.isRequired,
+  bills: PropTypes.arrayOf(
+    PropTypes.shape({
+      _id: PropTypes.string,
+      billNumber: PropTypes.string,
+      buyer: PropTypes.shape({
+        name: PropTypes.string,
+        email: PropTypes.string,
+      }),
+      items: PropTypes.arrayOf(
+        PropTypes.shape({
+          itemName: PropTypes.string,
+          categoryName: PropTypes.string,
+          subCategory: PropTypes.string,
+          sku: PropTypes.string,
+          quantity: PropTypes.number,
+          price: PropTypes.number,
+        })
+      ),
+      total: PropTypes.number,
+      status: PropTypes.string,
+      createdAt: PropTypes.string,
+    })
+  ).isRequired,
+  onSelectBill: PropTypes.func.isRequired,
+  currencySymbol: PropTypes.string.isRequired,
+};
+
+export function BillingTableDialog({ open, onOpenChange, bills, onSelectBill, currencySymbol = '€' }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredBills = bills.filter(
+    (b) =>
+      b.billNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.buyer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.buyer?.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-}
 
-export function BillRow({
-  bill,
-  expanded,
-  onToggleExpand,
-  onEdit, // refund action handler
-  onPrint,
-  onDelete, // opens delete dialog
-}) {
+  const getStatusIcon = (status) => {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case 'refunded':
+      case 'partially_refunded':
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case 'pending':
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <>
-      <TableRow className="border-border hover:bg-muted/50">
-        <TableCell className="font-medium text-card-foreground">
-          {bill.billNumber}
-        </TableCell>
-        <TableCell>
-          <div className="flex flex-col">
-            <span className="font-medium text-card-foreground">
-              {bill?.buyer?.name}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {bill?.buyer?.email}
-            </span>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[800px]">
+        <DialogHeader>
+          <DialogTitle>Bills Overview</DialogTitle>
+          <DialogDescription>
+            View and select bills to manage or review details.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search bills by number, buyer, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        </TableCell>
-        <TableCell>
-          <div className="flex flex-col gap-1">
-            {(bill.items || []).slice(0, 2).map((item, i) => (
-              <div
-                key={`${item.sku}-${i}`}
-                className="text-sm text-card-foreground"
-              >
-                {item.quantity}x {item.itemName} ({item.variantName})
-              </div>
-            ))}
-            {(bill.items || []).length > 2 && (
-              <div className="text-xs text-muted-foreground">
-                +{(bill.items || []).length - 2} more items
-              </div>
-            )}
-          </div>
-        </TableCell>
-        <TableCell className="text-right font-semibold text-card-foreground">
-          ${Number(bill.total || 0).toFixed(2)}
-        </TableCell>
-        <TableCell>
-          <StatusBadge status={bill.status} />
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {new Date(bill.createdAt).toLocaleDateString()}
-        </TableCell>
-        <TableCell className="text-right">
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleExpand}
-              className="h-8 w-8"
-            >
-              {expanded ? (
-                <ChevronUp className="h-4 w-4" />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bill #</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBills.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No bills found
+                  </TableCell>
+                </TableRow>
               ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent
-                align="end"
-                className="bg-popover border-border"
-              >
-                {/* Refund submenu */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-popover-foreground hover:bg-accent">
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Refund
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="bg-popover border-border">
-                    {/* <DropdownMenuItem
-                      onClick={() => onEdit(bill, 'partial')}
-                      className="text-popover-foreground hover:bg-accent"
-                    >
-                      Partial Refund
-                    </DropdownMenuItem> */}
-                    <DropdownMenuItem
-                      onClick={() => onEdit(bill, 'full')}
-                      className="text-popover-foreground hover:bg-accent"
-                    >
-                      Refund Items
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                {/* Print */}
-                <DropdownMenuItem
-                  className="text-popover-foreground hover:bg-accent"
-                  onClick={() => onPrint(bill)}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print
-                </DropdownMenuItem>
-
-                {/* Download */}
-                {/* <DropdownMenuItem className="text-popover-foreground hover:bg-accent">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </DropdownMenuItem> */}
-
-                {/* Delete */}
-                <DropdownMenuItem
-                  className="text-red-600 hover:bg-accent hover:text-red-700"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </TableCell>
-      </TableRow>
-
-      {expanded && (
-        <TableRow>
-          <TableCell colSpan={7} className="bg-muted/50 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-card-foreground mb-3">
-                  Bill Details
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-medium">
-                      ${Number(bill.subtotal || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Tax ({bill.taxPercent}%)
-                    </span>
-                    <span className="font-medium">
-                      ${Number(bill.taxAmount || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="text-muted-foreground font-medium">
-                      Total:
-                    </span>
-                    <span className="font-bold text-lg">
-                      ${Number(bill.total || 0).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                {bill.notes && (
-                  <div className="mt-4">
-                    <h5 className="font-medium text-card-foreground mb-1">
-                      Notes
-                    </h5>
-                    <p className="text-sm text-muted-foreground">
-                      {bill.notes}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <h4 className="font-semibold text-card-foreground mb-3">
-                  Items
-                </h4>
-                <div className="space-y-2">
-                  {(bill.items || []).map((item, i) => (
-                    <div
-                      key={`${item.sku}-${i}`}
-                      className="flex justify-between items-center p-2 bg-background rounded-lg"
-                    >
+                filteredBills.map((bill) => (
+                  <TableRow
+                    key={bill._id}
+                    onClick={() => onSelectBill(bill)}
+                    className="cursor-pointer hover:bg-muted/50"
+                  >
+                    <TableCell>{bill.billNumber}</TableCell>
+                    <TableCell>
                       <div>
-                        <p className="font-medium text-sm">{item.itemName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.variantName} · {item.sku}
-                        </p>
+                        <div className="font-medium">{bill.buyer?.name || '—'}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {bill.buyer?.email || '—'}
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm">
-                          {item.quantity} × $
-                          {Number(item.price || 0).toFixed(2)}
-                        </p>
-                        <p className="font-semibold">
-                          ${Number(item.lineTotal || 0).toFixed(2)}
-                        </p>
+                    </TableCell>
+                    <TableCell>
+                      {(bill.items || []).slice(0, 2).map((item, i) => (
+                        <div key={i} className="text-sm">
+                          {item.quantity}x {item.itemName} ({item.categoryName})
+                        </div>
+                      ))}
+                      {bill.items?.length > 2 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{bill.items.length - 2} more
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {currencySymbol}{Number(bill.total || 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(bill.status)}
+                        <span className="capitalize">{bill.status.replace('_', ' ')}</span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(bill.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

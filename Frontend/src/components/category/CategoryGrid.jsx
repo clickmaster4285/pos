@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,27 +10,21 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/ui/hover-card';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tag,
-  Edit,
-  Trash2,
-  Calendar,
-  MoreVertical,
-} from 'lucide-react';
+} from "@/components/ui/hover-card";
+import { Switch } from "@/components/ui/switch";
+import { Tag, Edit, Trash2, Calendar, MoreVertical } from "lucide-react";
 
-const safe = (v) => (typeof v === 'string' ? v : '');
-const getId = (c) => c?.id ?? c?._id ?? '';
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
+const safe = (v) => (typeof v === "string" ? v : "");
+const getId = (c) => c?.id ?? c?._id ?? "";
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : "—");
 
 function statusVariant(isActive) {
-  return isActive ? 'active' : 'reject';
+  return isActive ? "active" : "reject";
 }
 
 export function CategoryGrid({
@@ -56,7 +50,7 @@ export function CategoryGrid({
         const isPending = pendingId === id;
 
         const keyOpen = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
           }
         };
@@ -80,14 +74,17 @@ export function CategoryGrid({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0" onClick={() => onOpenSheet(category)}>
+                  <div
+                    className="min-w-0"
+                    onClick={() => onOpenSheet(category)}
+                  >
                     <h3 className="font-semibold text-md text-foreground truncate">
-                      {safe(category.categoryName) || 'Untitled category'}
+                      {safe(category.categoryName) || "Untitled category"}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground truncate">
                       {category.subCategory?.length
-                        ? category.subCategory.join(', ')
-                        : 'No subcategories'}
+                        ? category.subCategory.join(", ")
+                        : "No subcategories"}
                     </p>
                   </div>
 
@@ -97,7 +94,7 @@ export function CategoryGrid({
                       className="h-6 px-2 text-[10px] shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {category.isActive ? 'Active' : 'Inactive'}
+                      {category.isActive ? "Active" : "Inactive"}
                     </Badge>
 
                     <DropdownMenu>
@@ -149,8 +146,8 @@ export function CategoryGrid({
                                 />
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Toggle to{' '}
-                                {category.isActive ? 'deactivate' : 'activate'}{' '}
+                                Toggle to{" "}
+                                {category.isActive ? "deactivate" : "activate"}{" "}
                                 this category.
                               </p>
                               <Button
@@ -163,10 +160,10 @@ export function CategoryGrid({
                                 disabled={isPending}
                               >
                                 {isPending
-                                  ? 'Updating…'
+                                  ? "Updating…"
                                   : category.isActive
-                                  ? 'Deactivate'
-                                  : 'Activate'}
+                                  ? "Deactivate"
+                                  : "Activate"}
                               </Button>
                             </div>
                           </HoverCardContent>
@@ -188,11 +185,10 @@ export function CategoryGrid({
                           className="text-destructive focus:text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelete?.(category);
+                            onDelete?.(product);
                           }}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -214,7 +210,9 @@ export function CategoryGrid({
                   Description
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
-                  <span className="truncate">{safe(category.description) || '—'}</span>
+                  <span className="truncate">
+                    {safe(category.description) || "—"}
+                  </span>
                 </div>
               </div>
 
@@ -225,8 +223,8 @@ export function CategoryGrid({
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground">
                   <span className="truncate">
                     {category.subCategory?.length
-                      ? category.subCategory.join(', ')
-                      : '—'}
+                      ? category.subCategory.join(", ")
+                      : "—"}
                   </span>
                 </div>
               </div>
@@ -237,7 +235,7 @@ export function CategoryGrid({
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
                   <span className="truncate">
-                    {category.tags?.length ? category.tags.join(', ') : '—'}
+                    {category.tags?.length ? category.tags.join(", ") : "—"}
                   </span>
                 </div>
               </div>

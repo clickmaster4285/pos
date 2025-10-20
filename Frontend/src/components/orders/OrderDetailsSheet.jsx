@@ -262,10 +262,10 @@ export default function OrderDetailsSheet({
                       <tbody>
                         {(order?.items || []).map((it, i) => {
                           const name =
-                            it?.inventoryItem?.itemName ||
+                            it?.productItem?.itemName ||
                             it?.itemName ||
                             'Unnamed Product';
-                          const sku = it?.inventoryItem?.sku || it?.sku;
+                          const sku = it?.productItem?.sku || it?.sku;
                           return (
                             <tr
                               key={it._id || it.id || i}

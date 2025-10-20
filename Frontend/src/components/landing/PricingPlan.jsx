@@ -35,9 +35,9 @@ const samplePlans = [
     validateDays: 14,
     limitations: {
       maxStaff: 5,
-      maxInventoryItems: 500,
+      maxProductItems: 500,
       maxVendors: 10,
-      features: ['inventory_management', 'support'],
+      features: ['product_management', 'support'],
     },
     isActive: true,
   },
@@ -49,12 +49,12 @@ const samplePlans = [
     validateDays: 30,
     limitations: {
       maxStaff: 25,
-      maxInventoryItems: 2500,
+      maxProductItems: 2500,
       maxVendors: 50,
       features: [
         'analytics',
         'reports',
-        'inventory_management',
+        'product_management',
         'vendor_management',
         'support',
       ],
@@ -69,12 +69,12 @@ const samplePlans = [
     validateDays: 30,
     limitations: {
       maxStaff: 100,
-      maxInventoryItems: 10000,
+      maxProductItems: 10000,
       maxVendors: 200,
       features: [
         'analytics',
         'reports',
-        'inventory_management',
+        'product_management',
         'vendor_management',
         'order_tracking',
         'support',
@@ -88,7 +88,7 @@ import { useGetAllPlansQuery } from '@/features/planApi';
 const featureIcons = {
   analytics: BarChart3,
   reports: FileText,
-  inventory_management: Package,
+  product_management: Package,
   vendor_management: Building2,
   order_tracking: Truck,
   support: HeadphonesIcon,
@@ -97,7 +97,7 @@ const featureIcons = {
 const featureLabels = {
   analytics: 'Advanced Analytics',
   reports: 'Custom Reports',
-  inventory_management: 'Inventory Management',
+  product_management: 'Product Management',
   vendor_management: 'Vendor Management',
   order_tracking: 'Order Tracking',
   support: 'Priority Support',
@@ -113,7 +113,7 @@ function PlansHeader() {
 
       <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty">
         Streamline your automotive business with our comprehensive management
-        platform. Choose the perfect plan to manage inventory, vendors, and
+        platform. Choose the perfect plan to manage product, vendors, and
         operations efficiently.
       </p>
 
@@ -140,7 +140,7 @@ function PlanCard({ plan, isPopular = false, onSelectPlan }) {
 
   const hasLimits = !!plan?.limitations;
   const maxStaff = hasLimits ? plan.limitations.maxStaff : 0;
-  const maxInventory = hasLimits ? plan.limitations.maxInventoryItems : 0;
+  const maxProduct = hasLimits ? plan.limitations.maxProductItems : 0;
   const maxVendors = hasLimits ? plan.limitations.maxVendors : 0;
   const features = hasLimits ? plan.limitations.features || [] : [];
 
@@ -196,7 +196,7 @@ function PlanCard({ plan, isPopular = false, onSelectPlan }) {
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
               <span className="text-sm">
-                Up to {maxInventory} inventory items
+                Up to {maxProduct} product items
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -262,11 +262,11 @@ function FeatureComparison() {
       icon: FileText,
       name: 'Custom Reports',
       description:
-        'Generate detailed reports for inventory, sales, vendor performance, and operational metrics.',
+        'Generate detailed reports for product, sales, vendor performance, and operational metrics.',
     },
     {
       icon: Package,
-      name: 'Inventory Management',
+      name: 'Product Management',
       description:
         'Track parts, tools, and equipment with automated reorder points and supplier integration.',
     },
@@ -298,7 +298,7 @@ function FeatureComparison() {
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
           Our platform is specifically designed for automotive businesses, with
-          features that address the unique challenges of managing inventory,
+          features that address the unique challenges of managing product,
           vendors, and operations in the automotive industry.
         </p>
       </div>

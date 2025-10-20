@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const ALLOWED_FEATURES = [
   "analytics",
   "reports",
-  "inventory_management",
+  "product_management",
   "vendor_management",
   "order_tracking",
   "support",
@@ -38,7 +38,7 @@ const PlanSchema = new Schema(
         type: Number,
         default: 10,
       },
-      maxInventoryItems: {
+      maxProductItems: {
         type: Number,
         default: 100,
       },

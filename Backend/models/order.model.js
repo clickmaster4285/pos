@@ -24,10 +24,10 @@ const OrderSchema = new Schema(
     },
     items: [
       {
-        inventoryItem: {
+        productItem: {
           type: Schema.Types.ObjectId,
-          ref: "Inventory",
-          required: [true, "Inventory item is required"],
+          ref: "Product",
+          required: [true, "Product item is required"],
         },
         variantId: {
           type: Schema.Types.ObjectId,
@@ -234,11 +234,11 @@ OrderSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 }); 
 // Validate items belong to the same company
 OrderSchema.pre("validate", async function (next) {
   if (this.items?.length) {
-    const inventoryIds = this.items.map((item) => item.inventoryItem);
+    const productIds = this.items.map((item) => item.productItem);
 
     const inventories = await mongoose
-      .model("Inventory")
-      .find({ _id: { $in: inventoryIds } })
+      .model("Product")
+      .find({ _id: { $in: productIds } })
       .select("companyId");
 
     const mismatch = inventories.find(

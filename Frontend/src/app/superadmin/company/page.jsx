@@ -24,7 +24,7 @@ function mapCompany(c) {
     contactPhone: c.contactPhone || '—',
     address: c.address || '—',
     plan: c.plan || [],
-    gain: c.gain || { staff: [], vendor: 0, inventory: 0 },
+    gain: c.gain || { staff: [], vendor: 0, product: 0 },
     usersCount: Array.isArray(c?.gain?.staff)
       ? c.gain.staff.length
       : typeof c.usersCount === 'number'

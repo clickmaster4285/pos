@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect,useMemo } from 'react';
 
 import {
   Dialog,
@@ -6,108 +7,249 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader, AlertCircle } from 'lucide-react';
+import PropTypes from 'prop-types';
 
-export default function RefundDialog({
+RefundDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onOpenChange: PropTypes.func.isRequired,
+  bill: PropTypes.shape({
+    _id: PropTypes.string,
+    billNumber: PropTypes.string,
+    items: PropTypes.arrayOf(
+      PropTypes.shape({
+        productId: PropTypes.string,
+        sku: PropTypes.string,
+        itemName: PropTypes.string,
+        categoryName: PropTypes.string,
+        subCategory: PropTypes.string,
+        quantity: PropTypes.number,
+        price: PropTypes.number,
+        total: PropTypes.number,
+        refundHistory: PropTypes.arrayOf(
+          PropTypes.shape({
+            refundQuantity: PropTypes.number,
+            refundAmount: PropTypes.number,
+            refundedAt: PropTypes.string,
+          })
+        ),
+      })
+    ),
+    subtotal: PropTypes.number,
+    taxPercent: PropTypes.number,
+    taxAmount: PropTypes.number,
+    total: PropTypes.number,
+  }),
+  onRefund: PropTypes.func.isRequired,
+  refunding: PropTypes.bool.isRequired,
+  refundType: PropTypes.oneOf(['partial', 'full']).isRequired,
+  currencySymbol: PropTypes.string,
+};
+
+export function RefundDialog({
   open,
   onOpenChange,
-  bill, // { _id, billNumber }
-  lines, // [{ sku, itemName, variantName, purchasedQty, alreadyRefunded, maxQty, quantity, reason }]
-  setLines, // (updater) => void
-  notes,
-  setNotes,
-  onSubmit, // () => void | Promise<void>
+  bill,
+  onRefund,
+  refunding,
+  refundType,
+  currencySymbol = '€',
 }) {
+  const [refundItems, setRefundItems] = useState([]);
+  const [refundReason, setRefundReason] = useState('');
+
+  const billItems = useMemo(() => {
+    if (!bill?.items) return [];
+    return bill.items.map((item) => ({
+      ...item,
+      availableToRefund: item.quantity - (item.refundHistory?.reduce((sum, r) => sum + (r.refundQuantity || 0), 0) || 0),
+    }));
+  }, [bill]);
+
+  useEffect(() => {
+    if (bill && refundType === 'full') {
+      setRefundItems(
+        billItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.availableToRefund,
+        }))
+      );
+    } else {
+      setRefundItems(
+        billItems.map((item) => ({
+          productId: item.productId,
+          quantity: 0,
+        }))
+      );
+    }
+  }, [bill, billItems, refundType]);
+
+  const totalRefundAmount = useMemo(() => {
+    return refundItems.reduce((sum, refundItem) => {
+      const billItem = billItems.find((i) => i.productId === refundItem.productId);
+      if (!billItem) return sum;
+      return sum + refundItem.quantity * (billItem.price || 0);
+    }, 0);
+  }, [refundItems, billItems]);
+
+  const handleQuantityChange = (productId, value) => {
+    const billItem = billItems.find((i) => i.productId === productId);
+    if (!billItem) return;
+    const maxRefundable = billItem.availableToRefund;
+    const quantity = Math.max(0, Math.min(Number(value) || 0, maxRefundable));
+    setRefundItems((prev) =>
+      prev.map((item) =>
+        item.productId === productId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const handleRefund = () => {
+    if (refundType === 'partial' && !refundItems.some((item) => item.quantity > 0)) {
+
+      return;
+    }
+    if (!refundReason.trim()) {
+
+      return;
+    }
+    onRefund(bill, {
+      refundType,
+      items: refundItems.filter((item) => item.quantity > 0),
+      refundReason,
+      totalRefundAmount,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Partial Refund</DialogTitle>
+          <DialogTitle>
+            {refundType === 'full' ? 'Full Refund' : 'Partial Refund'} - Bill #{bill?.billNumber}
+          </DialogTitle>
           <DialogDescription>
-            Select items and quantities to refund for bill{' '}
-            <span className="font-medium">{bill?.billNumber}</span>.
+            {refundType === 'full'
+              ? 'Process a full refund for all items in the bill.'
+              : 'Select items and quantities to refund.'}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="border rounded-md divide-y">
-            {lines.map((line, idx) => (
-              <div
-                key={`${line.sku}-${idx}`}
-                className="p-3 flex items-center gap-3"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium">
-                    {line.itemName}{' '}
-                    <span className="text-muted-foreground">
-                      · {line.variantName}
-                    </span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    SKU: {line.sku}
-                  </div>
-
-                  {/* Purchased / Refunded / Remaining */}
-                  <div className="text-xs text-muted-foreground">
-                    Purchased: {line.purchasedQty} · Refunded:{' '}
-                    {line.alreadyRefunded} · Remaining: {line.maxQty}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={line.maxQty}
-                    value={line.quantity}
-                    disabled={line.maxQty === 0}
-                    onChange={(e) => {
-                      const raw = Number(e.target.value || 0);
-                      const v = Math.max(0, Math.min(line.maxQty, raw));
-                      setLines((prev) =>
-                        prev.map((l, i) =>
-                          i === idx ? { ...l, quantity: v } : l
-                        )
-                      );
-                    }}
-                    className="w-24"
-                    placeholder="Qty"
-                  />
-                  <Input
-                    value={line.reason}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((l, i) =>
-                          i === idx ? { ...l, reason: e.target.value } : l
-                        )
-                      )
-                    }
-                    className="w-56"
-                    placeholder="Reason (optional)"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Notes (optional)</label>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about this partial refund"
+        <div className="space-y-6">
+          {refundType === 'partial' && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Available</TableHead>
+                  <TableHead className="text-right">Refund Qty</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {billItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">
+                      No items available for refund
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  billItems.map((item) => (
+                    <TableRow key={item.productId}>
+                      <TableCell>{item.itemName}</TableCell>
+                      <TableCell>{item.categoryName}</TableCell>
+                      <TableCell className="text-right">
+                        {item.availableToRefund}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={item.availableToRefund}
+                          value={
+                            refundItems.find((ri) => ri.productId === item.productId)?.quantity || 0
+                          }
+                          onChange={(e) =>
+                            handleQuantityChange(item.productId, e.target.value)
+                          }
+                          className="w-16 text-right"
+                          disabled={item.availableToRefund === 0}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {currencySymbol}
+                        {(refundItems.find((ri) => ri.productId === item.productId)?.quantity * (item.price || 0)).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+          <div className="space-y-2">
+            <label
+              className="text-sm font-medium text-foreground"
+              htmlFor="refund-reason"
+            >
+              Refund Reason <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              id="refund-reason"
+              placeholder="Enter reason for refund"
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="min-h-[100px]"
             />
+            {!refundReason.trim() && (
+              <p className="text-xs text-red-500">Refund reason is required</p>
+            )}
           </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={onSubmit}>Submit Partial Refund</Button>
+          <div className="flex justify-between text-sm font-medium">
+            <span>Total Refund Amount</span>
+            <span>
+              {currencySymbol}{totalRefundAmount.toFixed(2)}
+            </span>
           </div>
         </div>
+        <DialogFooter className="mt-6">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={refunding}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleRefund}
+            disabled={
+              refunding ||
+              !refundReason.trim() ||
+              (refundType === 'partial' && !refundItems.some((item) => item.quantity > 0))
+            }
+          >
+            {refunding ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Process Refund'
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

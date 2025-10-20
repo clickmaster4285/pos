@@ -64,7 +64,7 @@ const prettyEntity = (e) => {
   if (k === 'vendor') return 'Vendor';
   if (k === 'bill') return 'Bill';
   if (k === 'order') return 'Order';
-  if (k === 'inventory') return 'Inventory';
+  if (k === 'product') return 'Product';
   if (k === 'company') return 'Company';
   return k ? k[0].toUpperCase() + k.slice(1) : 'Item';
 };

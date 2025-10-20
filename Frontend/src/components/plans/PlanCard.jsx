@@ -117,7 +117,7 @@ export function PlanCard({ plan, onEdit, onDelete }) {
           </div>
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-secondary-foreground" />
-            <span>{plan.maxVehicles} inventory</span>
+            <span>{plan.maxVehicles} product</span>
           </div>
           <div className="flex items-center gap-2">
             <Store className="w-4 h-4 text-secondary-foreground" />

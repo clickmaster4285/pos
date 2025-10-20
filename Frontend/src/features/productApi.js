@@ -1,3 +1,4 @@
+// src/features/productApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
@@ -34,15 +35,27 @@ export const productApi = createApi({
 
     // GET /api/product/get-all-product
     getAllProducts: builder.query({
-      query: () => '/get-all-product',
-      transformResponse: (res) => res.data || res,
+      query: ({ page = 1, limit = 10, categoryName, subCategory } = {}) => ({
+        url: '/get-all-product',
+        params: { page, limit, categoryName, subCategory },
+      }),
+      transformResponse: (res) => ({
+        data: res.data || [],
+        pagination: res.pagination || { page: 1, totalPages: 1, total: 0 },
+      }),
       providesTags: (result) =>
-        result
+        result?.data
           ? [
-              ...result.map((p) => ({ type: 'Product', id: p._id })),
+              ...result.data.map((p) => ({ type: 'Product', id: p._id })),
               { type: 'Product', id: 'LIST' },
             ]
           : [{ type: 'Product', id: 'LIST' }],
+    }),
+
+    // GET /api/product/get-product-by-id/:id
+    getProductById: builder.query({
+      query: (id) => `/get-product-by-id/${id}`,
+      providesTags: (_res, _err, id) => [{ type: 'Product', id }],
     }),
 
     // PATCH /api/product/update-product/:id
@@ -85,12 +98,14 @@ export const productApi = createApi({
         ...(stockData?.map((item) => ({ type: 'Product', id: item.productId })) || []),
       ],
     }),
+
   }),
 });
 
 export const {
   useCreateProductMutation,
   useGetAllProductsQuery,
+  useGetProductByIdQuery,
   useUpdateProductMutation,
   useDeleteProductMutation,
   useToggleProductStatusMutation,

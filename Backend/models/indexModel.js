@@ -3,7 +3,6 @@ import Company from './company.model.js';
 import Plan from './plan.model.js';
 import Order from './order.model.js';
 import Vendor from './vendor.model.js';
-import Inventory from './inventory.model.js';
 import History from './history.model.js';
 import AddressBook from './addressBook.model.js';
 import Bill from './billing.model.js';
@@ -19,7 +18,6 @@ export default {
   User,
   Company,
   Plan,
-  Inventory,
   Order,
   Vendor,
   History,

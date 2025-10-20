@@ -34,7 +34,7 @@ import {
   useHandleReturnRequestMutation,
 } from '@/features/ordersApi';
 import { LayoutGrid, List } from 'lucide-react';
-import { useGetInventoryQuery } from '@/features/inventoryApi';
+import { useGetProductByIdQuery } from '@/features/productApi';
 import { useGetAddressesQuery } from '@/features/addressApi';
 
 // helpers for date ranges
@@ -103,8 +103,8 @@ export default function OrdersClient() {
     refetch,
   } = useGetOrdersQuery({ companyId }, { skip: !companyId });
 
-  //fetching inventory
-  const { data: inventory = [] } = useGetInventoryQuery();
+  //fetching product
+  const { data: product = [] } = useGetProductByIdQuery();
   //fetching addresses
   const { data: addresses = [], isLoading: addrLoading } = useGetAddressesQuery(
     { companyId },
@@ -152,8 +152,8 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
       o.companyId,
       ...(Array.isArray(o.items)
         ? o.items.flatMap((it) => [
-            it?.inventoryItem?.itemName,
-            it?.inventoryItem?.sku,
+            it?.productItem?.itemName,
+            it?.productItem?.sku,
             it?.itemName,
             it?.sku,
           ])
@@ -428,7 +428,7 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
               <OrderForm
                 initial={editing}
                 loading={saving}
-                inventory={inventory}
+                product={product}
                 onSubmit={editing ? handleUpdate : handleCreate}
               />
             </DialogContent>

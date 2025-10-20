@@ -1,256 +1,126 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import { Download } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { useGetBillsQuery } from '@/features/billingApi';
-import { useGetCompanyQuery } from '@/features/CompanyApi';
+import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
+import { billsApi } from '@/features/billingApi';
 
-export default function BillingSummaryPDF() {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
-  const {
-    data: bills = [],
-    isLoading: billsLoading,
-    error: billsError,
-  } = useGetBillsQuery();
-  const {
-    data: companyData,
-    isLoading: companyLoading,
-    error: companyError,
-  } = useGetCompanyQuery();
+const styles = StyleSheet.create({
+  page: { padding: 30, fontSize: 12 },
+  header: { fontSize: 18, marginBottom: 20, textAlign: 'center' },
+  section: { marginBottom: 10 },
+  table: { display: 'table', width: 'auto', borderStyle: 'solid', borderWidth: 1 },
+  tableRow: { flexDirection: 'row' },
+  tableCol: { borderStyle: 'solid', borderWidth: 1, padding: 5 },
+  tableHeader: { fontWeight: 'bold', backgroundColor: '#f0f0f0' },
+  text: { marginBottom: 5 },
+});
 
-  const currentDate = new Date().toISOString().split('T')[0];
+const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
+  const [bills, setBills] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredBills = useMemo(() => {
-    if (!startDate || billsLoading || billsError) return [];
-
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    let end = start;
-    if (endDate) {
-      end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      if (end < start) {
-        end = start;
-        setEndDate(startDate);
+  useEffect(() => {
+    const fetchBills = async () => {
+      try {
+        setLoading(true);
+        const response = await billsApi.getBills();
+        setBills(response.data || []);
+      } catch (error) {
+        console.log(`({
+          title: 'Error',
+          description: 'Failed to fetch bills for PDF',
+          variant: 'destructive',
+        })`);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    fetchBills();
+  }, []);
 
-    return bills.filter((bill) => {
-      const billDate = new Date(bill.createdAt);
-      return billDate >= start && billDate <= end;
-    });
-  }, [bills, startDate, endDate, billsLoading, billsError]);
+  const generatePDF = async () => {
+    const doc = (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.header}>Billing Summary</Text>
+          <View style={styles.table}>
+            <View style={[styles.tableRow, styles.tableHeader]}>
+              <View style={[styles.tableCol, { width: '20%' }]}>
+                <Text>Bill #</Text>
+              </View>
+              <View style={[styles.tableCol, { width: '20%' }]}>
+                <Text>Customer</Text>
+              </View>
+              <View style={[styles.tableCol, { width: '30%' }]}>
+                <Text>Items</Text>
+              </View>
+              <View style={[styles.tableCol, { width: '15%' }]}>
+                <Text>Amount</Text>
+              </View>
+              <View style={[styles.tableCol, { width: '15%' }]}>
+                <Text>Status</Text>
+              </View>
+            </View>
+            {bills.map((bill) => (
+              <View key={bill._id} style={styles.tableRow}>
+                <View style={[styles.tableCol, { width: '20%' }]}>
+                  <Text>{bill.billNumber}</Text>
+                </View>
+                <View style={[styles.tableCol, { width: '20%' }]}>
+                  <Text>{bill.buyer?.name || '—'}</Text>
+                </View>
+                <View style={[styles.tableCol, { width: '30%' }]}>
+                  {bill.items.slice(0, 2).map((item, i) => (
+                    <Text key={i}>
+                      {item.quantity}x {item.itemName} ({item.categoryName})
+                    </Text>
+                  ))}
+                  {bill.items.length > 2 && (
+                    <Text>+{bill.items.length - 2} more</Text>
+                  )}
+                </View>
+                <View style={[styles.tableCol, { width: '15%' }]}>
+                  <Text>{currencySymbol}{Number(bill.total || 0).toFixed(2)}</Text>
+                </View>
+                <View style={[styles.tableCol, { width: '15%' }]}>
+                  <Text>{bill.status.replace('_', ' ')}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          <View style={styles.section}>
+            <Text style={styles.text}>
+              Total Bills: {bills.length}
+            </Text>
+            <Text style={styles.text}>
+              Total Revenue: {currencySymbol}
+              {bills
+                .filter((b) => b.status === 'paid')
+                .reduce((sum, b) => sum + (b.total || 0), 0)
+                .toFixed(2)}
+            </Text>
+          </View>
+        </Page>
+      </Document>
+    );
 
-  const summary = useMemo(() => {
-    if (billsLoading || billsError || !filteredBills)
-      return { total: 0, paid: 0, refunded: 0, totalRevenue: 0 };
-    const total = filteredBills.length;
-    const paid = filteredBills.filter((bill) => bill.status === 'paid').length;
-    const refunded = filteredBills.filter(
-      (bill) =>
-        bill.status === 'refunded' || bill.status === 'partially_refunded'
-    ).length;
-    const totalRevenue = filteredBills
-      .filter((bill) => bill.status === 'paid')
-      .reduce((sum, bill) => sum + Number(bill.total || 0), 0);
-
-    return { total, paid, refunded, totalRevenue };
-  }, [filteredBills, billsLoading, billsError]);
-
-  const generatePDF = () => {
-    if (
-      billsLoading ||
-      companyLoading ||
-      !startDate ||
-      billsError ||
-      companyError
-    )
-      return;
-
-    const doc = new jsPDF();
-    const companyName = companyData?.data?.name || 'Your Company';
-    const generatedDate = new Date().toLocaleString('en-PK', {
-      timeZone: 'Asia/Karachi',
-      dateStyle: 'full',
-      timeStyle: 'medium',
-    });
-
-    try {
-      // Card-like Header
-      doc.setFillColor(240, 240, 240); // Light gray background for card effect
-      doc.roundedRect(14, 10, 182, 30, 3, 3, 'F'); // Card background
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(150, 150, 150); // Border color
-      doc.roundedRect(14, 10, 182, 30, 3, 3); // Card border
-
-      doc.setFontSize(16);
-      doc.setFont(undefined, 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${companyName} - Billing Summary`, 105, 22, {
-        align: 'center',
-      });
-
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      const dateText = endDate ? `${startDate} to ${endDate}` : startDate;
-      doc.text(`Date Range: ${dateText}`, 105, 30, { align: 'center' });
-
-      // Card-like Summary (single row)
-      doc.setFillColor(240, 240, 240); // Light gray background for card effect
-      doc.roundedRect(14, 45, 182, 15, 3, 3, 'F'); // Card background
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(150, 150, 150); // Border color
-      doc.roundedRect(14, 45, 182, 15, 3, 3); // Card border
-
-      doc.setFontSize(10);
-      doc.setTextColor(20);
-      const summaryText = `Total Bills: ${summary.total} | Paid Bills: ${
-        summary.paid
-      } | Refunded Bills: ${
-        summary.refunded
-      } | Total Revenue: ${summary.totalRevenue.toFixed(2)}`;
-      doc.text(summaryText, 16, 53, { align: 'left' });
-
-      // Detailed Bills Table (classic style)
-      if (filteredBills.length > 0) {
-        autoTable(doc, {
-          startY: 65,
-          head: [['Bill Number', 'Date', 'Buyer', 'Items', 'Total', 'Status']],
-          body: filteredBills.map((bill) => [
-            bill.billNumber,
-            new Date(bill.createdAt).toLocaleDateString(),
-            bill.buyer?.name || 'N/A',
-            bill.items
-              .map(
-                (item) =>
-                  `${item.quantity}x ${item.itemName} (${item.variantName})`
-              )
-              .join(', '),
-            `${Number(bill.total || 0).toFixed(2)}`, // Removed currency symbol
-            bill.status,
-          ]),
-          theme: 'grid', // Classic grid style
-          styles: {
-            halign: 'left',
-            valign: 'middle',
-            fontSize: 8,
-            cellPadding: 2,
-            lineWidth: 0.5,
-          },
-          headStyles: {
-            fillColor: [200, 200, 200],
-            textColor: 20,
-            lineWidth: 0.5,
-          },
-          bodyStyles: { textColor: 20, lineWidth: 0.5 },
-        });
-      }
-
-      // Footer
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Generated on: ${generatedDate}`,
-        14,
-        doc.internal.pageSize.height - 10
-      );
-
-      doc.save(
-        `billing_summary_${startDate}${endDate ? `_to_${endDate}` : ''}.pdf`
-      );
-    } catch (error) {
-      console.error('Failed to generate PDF:', error);
-    }
-
-    setIsDateDialogOpen(false);
-    setStartDate('');
-    setEndDate('');
+    const blob = await pdf(doc).toBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `billing_summary_${new Date().toISOString().split('T')[0]}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <>
-      <Button onClick={() => setIsDateDialogOpen(true)} variant="default">
-        <Download className="w-4 h-4 mr-2" />
-        Download Summary
-      </Button>
-
-      <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg">
-              Generate Billing Summary
-            </DialogTitle>
-            <DialogDescription>
-              Select date range for your billing summary report
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                max={currentDate}
-                className="w-full"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">End Date (Optional)</label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={!startDate}
-                min={startDate}
-                max={currentDate}
-                className="w-full"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsDateDialogOpen(false);
-                  setStartDate('');
-                  setEndDate('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={generatePDF}
-                disabled={
-                  billsLoading ||
-                  companyLoading ||
-                  !startDate ||
-                  billsError ||
-                  companyError
-                }
-                className="bg-blue-600 text-white hover:bg-blue-700"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Generate PDF
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button onClick={generatePDF} disabled={loading || bills.length === 0}>
+      <Download className="w-4 h-4 mr-2" />
+      {loading ? 'Generating...' : 'Download Summary PDF'}
+    </Button>
   );
-}
+};
+
+export default BillingSummaryPDF;

@@ -8,7 +8,6 @@ import { userApi } from '@/features/userApi';
 import { planApi } from '@/features/planApi';
 import { ordersApi } from '@/features/ordersApi';
 import { vendorApi } from '@/features/vendorApi';
-import { inventoryApi } from '@/features/inventoryApi';
 import { staffApi } from '@/features/staffApi';
 import { addressApi } from '@/features/addressApi';
 import { billsApi } from '@/features/billingApi';
@@ -33,7 +32,6 @@ export const store = configureStore({
     [planApi.reducerPath]: planApi.reducer,
     [ordersApi.reducerPath]: ordersApi.reducer,
     [vendorApi.reducerPath]: vendorApi.reducer,
-    [inventoryApi.reducerPath]: inventoryApi.reducer,
     [staffApi.reducerPath]: staffApi.reducer,
     [addressApi.reducerPath]: addressApi.reducer,
     [billsApi.reducerPath]: billsApi.reducer,
@@ -58,7 +56,6 @@ export const store = configureStore({
       planApi.middleware,
       ordersApi.middleware,
       vendorApi.middleware,
-      inventoryApi.middleware,
       staffApi.middleware,
       addressApi.middleware,
       billsApi.middleware,

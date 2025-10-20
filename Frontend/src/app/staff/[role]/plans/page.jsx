@@ -43,14 +43,14 @@ import {
 const featureIcons = {
   analytics: BarChart3,
   reports: FileText,
-  inventory_management: Package,
+  product_management: Package,
   vendor_management: Building2,
   order_tracking: Truck,
 };
 const featureLabels = {
   analytics: 'Analytics',
   reports: 'Reports',
-  inventory_management: 'Inventory',
+  product_management: 'Product',
   vendor_management: 'Vendors',
   order_tracking: 'Order Tracking',
 };
@@ -124,7 +124,7 @@ function Toolbar({
               <SelectItem value="all">All features</SelectItem>
               <SelectItem value="reports">Reports</SelectItem>
               <SelectItem value="analytics">Analytics</SelectItem>
-              <SelectItem value="inventory_management">Inventory</SelectItem>
+              <SelectItem value="product_management">Product</SelectItem>
               <SelectItem value="vendor_management">Vendors</SelectItem>
               <SelectItem value="order_tracking">Order Tracking</SelectItem>
             </SelectContent>
@@ -205,7 +205,7 @@ function PlanCard({ plan, onOpen, isBestValue }) {
           </div>
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-primary" />
-            <span>{lim.maxInventoryItems ?? '—'} items</span>
+            <span>{lim.maxProductItems ?? '—'} items</span>
           </div>
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-primary" />
@@ -296,7 +296,7 @@ function PlanTable({ plans, onOpen }) {
                 <td className="p-3">{fmtMoney(p.price)}</td>
                 <td className="p-3">{daysLabel(p.validateDays)}</td>
                 <td className="p-3">{lim.maxStaff ?? '—'}</td>
-                <td className="p-3">{lim.maxInventoryItems ?? '—'}</td>
+                <td className="p-3">{lim.maxProductItems ?? '—'}</td>
                 <td className="p-3">{lim.maxVendors ?? '—'}</td>
                 <td className="p-3">
                   {p.isActive ? (
@@ -385,7 +385,7 @@ function PlanQuickView({ open, onOpenChange, plan, onAssign, onPurchase }) {
               <Package className="h-4 w-4 text-primary" />
               <div className="text-sm">
                 <div className="font-medium">
-                  {lim.maxInventoryItems ?? '—'}
+                  {lim.maxProductItems ?? '—'}
                 </div>
                 <div className="text-xs text-muted-foreground">Items</div>
               </div>

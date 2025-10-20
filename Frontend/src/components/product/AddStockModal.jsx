@@ -84,7 +84,7 @@ export function AddStockModal({ isOpen, onClose, onSave, products, selectedProdu
                     <SelectValue placeholder="Select product" />
                   </SelectTrigger>
                   <SelectContent>
-                    {products.map((product) => (
+                    {products?.map((product) => (
                       <SelectItem key={product._id} value={product._id}>
                         {product.productName}
                       </SelectItem>

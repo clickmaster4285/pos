@@ -5,18 +5,18 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useGetInventoryQuery } from '@/features/inventoryApi';
+import { useGetProductByIdQuery } from '@/features/productApi';
 import { Package, AlertTriangle, TrendingDown } from 'lucide-react';
 
-export function InventoryTable() {
+export function ProductTable() {
   const router = useRouter();
-  const { data: inventory, isLoading, error, refetch } = useGetInventoryQuery();
+  const { data: product, isLoading, error, refetch } = useGetProductByIdQuery();
 
   // Transform API data for the table
   const tableData = React.useMemo(() => {
-    if (!inventory) return [];
+    if (!product) return [];
 
-    return inventory
+    return product
       .flatMap(
         (item) =>
           item.variants?.map((variant) => ({
@@ -32,20 +32,20 @@ export function InventoryTable() {
           })) || []
       )
       .sort((a, b) => a.qty - b.qty); // Sort by quantity low → high
-  }, [inventory]);
+  }, [product]);
 
   if (isLoading) {
     return (
       <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Inventory Levels</CardTitle>
+          <CardTitle>Product Levels</CardTitle>
           <Button variant="outline" disabled>
             Manage
           </Button>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-muted-foreground">
-            Loading inventory...
+            Loading product...
           </div>
         </CardContent>
       </Card>
@@ -56,14 +56,14 @@ export function InventoryTable() {
     return (
       <Card className="border-border">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Inventory Levels</CardTitle>
+          <CardTitle>Product Levels</CardTitle>
           <Button variant="outline" onClick={refetch}>
             Retry
           </Button>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center text-destructive">
-            Failed to load inventory
+            Failed to load product
           </div>
         </CardContent>
       </Card>
@@ -77,7 +77,7 @@ export function InventoryTable() {
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <div className="space-y-1">
           <CardTitle className="text-lg font-semibold">
-            Inventory Levels
+            Product Levels
           </CardTitle>
           {lowStockItems.length > 0 && (
             <p className="text-sm text-destructive flex items-center gap-1">
@@ -90,7 +90,7 @@ export function InventoryTable() {
         <Button
           variant="outline"
           className="border-primary/40 text-primary"
-          onClick={() => router.push('/admin/inventory')}
+          onClick={() => router.push('/admin/product')}
         >
           Manage
         </Button>
@@ -100,7 +100,7 @@ export function InventoryTable() {
         {tableData.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No inventory items found</p>
+            <p>No product items found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

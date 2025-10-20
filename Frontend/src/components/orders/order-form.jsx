@@ -33,7 +33,7 @@ function normalizeItems(items) {
   if (!Array.isArray(items) || items.length === 0) {
     return [
       {
-        inventoryId: '',
+        productId: '',
         itemName: '',
         sku: '',
         quantity: 1,
@@ -43,7 +43,7 @@ function normalizeItems(items) {
     ];
   }
   return items.map((it) => ({
-    inventoryId: String(it?.inventoryItem || it?.inventoryId || ''),
+    productId: String(it?.productItem || it?.productId || ''),
     sku: it?.sku || '',
     itemName: it?.itemName || '',
     quantity: Number(it?.quantity ?? 1),
@@ -73,7 +73,7 @@ function Truncate({ children, className, title }) {
 
 /* ---------------- component ---------------- */
 
-export default function OrderForm({ onSubmit, loading, inventory }) {
+export default function OrderForm({ onSubmit, loading, product }) {
   const [values, setValues] = useState({
     shippingAddressId: '',
     orderType: '',
@@ -109,32 +109,32 @@ const [selectedAddr, setSelectedAddr] = useState(null);
     }
   }, [addresses, values.shippingAddressId]);
 
-  /* inventory maps */
+  /* product maps */
   const invById = useMemo(() => {
     const m = new Map();
-    (inventory || []).forEach((it) => {
+    (product || []).forEach((it) => {
       const id = String(it.id || it._id || '');
       if (id) m.set(id, it);
     });
     return m;
-  }, [inventory]);
+  }, [product]);
 
   const invOptions = useMemo(
     () =>
-      (inventory || []).map((it) => ({
+      (product || []).map((it) => ({
         id: String(it.id || it._id),
         label: it.itemName,
       })),
-    [inventory]
+    [product]
   );
 
-  /* backfill names/prices if we had an inventoryId stored */
+  /* backfill names/prices if we had an productId stored */
   useEffect(() => {
     setValues((v) => ({
       ...v,
       items: v.items.map((row) => {
-        if (row.itemName || !row.inventoryId) return row;
-        const inv = invById.get(String(row.inventoryId));
+        if (row.itemName || !row.productId) return row;
+        const inv = invById.get(String(row.productId));
         return inv
           ? {
               ...row,
@@ -160,7 +160,7 @@ const [selectedAddr, setSelectedAddr] = useState(null);
       items: [
         ...v.items,
         {
-          inventoryId: '',
+          productId: '',
           itemName: '',
           sku: '',
           quantity: 1,
@@ -253,7 +253,7 @@ const [selectedAddr, setSelectedAddr] = useState(null);
 
         <div className="grid gap-3">
           {values.items.map((it, idx) => {
-            const selectedInvId = toId(it.inventoryId);
+            const selectedInvId = toId(it.productId);
             const inv = invById.get(selectedInvId) || null;
             const variants = inv?.variants || [];
             const selectedSku = it.sku || '';
@@ -275,7 +275,7 @@ const [selectedAddr, setSelectedAddr] = useState(null);
                       const nextInv = invById.get(id);
                       // reset variant-related fields on item change
                       updateItem(idx, {
-                        inventoryId: id,
+                        productId: id,
                         itemName: nextInv?.itemName || '',
                         sku: '',
                         variantId: '',

@@ -77,7 +77,7 @@ export function CompanyGrid({
           ? company.gain.staff.length
           : 0;
         const vendorsCount = num(company?.gain?.vendor);
-        const inventoryCount = num(company?.gain?.inventory);
+        const productCount = num(company?.gain?.product);
         const planCount = Array.isArray(company?.plan)
           ? company.plan.length
           : 0;
@@ -247,7 +247,7 @@ export function CompanyGrid({
                   </div>
                   <div className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
-                    <span className="font-medium text-foreground">{inventoryCount}</span>
+                    <span className="font-medium text-foreground">{productCount}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="font-medium text-foreground">{planCount} plans</span>

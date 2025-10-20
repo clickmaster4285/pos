@@ -130,14 +130,14 @@ export function ProductList({
                 </Button>
 
                 <Button
-                  size="sm"
-                  variant="delete"
-                  onClick={() => onDelete(p)}
-                  className="h-8 w-8 p-0"
-                  aria-label="Delete product"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+  size="sm"
+  variant="delete"
+  onClick={() => onDelete(p)}
+  className="h-8 w-8 p-0"
+  aria-label="Delete product"
+>
+  <Trash2 className="h-3 w-3" />
+</Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

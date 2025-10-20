@@ -28,7 +28,7 @@ export default function PlanManagement() {
     validateDays: 0, // optional
     limitations: {
       maxStaff: 0,
-      maxInventoryItems: 0,
+      maxProductItems: 0,
       maxVendors: 0,
       features: [], // array of strings
     },
@@ -48,7 +48,7 @@ export default function PlanManagement() {
       description: p.description ?? '',
       validateDays: p.validateDays ?? '',
       price: Number(p.price ?? 0),
-      maxVehicles: p.limitations?.maxInventoryItems ?? 0,
+      maxVehicles: p.limitations?.maxProductItems ?? 0,
       maxUsers: p.limitations?.maxStaff ?? 0,
       maxVendors: p.limitations?.maxVendors ?? 0,
       features: Array.isArray(p.features)
@@ -84,7 +84,7 @@ export default function PlanManagement() {
       validateDays: 0, // optional
       limitations: {
         maxStaff: 0,
-        maxInventoryItems: 0,
+        maxProductItems: 0,
         maxVendors: 0,
         features: [], // array of strings
       },
@@ -101,8 +101,8 @@ export default function PlanManagement() {
         validateDays: Number(formData.validateDays || 0),
         limitations: {
           maxStaff: Number(formData.limitations.maxStaff || 0),
-          maxInventoryItems: Number(
-            formData.limitations.maxInventoryItems || 0
+          maxProductItems: Number(
+            formData.limitations.maxProductItems || 0
           ),
           maxVendors: Number(formData.limitations.maxVendors || 0),
           features: Array.isArray(formData.limitations.features)
@@ -129,8 +129,8 @@ export default function PlanManagement() {
       validateDays: Number(plan.validateDays ?? 0),
       limitations: {
         maxStaff: Number(plan.maxUsers ?? plan.limitations?.maxStaff ?? 0),
-        maxInventoryItems: Number(
-          plan.maxVehicles ?? plan.limitations?.maxInventoryItems ?? 0
+        maxProductItems: Number(
+          plan.maxVehicles ?? plan.limitations?.maxProductItems ?? 0
         ),
         maxVendors: Number(
           plan.maxVendors ?? plan.limitations?.maxVendors ?? 0
@@ -158,8 +158,8 @@ export default function PlanManagement() {
         validateDays: Number(formData.validateDays || 0),
         limitations: {
           maxStaff: Number(formData.limitations.maxStaff || 0),
-          maxInventoryItems: Number(
-            formData.limitations.maxInventoryItems || 0
+          maxProductItems: Number(
+            formData.limitations.maxProductItems || 0
           ),
           maxVendors: Number(formData.limitations.maxVendors || 0),
           features: Array.isArray(formData.limitations.features)

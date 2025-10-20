@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { AlertTriangle } from 'lucide-react';
 
-export function DeleteConfirmDialog({ isOpen, onClose, onConfirm, productName, loading }) {
+export function DeleteConfirmDialog({ open, onOpenChange, onConfirm, productName, isLoading }) {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -21,13 +21,13 @@ export function DeleteConfirmDialog({ isOpen, onClose, onConfirm, productName, l
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             Are you sure you want to delete{' '}
-            <span className="font-medium text-foreground">{productName}</span>? This
+            <span className="font-medium text-foreground">{productName || 'this product'}</span>? This
             action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={loading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isLoading}>
             Delete Product
           </Button>
         </DialogFooter>

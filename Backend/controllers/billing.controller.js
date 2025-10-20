@@ -1,11 +1,21 @@
-// bill.controller.js (strengthened, no sanitizeHtml, express-validator, or transactions)
 import IndexModel from '../models/indexModel.js';
-import { generateBillNumber } from '../utils/generateBillNumber.js'; // reuse your generator
+import { generateBillNumber } from '../utils/generateBillNumber.js';
 import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
+
+const sanitizeInput = (input) => {
+  if (typeof input === 'string') {
+    return sanitize(input, {
+      allowedTags: [],
+      allowedAttributes: {},
+    }).trim();
+  }
+  return input;
+};
 
 const createBill = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const { userId, companyId } = req.user;
     const {
       items,
       buyer,
@@ -14,32 +24,46 @@ const createBill = async (req, res) => {
       paymentMethod,
       paymentNumber,
     } = req.body ?? {};
-    // console.log("the body", req.body);
+
+    console.log('createBill payload:', { items, buyer, taxPercent: providedTaxPercent, paymentMethod, paymentNumber });
+
     // Top-level validation
     if (!Array.isArray(items) || items.length === 0) {
+      console.error('Validation error: Items must be a non-empty array');
       throw new Error('Items must be a non-empty array');
     }
 
     if (!['cash', 'credit_card', 'bank_transfer'].includes(paymentMethod)) {
+      console.error('Validation error: Invalid payment method:', paymentMethod);
       throw new Error('Invalid payment method');
     }
 
+    const sanitizedNotes = sanitizeInput(notes);
     if (
-      notes &&
-      (typeof notes !== 'string' ||
-        notes.length > 1000 ||
-        !/^[\w\s.,!?-]*$/.test(notes))
+      sanitizedNotes &&
+      (typeof sanitizedNotes !== 'string' ||
+        sanitizedNotes.length > 1000 ||
+        !/^[\w\s.,!?-]*$/.test(sanitizedNotes))
     ) {
+      console.error('Validation error: Invalid notes format or length');
       throw new Error('Invalid notes format or length');
     }
 
-    // Fetch company settings to get tax rates
+    // Validate buyer details for non-cash payments
+    if (
+      ['credit_card', 'bank_transfer'].includes(paymentMethod) && !paymentNumber?.trim()) {
+      console.error('Validation error: Invalid buyer details or payment number');
+      throw new Error('Buyer details and payment number are required for non-cash payments');
+    }
+
+    // Fetch company settings
     const company = await IndexModel.Company.findOne({
-      companyId: req.user.companyId,
+      companyId,
       deleted: false,
       isActive: true,
     });
     if (!company) {
+      console.error('Validation error: Company not found for companyId:', companyId);
       throw new Error('Company not found');
     }
 
@@ -48,559 +72,382 @@ const createBill = async (req, res) => {
       taxRateCard: company?.invoiceSettings?.tax?.taxRateCard || 0,
     };
 
-    let taxPercent;
-    if (paymentMethod === 'cash') {
-      taxPercent = taxRates.taxRateCash;
-    } else if (
-      paymentMethod === 'credit_card' ||
-      paymentMethod === 'bank_transfer'
-    ) {
-      taxPercent = taxRates.taxRateCard;
-    } else {
-      taxPercent = 0;
-    }
+    let taxPercent = paymentMethod === 'cash' ? taxRates.taxRateCash : taxRates.taxRateCard;
 
-    console.log('teh tax rates', taxPercent, providedTaxPercent);
-    // Validate provided taxPercent, if any
-    if (taxPercent !== undefined) {
-      if (typeof taxPercent !== 'number' || taxPercent < 0) {
+    // Validate provided taxPercent
+    if (providedTaxPercent !== undefined) {
+      if (typeof providedTaxPercent !== 'number' || providedTaxPercent < 0) {
+        console.error('Validation error: Provided taxPercent must be a number ≥ 0:', providedTaxPercent);
         throw new Error('Provided taxPercent must be a number ≥ 0');
       }
       if (
-        (paymentMethod === 'cash' && taxPercent !== taxRates.taxRateCash) ||
-        ((paymentMethod === 'credit_card' ||
-          paymentMethod === 'bank_transfer') &&
-          taxPercent !== taxRates.taxRateCard)
+        (paymentMethod === 'cash' && providedTaxPercent !== taxRates.taxRateCash) ||
+        ((paymentMethod === 'credit_card' || paymentMethod === 'bank_transfer') &&
+          providedTaxPercent !== taxRates.taxRateCard)
       ) {
-        throw new Error(
-          'Provided taxPercent does not match company tax settings for the selected payment method'
-        );
+        console.error('Validation error: taxPercent does not match company settings');
+        throw new Error('Provided taxPercent does not match company tax settings');
       }
     }
 
-    // Validate + resolve each requested item to an Inventory + Variant
-    const inventoryItems = await Promise.all(
+    // Validate and resolve items
+    const productItems = await Promise.all(
       items.map(async (item) => {
-        console.log('the items', item);
-        if (
-          !item?.sku ||
-          typeof item.sku !== 'string' ||
-          !/^[A-Z0-9-]+$/.test(item.sku)
-        ) {
-          throw new Error('Each item must have a valid SKU');
+        if (!item.productId || !mongoose.isValidObjectId(item.productId)) {
+          console.error('Validation error: Invalid or missing productId for item:', item);
+          throw new Error(`Invalid or missing productId for ${item.itemName}`);
         }
-        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-          throw new Error('Quantity must be a positive integer');
-        }
-
-        const inventory = await IndexModel.Inventory.findOne({
-          'variants.sku': item.sku,
-          isActive: true,
+        const product = await IndexModel.Product.findOne({
+          _id: item.productId,
+          companyId,
           deleted: false,
+          isActive: true,
         });
-
-        if (!inventory) {
-          throw new Error(`Variant with SKU ${item.sku} not found`);
+        if (!product) {
+          console.error('Validation error: Product not found for productId:', item.productId);
+          throw new Error(`Product with ID ${item.productId} not found`);
         }
-
-        const variant = inventory.variants.find((v) => v.sku === item.sku);
-        if (!variant) {
-          throw new Error(`Variant with SKU ${item.sku} not found`);
+        if (product.quantity < item.quantity) {
+          console.error('Validation error: Insufficient stock for product:', product.productName, 'Requested:', item.quantity, 'Available:', product.quantity);
+          throw new Error(`Insufficient stock for ${item.itemName}`);
         }
-
-        if (variant.quantity < item.quantity) {
-          throw new Error(
-            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.quantity}`
-          );
-        }
-
-        const lineTotal = item.quantity * (variant.price ?? 0);
-
         return {
-          inventoryItem: inventory._id,
-          variantId: variant._id,
-          variantName: variant.variantName,
-          itemName: inventory.itemName,
-          sku: variant.sku,
+          productId: product._id,
+          sku: item.sku,
+          itemName: item.itemName,
+          categoryName: item.categoryName,
+          subCategory: item.subCategory || '',
           quantity: item.quantity,
-          returnUnder: variant.returnUnder,
-          price: variant.price ?? 0,
-          costPrice: variant.costPrice ?? 0,
-          total: lineTotal,
-          companyId: inventory.companyId,
+          price: item.price,
+          total: item.quantity * item.price,
         };
       })
     );
 
-    // Group by companyId — one Bill per company
-    const groups = inventoryItems.reduce((acc, item) => {
-      const cid = item.companyId.toString();
-      if (!acc[cid]) acc[cid] = [];
-      acc[cid].push(item);
-      return acc;
-    }, {});
+    // Calculate totals
+    const subtotal = productItems.reduce((sum, item) => sum + item.total, 0);
+    const taxAmount = (subtotal * taxPercent) / 100;
+    const total = subtotal + taxAmount;
 
-    const affectedInventories = new Set();
-    const createdBills = [];
+    // Create bill
+    const billNumber = await generateBillNumber(companyId);
+    const bill = new IndexModel.Bill({
+      billNumber,
+      companyId,
+      createdBy: userId,
+      items: productItems,
+      buyer: {
+        name: sanitizeInput(buyer?.name) || '',
+        email: sanitizeInput(buyer?.email) || '',
+        phone: sanitizeInput(buyer?.phone) || '',
+      },
+      subtotal,
+      taxPercent,
+      taxAmount,
+      total,
+      paymentMethod,
+      paymentNumber: paymentNumber ? sanitizeInput(paymentNumber) : '',
+      notes: sanitizedNotes,
+    });
 
-    // Create bills and update variants
-    for (const companyId in groups) {
-      const groupItems = groups[companyId];
-
-      // Compute bill amounts from items
-      const subtotal = groupItems.reduce((sum, it) => sum + (it.total || 0), 0);
-      const taxAmount = +(subtotal * (taxPercent / 100)).toFixed(2);
-      const total = +(subtotal + taxAmount).toFixed(2);
-
-      // Generate bill number
-      const billNumber = await generateBillNumber(companyId);
-
-      const bill = new IndexModel.Bill({
-        billNumber,
-        userId,
-        companyId,
-        createdBy: userId,
-        buyer: {
-          name: buyer.name?.trim(),
-          email: buyer.email || '',
-          phone: buyer.phone || '',
-        },
-        items: groupItems.map(({ companyId: _omit, ...rest }) => rest),
-        subtotal,
-        taxPercent,
-        taxAmount,
-        total,
-        paymentMethod,
-        paymentNumber,
-        notes: notes || '',
-        history: [
-          {
-            action: 'Bill created',
-            performedBy: userId,
-          },
-        ],
-        status: 'paid',
-      });
-
-      // Save bill
-      await bill.save();
-      createdBills.push(bill);
-
-      // Update inventory variants
-      for (const item of groupItems) {
-        const inventory = await IndexModel.Inventory.findById(
-          item.inventoryItem
-        );
-        const variant = inventory?.variants.find((v) =>
-          v._id.equals(item.variantId)
-        );
-
-        if (!variant) {
-          throw new Error(`Variant ${item.sku} not found`);
-        }
-        if (variant.quantity < item.quantity) {
-          throw new Error(
-            `Insufficient quantity for ${item.sku}: available ${variant.quantity}, requested ${item.quantity}`
-          );
-        }
-
-        const remainingAfter = variant.quantity - item.quantity;
-        const newTotalOrdered = (variant.totalOrdered ?? 0) + item.quantity;
-
-        const result = await IndexModel.Inventory.updateOne(
-          {
-            _id: item.inventoryItem,
-            variants: {
-              $elemMatch: {
-                _id: item.variantId,
-                quantity: { $gte: item.quantity },
-              },
-            },
-          },
+    // Update product stock
+    await Promise.all(
+      productItems.map(async (item) => {
+        const result = await IndexModel.Product.updateOne(
+          { _id: item.productId, companyId },
           {
             $inc: {
-              'variants.$.quantity': -item.quantity,
-              'variants.$.totalOrdered': item.quantity,
-            },
-            $set: {
-              'variants.$.lastOrderedDate': new Date(),
+              quantity: -item.quantity,
+              totalOrdered: item.quantity,
             },
             $push: {
               history: {
-                action: `Bill ${billNumber}: ${variant.variantName} (${item.sku}) −${item.quantity} (remaining ${remainingAfter}, totalOrdered → ${newTotalOrdered})`,
+                action: `Bill ${billNumber}: ${item.quantity} units sold`,
                 performedBy: userId,
+                createdAt: new Date(),
               },
             },
           }
         );
-
-        if (result.matchedCount === 0) {
-          throw new Error(
-            `Failed to update variant ${item.sku}: insufficient quantity or not found`
-          );
+        if (result.modifiedCount === 0) {
+          console.error('Stock update failed for productId:', item.productId);
+          throw new Error(`Failed to update stock for product ${item.sku}`);
         }
-
-        affectedInventories.add(item.inventoryItem.toString());
-      }
-    }
-
-    // Recalculate inventory totals
-    for (const invId of affectedInventories) {
-      const inventory = await IndexModel.Inventory.findById(invId);
-      if (inventory) {
-        inventory.markModified('variants');
-        await inventory.save();
-      }
-    }
-
-    // Build response with enhanced item details
-    const responseBills = await Promise.all(
-      createdBills.map(async (bill) => {
-        const enhancedItems = await Promise.all(
-          bill.items.map(async (item) => {
-            const inventory = await IndexModel.Inventory.findById(
-              item.inventoryItem
-            );
-            const variant = inventory?.variants.find((v) =>
-              v._id.equals(item.variantId)
-            );
-
-            return {
-              ...item.toObject(),
-              totalOrderedThisBill: item.quantity,
-              remainingAfterBill: variant ? variant.quantity : 'N/A',
-              totalOrderedOverall: variant ? variant.totalOrdered ?? 0 : 'N/A',
-              totalSold: variant ? variant.totalSold ?? 0 : 'N/A',
-              totalRevenue: variant ? variant.totalRevenue ?? 0 : 'N/A',
-              lowStockAlert:
-                variant && typeof variant.lowStockThreshold === 'number'
-                  ? variant.quantity <= variant.lowStockThreshold
-                    ? 'Yes'
-                    : 'No'
-                  : 'N/A',
-            };
-          })
-        );
-
-        return { ...bill.toObject(), items: enhancedItems };
       })
     );
+    await bill.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: 'Bill(s) created successfully',
-      bills: responseBills,
+      message: 'Bill created successfully',
+      data: bill.toObject(),
     });
   } catch (error) {
-    console.error('Error creating bill:', error);
-    res.status(400).json({
+    console.error('Error creating bill:', error.message, error.stack);
+    return res.status(400).json({
       success: false,
-      message: 'Error creating bill(s)',
+      message: 'Error creating bill',
       error: error.message,
     });
   }
 };
 
+
 const getBills = async (req, res) => {
   try {
     const { companyId } = req.user;
+    const { page = 1, limit = 10 } = req.query;
 
-    // Fetch all non-deleted bills for this company
-    const bills = await IndexModel.Bill.find({
-      companyId,
-      deleted: false,
-    }).lean();
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
-    // Attach the user name for each bill
-    const data = await Promise.all(
-      bills.map(async (bill) => {
-        const user = await IndexModel.User.findOne({
-          userId: bill.userId, // still a string field
-          companyId: bill.companyId,
-          deleted: false,
-        }).lean();
-
-        return {
-          ...bill,
-          userName: user ? user.name : null,
-        };
+    const [bills, total] = await Promise.all([
+      IndexModel.Bill.find({
+        companyId,
+        deleted: false,
       })
-    );
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      IndexModel.Bill.countDocuments({
+        companyId,
+        deleted: false,
+      }),
+    ]);
 
-    return res.status(200).json(data);
+    const totalPages = Math.ceil(total / limitNum);
+
+    return res.status(200).json({
+      success: true,
+      data: bills,
+      pagination: {
+        page: pageNum,
+        totalPages,
+        total,
+      },
+    });
   } catch (error) {
     console.error('Error fetching bills:', error);
-    return res.status(400).json({
+    return res.status(500).json({
+      success: false,
       message: 'Error fetching bills',
       error: error.message,
     });
   }
 };
 
-// PATCH /api/billing/update-bills-status/:id  (or :billId)
-// Body:
-//  {
-//    "refundItems": [{ "sku": "SKU1", "quantity": 2, "reason": "..." }],
-//    "notes": "optional"
-//  }
-// Behavior:
-//  - If refundItems missing/empty -> FULL refund
-//  - Else PARTIAL refund
-//  - If after partial all items are fully refunded -> flip to FULL
+const getBillById = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid bill ID',
+      });
+    }
+
+    const bill = await IndexModel.Bill.findOne({
+      _id: id,
+      companyId,
+      deleted: false,
+    }).lean();
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found or does not belong to the company',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: bill,
+    });
+  } catch (error) {
+    console.error('Error fetching bill:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching bill',
+      error: error.message,
+    });
+  }
+};
+
 const updateItemStatus = async (req, res) => {
   try {
     const { userId, companyId } = req.user;
-    const billId = req.params.billId || req.params.id;
-    const { refundItems = [], notes = '' } = req.body || {};
+    const { billId } = req.params;
+    const { refundItems = [], notes = '' } = req.body;
+
+    if (!mongoose.isValidObjectId(billId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid bill ID',
+      });
+    }
 
     const bill = await IndexModel.Bill.findOne({
       _id: billId,
       companyId,
       deleted: false,
     });
-    if (!bill) throw new Error('Bill not found');
 
-    if (bill.status === 'refunded') {
-      throw new Error('Bill is already fully refunded');
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found or does not belong to the company',
+      });
     }
 
-    // ---------------- helpers ----------------
-    const n = (v) => Number(v || 0);
+    const sanitizedNotes = sanitizeInput(notes);
+    if (sanitizedNotes && (typeof sanitizedNotes !== 'string' || sanitizedNotes.length > 1000)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid notes format or length',
+      });
+    }
 
+    const n = (v) => Number(v || 0);
     const pushHistory = (action, note = '') => {
+      bill.history = bill.history || [];
       bill.history.push({
         action,
         performedBy: userId,
-        notes: note || '',
+        notes: note.trim() || undefined,
+        createdAt: new Date(),
       });
     };
 
-    const restockVariant = async ({
-      inventoryItemId,
-      variantId,
-      qty,
-      label,
-    }) => {
-      const result = await IndexModel.Inventory.updateOne(
-        { _id: inventoryItemId, 'variants._id': variantId },
-        {
-          $inc: {
-            'variants.$.quantity': qty,
-            'variants.$.totalOrdered': -qty,
-          },
-          $push: {
-            history: {
-              action: `${label}`,
-              performedBy: userId,
-            },
-          },
-        }
-      );
-      if (result.modifiedCount === 0) {
-        throw new Error(
-          `Failed to update inventory for variant ${String(variantId)}`
-        );
-      }
-    };
+    let deltaRefundAmount = 0;
+    const refundedItems = [];
 
-    const alreadyRefundedQty = (item) =>
-      (Array.isArray(item.refundHistory) ? item.refundHistory : []).reduce(
-        (s, r) => s + n(r.refundQuantity),
-        0
-      );
-
-    // Sum of full line totals for NON-cancelled & NON-fully-returned lines
     const recomputeBillTotalsByFullyReturnedLines = () => {
-      const subtotal = bill.items.reduce((sum, it) => {
-        const fullyReturned = it.status === 'returned_accept';
-        const cancelled = it.status === 'cancelled';
-        return fullyReturned || cancelled ? sum : sum + n(it.total);
+      const sumEligible = bill.items.reduce((sum, it) => {
+        return ['cancelled', 'returned_accept'].includes(it.status)
+          ? sum
+          : sum + (it.total || 0);
       }, 0);
-      const taxPct = n(bill.taxPercent) / 100;
-      bill.subtotal = +subtotal.toFixed(2);
-      bill.taxAmount = +(subtotal * taxPct).toFixed(2);
+
+      bill.subtotal = +sumEligible.toFixed(2);
+      bill.taxAmount = +(bill.subtotal * (bill.taxPercent / 100)).toFixed(2);
       bill.total = +(bill.subtotal + bill.taxAmount).toFixed(2);
     };
 
-    // --------------- main logic ----------------
-    let deltaRefundAmount = 0;
-    let refundedItems = [];
-
-    const isFullRefundRequested =
-      !Array.isArray(refundItems) || refundItems.length === 0;
-
-    if (isFullRefundRequested) {
-      // FULL REFUND of all remaining quantities
-      for (const item of bill.items) {
-        const prevQty = alreadyRefundedQty(item);
-        const remainingQty = Math.max(0, n(item.quantity) - prevQty);
-        if (remainingQty <= 0 || item.status === 'returned_accept') continue;
-
-        await restockVariant({
-          inventoryItemId: item.inventoryItem,
-          variantId: item.variantId,
-          qty: remainingQty,
-          label: `Refund: Bill ${bill.billNumber} - ${remainingQty} units of ${item.sku} returned to inventory`,
-        });
-
-        const unitPrice = n(item.price);
-        const lineDelta = unitPrice * remainingQty;
-
-        item.status = 'returned_accept';
-        item.refundAmount = n(item.refundAmount) + lineDelta;
-        item.refundHistory = Array.isArray(item.refundHistory)
-          ? item.refundHistory
-          : [];
-        item.refundHistory.push({
-          refundQuantity: remainingQty,
-          refundAmount: lineDelta,
-          refundReason: notes || 'Full bill refund',
-          refundedBy: userId,
-        });
-
-        deltaRefundAmount += lineDelta;
-        refundedItems.push({
-          sku: item.sku,
-          itemName: item.itemName,
-          quantity: remainingQty,
-          refundAmount: lineDelta,
+    for (const refundItem of refundItems) {
+      if (
+        !refundItem?.sku ||
+        !Number.isInteger(refundItem.quantity) ||
+        refundItem.quantity <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid refund item: SKU and positive quantity required',
         });
       }
 
-      // Recompute totals (now all lines fully returned -> subtotal becomes 0)
-      recomputeBillTotalsByFullyReturnedLines();
-
-      // cumulative total
-      const prevTotalRefund = n(bill?.refundDetails?.totalRefundAmount);
-      const cumulativeRefund = prevTotalRefund + deltaRefundAmount;
-
-      bill.status = bill.total === 0 ? 'refunded' : 'partially_refunded';
-      bill.refundDetails = {
-        ...(bill.refundDetails || {}),
-        totalRefundAmount: cumulativeRefund,
-        refundedAt: new Date(),
-        refundedBy: userId,
-        refundReason: notes || 'Full refund',
-      };
-
-      pushHistory(
-        `Bill ${
-          bill.status
-        } - Total refund (this op): $${deltaRefundAmount.toFixed(2)}`,
-        notes
-      );
-    } else {
-      // PARTIAL REFUND — do NOT change bill subtotal by partial amounts
-      // Only drop a line from subtotal when that line becomes fully returned.
-
-      // Group by SKU (UI may send duplicates)
-      const skuMap = new Map();
-      for (const r of refundItems) {
-        const q = n(r.quantity);
-        if (q <= 0) continue;
-        const prev = skuMap.get(r.sku) || { quantity: 0, reasons: [] };
-        skuMap.set(r.sku, {
-          quantity: prev.quantity + q,
-          reasons: [...prev.reasons, r.reason].filter(Boolean),
+      const billItem = bill.items.find((it) => it.sku === refundItem.sku);
+      if (!billItem) {
+        return res.status(400).json({
+          success: false,
+          message: `Item with SKU ${refundItem.sku} not found in bill`,
         });
       }
-      const groupedRefunds = Array.from(skuMap.entries()).map(([sku, v]) => ({
-        sku,
-        quantity: v.quantity,
-        reason: v.reasons.join(' | ') || 'Partial refund',
-      }));
 
-      if (groupedRefunds.length === 0) {
-        // treat as full refund of remaining
-        req.body.refundItems = [];
-        return await updateItemStatus(req, res);
+      const alreadyRefunded = billItem.refundHistory?.reduce(
+        (sum, r) => sum + (r.refundQuantity || 0),
+        0
+      ) || 0;
+      const remainingQty = billItem.quantity - alreadyRefunded;
+
+      if (refundItem.quantity > remainingQty) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot refund ${refundItem.quantity} units of ${billItem.sku}: only ${remainingQty} available`,
+        });
       }
 
-      for (const refundItem of groupedRefunds) {
-        const billItem = bill.items.find(
-          (it) => it.sku === refundItem.sku && it.status !== 'returned_accept'
+      const product = await IndexModel.Product.findOne({
+        SKU: billItem.sku,
+        companyId,
+        deleted: false,
+      });
+
+      if (product) {
+        await IndexModel.Product.updateOne(
+          { _id: product._id },
+          {
+            $inc: {
+              quantity: refundItem.quantity,
+              totalReturned: refundItem.quantity,
+            },
+            $push: {
+              history: {
+                action: `Refund: ${refundItem.quantity} units of ${billItem.sku} returned to product`,
+                performedBy: userId,
+              },
+            },
+          }
         );
-        if (!billItem) {
-          throw new Error(
-            `Item with SKU ${refundItem.sku} not found or already fully refunded`
-          );
-        }
-
-        const prevQty = alreadyRefundedQty(billItem);
-        const remainingQty = Math.max(0, n(billItem.quantity) - prevQty);
-
-        if (refundItem.quantity > remainingQty) {
-          throw new Error(
-            `Refund qty (${refundItem.quantity}) exceeds remaining refundable qty (${remainingQty}) for ${billItem.sku}`
-          );
-        }
-
-        // Restock the partial quantity
-        await restockVariant({
-          inventoryItemId: billItem.inventoryItem,
-          variantId: billItem.variantId,
-          qty: refundItem.quantity,
-          label: `Partial Refund: Bill ${bill.billNumber} - ${refundItem.quantity} units of ${billItem.sku} returned to inventory`,
-        });
-
-        const unitPrice = n(billItem.price);
-        const lineDelta = unitPrice * refundItem.quantity;
-
-        // Update line refund state
-        if (refundItem.quantity === remainingQty) {
-          billItem.status = 'returned_accept'; // now fully returned -> will be excluded from subtotal
-        } else {
-          billItem.status = 'returned_request'; // still counts in subtotal at full line total
-        }
-
-        billItem.refundAmount = n(billItem.refundAmount) + lineDelta;
-        billItem.refundHistory = Array.isArray(billItem.refundHistory)
-          ? billItem.refundHistory
-          : [];
-        billItem.refundHistory.push({
-          refundQuantity: refundItem.quantity,
-          refundAmount: lineDelta,
-          refundReason: refundItem.reason || 'Partial refund',
-          refundedBy: userId,
-        });
-
-        deltaRefundAmount += lineDelta;
-        refundedItems.push({
-          sku: billItem.sku,
-          itemName: billItem.itemName,
-          quantity: refundItem.quantity,
-          refundAmount: lineDelta,
-        });
       }
 
-      // Recompute totals based ONLY on fully returned/cancelled lines
-      recomputeBillTotalsByFullyReturnedLines();
+      const unitPrice = n(billItem.price);
+      const lineDelta = unitPrice * refundItem.quantity;
 
-      const prevTotalRefund = n(bill?.refundDetails?.totalRefundAmount);
-      const cumulativeRefund = prevTotalRefund + deltaRefundAmount;
+      if (refundItem.quantity === remainingQty) {
+        billItem.status = 'returned_accept';
+      } else {
+        billItem.status = 'returned_request';
+      }
 
-      const allFullyReturned = bill.items.every(
-        (it) => it.status === 'returned_accept' || it.status === 'cancelled'
-      );
-      bill.status = allFullyReturned ? 'refunded' : 'partially_refunded';
-
-      bill.refundDetails = {
-        ...(bill.refundDetails || {}),
-        totalRefundAmount: cumulativeRefund,
-        refundedAt: new Date(),
+      billItem.refundAmount = n(billItem.refundAmount) + lineDelta;
+      billItem.refundHistory = Array.isArray(billItem.refundHistory)
+        ? billItem.refundHistory
+        : [];
+      billItem.refundHistory.push({
+        refundQuantity: refundItem.quantity,
+        refundAmount: lineDelta,
+        refundReason: sanitizeInput(refundItem.reason) || 'Partial refund',
         refundedBy: userId,
-        refundReason:
-          notes ||
-          (allFullyReturned ? 'Full refund via partials' : 'Partial refund'),
-      };
+        refundedAt: new Date(),
+      });
 
-      pushHistory(
-        `Bill ${
-          bill.status
-        } - Total refund (this op): $${deltaRefundAmount.toFixed(2)}`,
-        notes
-      );
+      deltaRefundAmount += lineDelta;
+      refundedItems.push({
+        sku: billItem.sku,
+        itemName: billItem.itemName,
+        quantity: refundItem.quantity,
+        refundAmount: lineDelta,
+      });
     }
+
+    recomputeBillTotalsByFullyReturnedLines();
+
+    const prevTotalRefund = n(bill?.refundDetails?.totalRefundAmount);
+    const cumulativeRefund = prevTotalRefund + deltaRefundAmount;
+
+    const allFullyReturned = bill.items.every(
+      (it) => it.status === 'returned_accept' || it.status === 'cancelled'
+    );
+    bill.status = allFullyReturned ? 'refunded' : 'partially_refunded';
+
+    bill.refundDetails = {
+      ...(bill.refundDetails || {}),
+      totalRefundAmount: cumulativeRefund,
+      refundedAt: new Date(),
+      refundedBy: userId,
+      refundReason:
+        sanitizedNotes ||
+        (allFullyReturned ? 'Full refund via partials' : 'Partial refund'),
+    };
+
+    pushHistory(
+      `Bill ${bill.status} - Total refund (this op): $${deltaRefundAmount.toFixed(2)}`,
+      sanitizedNotes
+    );
 
     await bill.save();
 
@@ -624,13 +471,18 @@ const updateItemStatus = async (req, res) => {
   }
 };
 
-// bill.controller.js - Add delete function
 const deleteBill = async (req, res) => {
   try {
     const { userId, companyId } = req.user;
     const { billId } = req.params;
 
-    // Find the bill
+    if (!mongoose.isValidObjectId(billId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid bill ID',
+      });
+    }
+
     const bill = await IndexModel.Bill.findOne({
       _id: billId,
       companyId,
@@ -638,52 +490,44 @@ const deleteBill = async (req, res) => {
     });
 
     if (!bill) {
-      throw new Error('Bill not found');
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found or does not belong to the company',
+      });
     }
 
-    // Return all items to inventory
     for (const item of bill.items) {
       if (item.status !== 'returned_accept' && item.status !== 'cancelled') {
-        const inventory = await IndexModel.Inventory.findOne({
-          _id: item.inventoryItem,
+        const product = await IndexModel.Product.findOne({
+          _id: item.productId,
           companyId,
           deleted: false,
         });
 
-        if (inventory) {
-          const variant = inventory.variants.find((v) =>
-            v._id.equals(item.variantId)
+        if (product) {
+          const result = await IndexModel.Product.updateOne(
+            { _id: item.productId },
+            {
+              $inc: {
+                quantity: item.quantity,
+                totalOrdered: -item.quantity,
+              },
+              $push: {
+                history: {
+                  action: `Bill Deleted: ${item.quantity} units of ${item.sku} returned to product (Bill ${bill.billNumber})`,
+                  performedBy: userId,
+                },
+              },
+            }
           );
 
-          if (variant) {
-            const result = await IndexModel.Inventory.updateOne(
-              {
-                _id: item.inventoryItem,
-                'variants._id': item.variantId,
-              },
-              {
-                $inc: {
-                  'variants.$.quantity': item.quantity,
-                  'variants.$.totalOrdered': -item.quantity,
-                },
-                $push: {
-                  history: {
-                    action: `Bill Deleted: ${item.quantity} units of ${item.sku} returned to inventory (Bill ${bill.billNumber})`,
-                    performedBy: userId,
-                  },
-                },
-              }
-            );
-
-            if (result.modifiedCount === 0) {
-              throw new Error(`Failed to update inventory for ${item.sku}`);
-            }
+          if (result.modifiedCount === 0) {
+            throw new Error(`Failed to update product for ${item.sku}`);
           }
         }
       }
     }
 
-    // Soft delete the bill and zero out amounts
     bill.deleted = true;
     bill.deletedAt = new Date();
     bill.subtotal = 0;
@@ -699,15 +543,16 @@ const deleteBill = async (req, res) => {
     });
 
     bill.history.push({
-      action: 'Bill deleted and all items returned to inventory',
+      action: 'Bill deleted and all items returned to product',
       performedBy: userId,
+      createdAt: new Date(),
     });
 
     await bill.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: 'Bill deleted successfully and all items returned to inventory',
+      message: 'Bill deleted successfully and all items returned to product',
       data: {
         billNumber: bill.billNumber,
         deletedAt: bill.deletedAt,
@@ -715,7 +560,7 @@ const deleteBill = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting bill:', error);
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
       message: 'Error deleting bill',
       error: error.message,
@@ -723,9 +568,11 @@ const deleteBill = async (req, res) => {
   }
 };
 
+
 export default {
   createBill,
   getBills,
+  getBillById,
   updateItemStatus,
   deleteBill,
 };

@@ -1,4 +1,3 @@
-// billing.model.js
 import mongoose, { Schema } from 'mongoose';
 
 const BillingSchema = new Schema(
@@ -11,47 +10,38 @@ const BillingSchema = new Schema(
       trim: true,
       maxlength: [50, 'Bill number cannot exceed 50 characters'],
     },
-    userId: { type: String, required: true },
     companyId: { type: String, required: true },
     createdBy: { type: String },
     buyer: {
-      name: { type: String,  trim: true },
+      name: { type: String, trim: true },
       email: { type: String, trim: true },
       phone: { type: String, trim: true },
     },
     items: [
       {
-        inventoryItem: {
+        productId: {
           type: Schema.Types.ObjectId,
-          ref: 'Inventory',
+          ref: 'Product',
           required: true,
-        },
-        variantId: { type: Schema.Types.ObjectId, required: true },
-        variantName: {
-          type: String,
-          required: true,
-          trim: true,
-          maxlength: 100,
         },
         itemName: { type: String, required: true, trim: true, maxlength: 100 },
+        categoryName: { type: String, required: true, trim: true, maxlength: 100 },
+        subCategory: { type: String, trim: true, maxlength: 100 },
         sku: {
           type: String,
           required: true,
           trim: true,
           match: [/^[A-Z0-9-]+$/],
         },
-        returnUnder: {
-          type: Number,
-          required: true,
-          min: 0,
-          validate: Number.isInteger,
-        },
         quantity: {
           type: Number,
           required: true,
           min: 1,
           max: 10000,
-          validate: Number.isInteger,
+          validate: {
+            validator: Number.isInteger,
+            message: 'Quantity must be an integer',
+          },
         },
         price: { type: Number, required: true, min: 0 },
         costPrice: { type: Number, min: 0, default: 0 },
@@ -72,7 +62,6 @@ const BillingSchema = new Schema(
         },
         refundAmount: { type: Number, min: 0, default: 0 },
         refundHistory: [
-          // NEW: Track individual refunds for each item
           {
             refundQuantity: { type: Number, required: true, min: 1 },
             refundAmount: { type: Number, required: true, min: 0 },
@@ -89,12 +78,11 @@ const BillingSchema = new Schema(
     total: { type: Number, required: true, min: 0 },
     paymentMethod: {
       type: String,
-      enum: ['credit_card', 'debit_card', 'paypal', 'bank_transfer', 'cash'],
+      enum: ['cash', 'credit_card', 'bank_transfer'],
       required: true,
     },
     paymentNumber: { type: String, trim: true },
     notes: { type: String, trim: true },
-    // NEW: Track refund details at bill level
     refundDetails: {
       totalRefundAmount: { type: Number, default: 0, min: 0 },
       refundedAt: { type: Date },
@@ -106,12 +94,12 @@ const BillingSchema = new Schema(
         action: { type: String, required: true },
         performedBy: { type: String, required: true },
         createdAt: { type: Date, default: Date.now },
-        notes: { type: String, trim: true }, // Added notes to history
+        notes: { type: String, trim: true },
       },
     ],
     status: {
       type: String,
-      enum: ['paid', 'refunded', 'partially_refunded'], // UPDATED: Added partially_refunded
+      enum: ['paid', 'refunded', 'partially_refunded'],
       default: 'paid',
     },
     deleted: {
@@ -125,37 +113,48 @@ const BillingSchema = new Schema(
   { timestamps: true }
 );
 
-// ... keep your existing indexes and pre-save hooks ...
-
 // Indexes
 BillingSchema.index({ billNumber: 1 }, { unique: true });
-BillingSchema.index({ userId: 1, createdAt: -1 });
-BillingSchema.index({ companyId: 1, deleted: 1 });
-// If you don't have deletedAt, remove the TTL index entirely.
-// BillingSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
-// Company consistency
-BillingSchema.pre('validate', async function (next) {
-  if (this.items?.length) {
-    const inventoryIds = this.items.map((it) => it.inventoryItem);
-    const inventories = await mongoose
-      .model('Inventory')
-      .find({ _id: { $in: inventoryIds } })
-      .select('companyId');
-    const mismatch = inventories.find(
-      (inv) => inv.companyId.toString() !== this.companyId.toString()
-    );
-    if (mismatch)
-      return next(
-        new Error('All items must belong to the same company as the bill')
-      );
+// Buyer details validation for non-cash payments
+BillingSchema.pre('validate', function (next) {
+  if (['credit_card', 'bank_transfer'].includes(this.paymentMethod)) {
+    if (!this.paymentNumber?.trim()) {
+      console.error('Schema validation error: Payment number is required for non-cash payment');
+      return next(new Error('Payment number is required for non-cash payment'));
+    }
   }
   next();
 });
 
-// Totals consistency (match controller)
-// 1) subtotal = sum of non-cancelled / non-returned_accept items
-// 2) total = subtotal + taxAmount
+// Company consistency
+BillingSchema.pre('validate', async function (next) {
+  if (this.items?.length) {
+    try {
+      const productIds = this.items.map((it) => it.productId);
+      const products = await mongoose
+        .model('Product')
+        .find({ _id: { $in: productIds } })
+        .select('companyId');
+      const mismatch = products.find(
+        (prod) => prod.companyId.toString() !== this.companyId.toString()
+      );
+      if (mismatch) {
+        console.error('Schema validation error: Product companyId mismatch', {
+          productId: mismatch._id,
+          companyId: this.companyId,
+        });
+        return next(new Error('All items must belong to the same company as the bill'));
+      }
+    } catch (error) {
+      console.error('Schema validation error: Failed to validate product company', error);
+      return next(error);
+    }
+  }
+  next();
+});
+
+// Totals consistency
 BillingSchema.pre('validate', function (next) {
   const items = this.items || [];
   const sumEligible = items.reduce((sum, it) => {
@@ -164,8 +163,13 @@ BillingSchema.pre('validate', function (next) {
       : sum + (it.total || 0);
   }, 0);
 
-  // If you want to enforce exact math here:
-  if (Math.abs(sumEligible - (this.subtotal || 0)) > 0.01) {
+  // Use a small epsilon to handle floating-point precision
+  const epsilon = 0.01;
+  if (Math.abs(sumEligible - (this.subtotal || 0)) > epsilon) {
+    console.error('Schema validation error: Subtotal mismatch', {
+      calculated: sumEligible,
+      provided: this.subtotal,
+    });
     return next(
       new Error(
         'Subtotal must match the sum of non-cancelled and non-returned item totals'
@@ -176,7 +180,11 @@ BillingSchema.pre('validate', function (next) {
   const computedTotal = Number(
     ((this.subtotal || 0) + (this.taxAmount || 0)).toFixed(2)
   );
-  if (Math.abs(computedTotal - (this.total || 0)) > 0.01) {
+  if (Math.abs(computedTotal - (this.total || 0)) > epsilon) {
+    console.error('Schema validation error: Total mismatch', {
+      calculated: computedTotal,
+      provided: this.total,
+    });
     return next(new Error('Total must equal subtotal + taxAmount'));
   }
 
@@ -186,6 +194,7 @@ BillingSchema.pre('validate', function (next) {
 // Prevent billNumber changes after creation
 BillingSchema.pre('save', function (next) {
   if (!this.isNew && this.isModified('billNumber')) {
+    console.error('Schema validation error: Attempted to modify billNumber');
     return next(new Error('Bill number cannot be modified after creation'));
   }
   next();

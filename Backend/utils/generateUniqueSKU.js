@@ -10,7 +10,7 @@ export const generateSKU = async (itemType, companyId, count = 1) => {
     const skus = [];
     let sequence = 1;
 
-    // Helper function to check if SKU exists in Inventory
+    // Helper function to check if SKU exists in Product
     const checkExists = async (SKU) => {
       const productExists = await indexModel.Product.findOne({SKU });
       return !!productExists; // true if found, false otherwise

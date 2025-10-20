@@ -44,8 +44,8 @@ const createOrder = async (req, res) => {
       throw new Error('Invalid notes format or length');
     }
 
-    // Validate and fetch inventory items/variants
-    const inventoryItems = await Promise.all(
+    // Validate and fetch product items/variants
+    const productItems = await Promise.all(
       items.map(async (item) => {
         if (
           !item.sku ||
@@ -62,17 +62,17 @@ const createOrder = async (req, res) => {
           throw new Error('Quantity must be a positive integer');
         }
 
-        const inventory = await IndexModel.Inventory.findOne({
+        const product = await IndexModel.Product.findOne({
           'variants.sku': item.sku,
           isActive: true,
           deleted: false,
         });
 
-        if (!inventory) {
+        if (!product) {
           throw new Error(`Variant with SKU ${item.sku} not found`);
         }
 
-        const variant = inventory.variants.find((v) => v.sku === item.sku);
+        const variant = product.variants.find((v) => v.sku === item.sku);
         if (!variant) {
           throw new Error(`Variant with SKU ${item.sku} not found`);
         }
@@ -84,23 +84,23 @@ const createOrder = async (req, res) => {
         }
 
         return {
-          inventoryItem: inventory._id,
+          productItem: product._id,
           variantId: variant._id,
           variantName: variant.variantName,
-          itemName: inventory.itemName,
+          itemName: product.itemName,
           sku: variant.sku,
           quantity: item.quantity,
           returnUnder: variant.returnUnder,
           price: variant.price,
           costPrice: variant.costPrice || 0,
           total: item.quantity * variant.price,
-          companyId: inventory.companyId,
+          companyId: product.companyId,
         };
       })
     );
 
     // Group items by companyId
-    const groups = inventoryItems.reduce((acc, item) => {
+    const groups = productItems.reduce((acc, item) => {
       const cid = item.companyId.toString();
       if (!acc[cid]) acc[cid] = [];
       acc[cid].push(item);
@@ -139,10 +139,10 @@ const createOrder = async (req, res) => {
 
       // Update variant quantities sequentially
       for (const item of groupItems) {
-        const inventory = await IndexModel.Inventory.findById(
-          item.inventoryItem
+        const product = await IndexModel.Product.findById(
+          item.productItem
         );
-        const variant = inventory.variants.find((v) =>
+        const variant = product.variants.find((v) =>
           v._id.equals(item.variantId)
         );
 
@@ -159,9 +159,9 @@ const createOrder = async (req, res) => {
         const remainingAfter = variant.quantity - item.quantity;
         const newTotalOrdered = variant.totalOrdered + item.quantity;
 
-        const result = await IndexModel.Inventory.updateOne(
+        const result = await IndexModel.Product.updateOne(
           {
-            _id: item.inventoryItem,
+            _id: item.productItem,
             variants: {
               $elemMatch: {
                 _id: item.variantId,
@@ -192,16 +192,16 @@ const createOrder = async (req, res) => {
           );
         }
 
-        affectedInventories.add(item.inventoryItem.toString());
+        affectedInventories.add(item.productItem.toString());
       }
     }
 
-    // Recalculate inventory totals
+    // Recalculate product totals
     for (const invId of affectedInventories) {
-      const inventory = await IndexModel.Inventory.findById(invId);
-      if (inventory) {
-        inventory.markModified('variants');
-        await inventory.save();
+      const product = await IndexModel.Product.findById(invId);
+      if (product) {
+        product.markModified('variants');
+        await product.save();
       }
     }
 
@@ -210,10 +210,10 @@ const createOrder = async (req, res) => {
       createdOrders.map(async (order) => {
         const enhancedItems = await Promise.all(
           order.items.map(async (item) => {
-            const inventory = await IndexModel.Inventory.findById(
-              item.inventoryItem
+            const product = await IndexModel.Product.findById(
+              item.productItem
             );
-            const variant = inventory.variants.find((v) =>
+            const variant = product.variants.find((v) =>
               v._id.equals(item.variantId)
             );
             return {
@@ -291,7 +291,7 @@ const getOrderById = async (req, res) => {
     }
 
     const order = await IndexModel.Order.findOne({ _id: id, deleted: false })
-      .populate('items.inventoryItem', 'itemName companyId variants')
+      .populate('items.productItem', 'itemName companyId variants')
       .populate('assignedTo', 'name email')
       .lean();
 
@@ -300,8 +300,8 @@ const getOrderById = async (req, res) => {
     }
 
     const enhancedItems = order.items.map((item) => {
-      const inventory = item.inventoryItem;
-      const variant = inventory.variants.find(
+      const product = item.productItem;
+      const variant = product.variants.find(
         (v) => v._id.toString() === item.variantId.toString()
       );
       return {
@@ -425,9 +425,9 @@ const cancelOrderItems = async (req, res) => {
         sku: item.sku,
       });
 
-      // 🔹 Update Inventory variant
-      await IndexModel.Inventory.updateOne(
-        { _id: item.inventoryItem, 'variants._id': item.variantId },
+      // 🔹 Update Product variant
+      await IndexModel.Product.updateOne(
+        { _id: item.productItem, 'variants._id': item.variantId },
         {
           $inc: {
             'variants.$.quantity': item.quantity, // restore stock
@@ -435,7 +435,7 @@ const cancelOrderItems = async (req, res) => {
           },
           $push: {
             history: {
-              action: `Order ${order.orderNumber}: Variant ${item.variantName} (${item.sku}) Cancelled ${item.quantity} (restored to inventory)`,
+              action: `Order ${order.orderNumber}: Variant ${item.variantName} (${item.sku}) Cancelled ${item.quantity} (restored to product)`,
               performedBy,
               createdAt: new Date(),
             },
@@ -613,44 +613,44 @@ const handleReturnRequest = async (req, res) => {
     // Update item status
     item.status = newStatus;
 
-    // If accepted, handle inventory update and refund
+    // If accepted, handle product update and refund
     if (action === 'accept') {
       // Calculate refund amount (assuming full refund; adjust logic if partial refunds are possible)
       item.refundAmount = item.quantity * item.price;
       // Set item.total to 0 since the item is returned and no longer contributes to order total
       item.total = 0;
 
-      // Find the inventory and variant
-      const inventory = await IndexModel.Inventory.findById(item.inventoryItem);
-      if (!inventory) {
-        return res.status(404).json({ message: 'Inventory item not found.' });
+      // Find the product and variant
+      const product = await IndexModel.Product.findById(item.productItem);
+      if (!product) {
+        return res.status(404).json({ message: 'Product item not found.' });
       }
 
-      const variantIndex = inventory.variants.findIndex(
+      const variantIndex = product.variants.findIndex(
         (v) => v._id.toString() === item.variantId.toString()
       );
       if (variantIndex === -1) {
         return res
           .status(404)
-          .json({ message: 'Variant not found in inventory.' });
+          .json({ message: 'Variant not found in product.' });
       }
 
-      const variant = inventory.variants[variantIndex];
+      const variant = product.variants[variantIndex];
 
-      // Restore quantity to inventory
+      // Restore quantity to product
       variant.quantity += item.quantity;
       variant.totalReturned += item.quantity;
       variant.updatedAt = new Date();
 
-      // Add history to inventory
-      inventory.history.push({
+      // Add history to product
+      product.history.push({
         action: `Return accepted for Order ${order.orderNumber}: Variant ${variant.variantName} (${variant.sku}) Added ${item.quantity} (remaining: ${variant.quantity}, totalReturned now: ${variant.totalReturned})`,
         performedBy,
         createdAt: new Date(),
       });
 
-      // Save inventory changes
-      await inventory.save();
+      // Save product changes
+      await product.save();
     }
 
     // Add history to order

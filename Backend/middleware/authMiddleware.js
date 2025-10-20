@@ -310,21 +310,21 @@ export const checkplan = (moduleName) => {
           }
           break;
         }
-        case "Inventory": {
-          if (user.permissions.manageInventory === false) {
+        case "Product": {
+          if (user.permissions.manageProduct === false) {
             return res.status(403).json({
               success: false,
-              message: "Unauthorized: you cannot manage inventory",
+              message: "Unauthorized: you cannot manage product",
             });
           }
-          const availableInventories = company.gain.inventory || 0;
-          const totalMaxInventories = activePlans.reduce((sum, plan) => {
-            return sum + (plan.limitations?.maxInventoryItems || 0);
+          const availableProducts = company.gain.product || 0;
+          const totalMaxProducts = activePlans.reduce((sum, plan) => {
+            return sum + (plan.limitations?.maxProductItems || 0);
           }, 0);
-          if (availableInventories >= totalMaxInventories) {
+          if (availableProducts >= totalMaxProducts) {
             return res.status(403).json({
               success: false,
-              message: `Unauthorized: you reached your plan limit. You can only add ${totalMaxInventories} inventory items`,
+              message: `Unauthorized: you reached your plan limit. You can only add ${totalMaxProducts} product items`,
             });
           }
           break;
@@ -368,26 +368,26 @@ export const checkOrderValidation = async (req, res, next) => {
     }
 
     const itemQuantities = items.reduce((acc, item) => {
-      const { inventoryItem, quantity } = item;
-      if (!inventoryItem || !quantity || quantity <= 0) {
-        throw new Error("Invalid inventory item or quantity");
+      const { productItem, quantity } = item;
+      if (!productItem || !quantity || quantity <= 0) {
+        throw new Error("Invalid product item or quantity");
       }
-      acc[inventoryItem] = (acc[inventoryItem] || 0) + quantity;
+      acc[productItem] = (acc[productItem] || 0) + quantity;
       return acc;
     }, {});
 
     for (const [sku, requestedQuantity] of Object.entries(itemQuantities)) {
-      const inventory = await IndexModel.Inventory.findOne({ sku });
-      if (!inventory) {
+      const product = await IndexModel.Product.findOne({ sku });
+      if (!product) {
         return res.status(404).json({
           success: false,
-          message: `Inventory item ${sku} not found`,
+          message: `product item ${sku} not found`,
         });
       }
-      if (inventory.quantity < requestedQuantity) {
+      if (product.quantity < requestedQuantity) {
         return res.status(400).json({
           success: false,
-          message: `Item ${sku} is out of stock. Available: ${inventory.quantity}, Requested: ${requestedQuantity}`,
+          message: `Item ${sku} is out of stock. Available: ${product.quantity}, Requested: ${requestedQuantity}`,
         });
       }
     }

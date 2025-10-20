@@ -59,7 +59,7 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
           <div className="col-span-5">Features</div>
           <div className="col-span-2">Max Staff</div>
           <div className="col-span-2">Max Vendors</div>
-          <div className="col-span-2">Max Inventory</div>
+          <div className="col-span-2">Max Product</div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
 
@@ -169,7 +169,7 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
               </div>
             </div>
 
-            {/* Max Inventory + Actions */}
+            {/* Max Product + Actions */}
             <div className="sm:col-span-4 flex items-center justify-between gap-3">
               <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Package className="h-3 w-3 text-secondary-foreground" />

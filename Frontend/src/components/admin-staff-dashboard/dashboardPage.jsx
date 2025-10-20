@@ -16,10 +16,10 @@ import { AuthContext } from '@/components/auth/SecureAuthProvider';
 
 import { useGetOrdersQuery } from '@/features/ordersApi';
 import { useGetBillsQuery } from '@/features/billingApi';
-import { useGetInventoryQuery } from '@/features/inventoryApi';
+import { useGetAllProductsQuery } from '@/features/productApi';
 
 import { WorkOrdersTable, WorkOrdersChart } from './orderChart';
-import { InventoryTable } from './inventoryTable';
+import { ProductTable } from './productTable';
 
 import { BillsTable } from './BillsTable';
 import { BillingChart } from './BillingChart';
@@ -74,7 +74,7 @@ function StatCard({
 function KPISection({
   k,
   isRecieptionist,
-  inventoryAccess,
+  productAccess,
   isAdmin,
   BillAcess,
 }) {
@@ -96,7 +96,7 @@ function KPISection({
           accent="text-chart-2"
         />
       )}
-      {inventoryAccess && (
+      {productAccess && (
         <StatCard
           title="Low-Stock Items"
           value={k.lowStockItems}
@@ -125,10 +125,10 @@ function KPISection({
   );
 }
 
-/* ------------------------------ Inventory helpers ------------------------------ */
+/* ------------------------------ Product helpers ------------------------------ */
 
-// Normalize inventory payload shape
-function normalizeInventory(raw) {
+// Normalize product payload shape
+function normalizeProduct(raw) {
   if (Array.isArray(raw)) return raw;
   if (Array.isArray(raw?.data)) return raw.data;
   if (raw && typeof raw === 'object' && raw.variants) return [raw];
@@ -137,9 +137,9 @@ function normalizeInventory(raw) {
 
 // Count variants that are low on stock (qty <= lowStockThreshold)
 // Falls back to item-level fields if variants missing.
-function countLowStock(inventoryList) {
+function countLowStock(productList) {
   let count = 0;
-  for (const item of inventoryList) {
+  for (const item of productList) {
     const variants = Array.isArray(item?.variants) ? item.variants : null;
     if (variants && variants.length) {
       for (const v of variants) {
@@ -184,15 +184,15 @@ export default function AdminDashboard() {
   } = useGetBillsQuery();
   const bills = Array.isArray(billsRaw) ? billsRaw : billsRaw?.data || [];
 
-  // Inventory (for low-stock KPI)
-  const { data: inventoryRaw = [] } = useGetInventoryQuery();
-  const inventoryList = React.useMemo(
-    () => normalizeInventory(inventoryRaw),
-    [inventoryRaw]
+  // Product (for low-stock KPI)
+  const { data: productRaw = [] } = useGetAllProductsQuery();
+  const productList = React.useMemo(
+    () => normalizeProduct(productRaw),
+    [productRaw]
   );
   const lowStockItems = React.useMemo(
-    () => countLowStock(inventoryList),
-    [inventoryList]
+    () => countLowStock(productList),
+    [productList]
   );
 
   // Series + KPIs + Pie (Orders + Bills)
@@ -229,7 +229,7 @@ export default function AdminDashboard() {
 
   const { user } = useContext(AuthContext) || {};
 
-  const inventoryAccess = user?.permissions?.manageInventory;
+  const productAccess = user?.permissions?.manageProduct;
 
   const BillAcess = user?.permissions?.viewBilling;
   const PlanManangementAccess = user?.permissions?.managePlans;
@@ -256,7 +256,7 @@ export default function AdminDashboard() {
         <KPISection
           k={k}
           isAdmin={isAdmin}
-          inventoryAccess={inventoryAccess}
+          productAccess={productAccess}
           isRecieptionist={isRecieptionist}
           BillAcess={BillAcess}
         />
@@ -310,8 +310,8 @@ export default function AdminDashboard() {
               />
             )}
 
-            {/* Inventory table (unchanged) */}
-            {inventoryAccess && <InventoryTable />}
+            {/* Product table (unchanged) */}
+            {productAccess && <ProductTable />}
           </div>
         </div>
 

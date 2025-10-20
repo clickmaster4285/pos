@@ -78,7 +78,7 @@ export default function SummaryPreviewDialog({
       <DialogContent className="sm:max-w-[900px] bg-card">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-foreground">
-            Inventory Summary Preview
+            Product Summary Preview
           </DialogTitle>
           <div className="text-xs text-muted-foreground">
             Period: {fromDate || '—'} to {toDate || '—'}

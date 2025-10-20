@@ -11,14 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,21 +25,15 @@ import {
   Search,
   MoreVertical,
   Plus,
-  Trash2,
-  Filter as FilterIcon,
+  FilterIcon,
   CheckCircle2,
   Clock,
   AlertCircle,
-  Edit3,
-  Printer,
-  ChevronDown,
-  ChevronUp,
   CreditCard,
   ShoppingCart,
-  Loader,
-  Package,
 } from 'lucide-react';
-import BillingSummaryPDF from './BillingSummaryPDF'; // Import the BillingSummaryPDF component
+import BillingSummaryPDF from './BillingSummaryPDF';
+
 export function Header({ onCreate, addPermission }) {
   return (
     <header className="">
@@ -62,7 +48,7 @@ export function Header({ onCreate, addPermission }) {
             </p>
           </div>
           <div className="flex gap-2">
-            <BillingSummaryPDF /> {/* Rendered as a standalone component */}
+            <BillingSummaryPDF />
             <Button
               variant="header"
               onClick={onCreate}
@@ -78,7 +64,7 @@ export function Header({ onCreate, addPermission }) {
   );
 }
 
-export function StatsCards({ summary, currencySymbol }) {
+export function StatsCards({ summary, currencySymbol = '€' }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <Card className="bg-card border-border">
@@ -140,11 +126,10 @@ export function StatsCards({ summary, currencySymbol }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Today&apos;s Revenue
+                Today's Revenue
               </p>
               <p className="text-2xl font-bold text-foreground">
-                {currencySymbol}
-                {Number(summary.todayRevenue || 0).toFixed(2)}
+                {currencySymbol}{Number(summary.todayRevenue || 0).toFixed(2)}
               </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
@@ -163,12 +148,11 @@ export function FilterBar({
   searchQuery,
   setSearchQuery,
 }) {
-  const statuses = ['all', 'paid', 'refunded'];
+  const statuses = ['all', 'paid', 'refunded', 'partially_refunded'];
 
   return (
     <div className="mb-6">
-      <div className="flex items-center space-x-4 ">
-        {/* Search */}
+      <div className="flex items-center space-x-4">
         <div className="relative flex-1 bg-card rounded-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
           <Input
@@ -179,7 +163,6 @@ export function FilterBar({
           />
         </div>
 
-        {/* Filter button + dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -210,7 +193,6 @@ export function FilterBar({
               ))}
             </DropdownMenuRadioGroup>
 
-            {/* Optional: quick clear */}
             {filterStatus !== 'all' && (
               <>
                 <DropdownMenuSeparator />

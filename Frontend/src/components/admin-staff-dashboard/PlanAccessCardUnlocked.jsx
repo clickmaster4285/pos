@@ -75,19 +75,19 @@ function priceForPlan(p) {
 const FALLBACK_LIMITS = {
   basic: {
     'Monthly Orders': 100,
-    'Inventory Items': 500,
+    'Product Items': 500,
     'Staff Users': 1,
     Storage: '2 GB',
   },
   premium: {
     'Monthly Orders': 1000,
-    'Inventory Items': 5000,
+    'Product Items': 5000,
     'Staff Users': 5,
     Storage: '25 GB',
   },
   platinum: {
     'Monthly Orders': 'Unlimited',
-    'Inventory Items': 'Unlimited',
+    'Product Items': 'Unlimited',
     'Staff Users': 'Unlimited',
     Storage: 'Unlimited',
   },
@@ -104,7 +104,7 @@ function extractPlanMeta(planObj) {
   if (limits && typeof limits === 'object') {
     const labelMap = {
       maxStaff: 'Staff Users',
-      maxInventoryItems: 'Inventory Items',
+      maxProductItems: 'Product Items',
       maxUsers: 'Staff Users',
       ordersPerMonth: 'Monthly Orders',
       storageGB: 'Storage',

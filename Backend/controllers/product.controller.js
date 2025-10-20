@@ -1,5 +1,18 @@
-import IndexModel from "../models/indexModel.js";
-import { generateSKU } from "../utils/generateUniqueSKU.js";
+// src/controllers/product.controller.js
+import IndexModel from '../models/indexModel.js';
+import { generateSKU } from '../utils/generateUniqueSKU.js';
+import mongoose from 'mongoose';
+import sanitize from 'sanitize-html';
+
+const sanitizeInput = (input) => {
+  if (typeof input === 'string') {
+    return sanitize(input, {
+      allowedTags: [],
+      allowedAttributes: {},
+    }).trim();
+  }
+  return input;
+};
 
 const createProduct = async (req, res) => {
   try {
@@ -21,10 +34,18 @@ const createProduct = async (req, res) => {
       SKU,
     } = req.body;
 
+    // Sanitize inputs
+    const sanitizedProductName = sanitizeInput(productName);
+    const sanitizedCategoryName = sanitizeInput(categoryName);
+    const sanitizedSubCategory = sanitizeInput(subCategory);
+    const sanitizedDescription = sanitizeInput(description);
+    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitizeInput) : [];
+    const sanitizedSKU = sanitizeInput(SKU);
+
     // Validate required fields
     if (
-      !productName ||
-      !categoryName ||
+      !sanitizedProductName ||
+      !sanitizedCategoryName ||
       !companyId ||
       !userId ||
       !vendor ||
@@ -33,7 +54,7 @@ const createProduct = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Product name, category name, company ID, creator ID, vendor, and selling price are required",
+          'Product name, category name, company ID, creator ID, vendor, and selling price are required',
       });
     }
 
@@ -48,13 +69,13 @@ const createProduct = async (req, res) => {
     if (!vendorRecord) {
       return res.status(400).json({
         success: false,
-        message: "Vendor not found or is inactive",
+        message: 'Vendor not found or is inactive',
       });
     }
 
     // Check for existing product with same name and company
     const existingProduct = await IndexModel.Product.findOne({
-      productName,
+      productName: sanitizedProductName,
       companyId,
       deleted: false,
     });
@@ -62,13 +83,13 @@ const createProduct = async (req, res) => {
     if (existingProduct) {
       return res.status(400).json({
         success: false,
-        message: "Product with this name already exists for the company",
+        message: 'Product with this name already exists for the company',
       });
     }
 
     // Verify category exists and is active
     const category = await IndexModel.Category.findOne({
-      categoryName,
+      categoryName: sanitizedCategoryName,
       companyId,
       deleted: false,
       isActive: true,
@@ -77,22 +98,16 @@ const createProduct = async (req, res) => {
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: "Active category not found for the company",
+        message: 'Active category not found for the company',
       });
     }
 
     // Verify subCategory exists in category if provided
-    if (subCategory) {
-      if (typeof subCategory !== "string") {
+    if (sanitizedSubCategory) {
+      if (!category.subCategory.includes(sanitizedSubCategory)) {
         return res.status(400).json({
           success: false,
-          message: "subCategory must be a single string",
-        });
-      }
-      if (!category.subCategory.includes(subCategory)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid subcategory: ${subCategory}`,
+          message: `Invalid subcategory: ${sanitizedSubCategory}`,
         });
       }
     }
@@ -101,7 +116,7 @@ const createProduct = async (req, res) => {
     if (attribute && !Array.isArray(attribute)) {
       return res.status(400).json({
         success: false,
-        message: "attribute must be an array of {key, value} objects",
+        message: 'attribute must be an array of {key, value} objects',
       });
     }
 
@@ -109,14 +124,14 @@ const createProduct = async (req, res) => {
     if (customAttributes && !Array.isArray(customAttributes)) {
       return res.status(400).json({
         success: false,
-        message: "customAttributes must be an array of {key, value} objects",
+        message: 'customAttributes must be an array of {key, value} objects',
       });
     }
 
     // Handle SKU: use provided SKU or generate one
-    let finalSKU = SKU;
-    if (!finalSKU || finalSKU.trim() === "") {
-      const [generatedSKU] = await generateSKU("PRODUCT", companyId, 1);
+    let finalSKU = sanitizedSKU;
+    if (!finalSKU || finalSKU.trim() === '') {
+      const [generatedSKU] = await generateSKU('PRODUCT', companyId, 1);
       finalSKU = generatedSKU;
     } else {
       // Validate provided SKU uniqueness
@@ -128,19 +143,19 @@ const createProduct = async (req, res) => {
       if (existingSKU) {
         return res.status(400).json({
           success: false,
-          message: "Provided SKU is already in use",
+          message: 'Provided SKU is already in use',
         });
       }
     }
 
     // Create new product
     const product = new IndexModel.Product({
-      productName,
-      categoryName,
-      subCategory: subCategory || "",
+      productName: sanitizedProductName,
+      categoryName: sanitizedCategoryName,
+      subCategory: sanitizedSubCategory || '',
       companyId,
-      description,
-      tags: tags || [],
+      description: sanitizedDescription,
+      tags: sanitizedTags,
       vendor,
       SKU: finalSKU,
       sellingPrice,
@@ -154,7 +169,7 @@ const createProduct = async (req, res) => {
       createdBy: userId,
       history: [
         {
-          action: "CREATED",
+          action: 'CREATED',
           performedBy: userId,
           details: `Product created by ${userId}`,
         },
@@ -166,14 +181,14 @@ const createProduct = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Product created successfully",
+      message: 'Product created successfully',
       data: savedProduct,
     });
   } catch (error) {
-    console.error("Error creating product:", error);
+    console.error('Error creating product:', error);
     return res.status(500).json({
       success: false,
-      message: "Error creating product",
+      message: 'Error creating product',
       error: error.message,
     });
   }
@@ -182,40 +197,96 @@ const createProduct = async (req, res) => {
 const getAllProducts = async (req, res) => {
   try {
     const { companyId } = req.user;
-    const { categoryName, subCategory } = req.query;
+    const { categoryName, subCategory, page = 1, limit = 10 } = req.query;
 
     const query = {
       companyId,
       deleted: false,
+      isActive: true, // Only return active products
     };
 
     if (categoryName) {
-      query.categoryName = categoryName;
+      query.categoryName = sanitizeInput(categoryName);
     }
     if (subCategory) {
-      query.subCategory = subCategory;
+      query.subCategory = sanitizeInput(subCategory);
     }
 
-    const products = await IndexModel.Product.find(query).sort({
-      createdAt: -1,
-    });
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      IndexModel.Product.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      IndexModel.Product.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
 
     if (!products || products.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "No products found",
+        message: 'No products found',
       });
     }
 
     return res.status(200).json({
       success: true,
       data: products,
+      pagination: {
+        page: pageNum,
+        totalPages,
+        total,
+      },
     });
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error('Error fetching products:', error);
     return res.status(500).json({
       success: false,
-      message: "Server error while fetching products",
+      message: 'Server error while fetching products',
+      error: error.message,
+    });
+  }
+};
+
+const getProductById = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid product ID',
+      });
+    }
+
+    const product = await IndexModel.Product.findOne({
+      _id: id,
+      companyId,
+      deleted: false,
+    }).lean();
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found or does not belong to the company',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while fetching product',
       error: error.message,
     });
   }
@@ -242,11 +313,26 @@ const updateProduct = async (req, res) => {
       customAttributes,
     } = req.body;
 
+    // Sanitize inputs
+    const sanitizedProductName = sanitizeInput(productName);
+    const sanitizedCategoryName = sanitizeInput(categoryName);
+    const sanitizedSubCategory = sanitizeInput(subCategory);
+    const sanitizedDescription = sanitizeInput(description);
+    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitizeInput) : [];
+    const sanitizedSKU = sanitizeInput(SKU);
+
     // Validate required fields
     if (!id || !companyId || !userId) {
       return res.status(400).json({
         success: false,
-        message: "Product ID, company ID, and user ID are required",
+        message: 'Product ID, company ID, and user ID are required',
+      });
+    }
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid product ID',
       });
     }
 
@@ -260,14 +346,14 @@ const updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found or does not belong to the company",
+        message: 'Product not found or does not belong to the company',
       });
     }
 
     if (product.isActive === false) {
       return res.status(400).json({
         success: false,
-        message: "Product is inactive. Activate it before updating.",
+        message: 'Product is inactive. Activate it before updating.',
       });
     }
 
@@ -283,15 +369,15 @@ const updateProduct = async (req, res) => {
       if (!vendorRecord) {
         return res.status(400).json({
           success: false,
-          message: "Vendor not found or is inactive",
+          message: 'Vendor not found or is inactive',
         });
       }
     }
 
     // Check for duplicate product name (excluding current product)
-    if (productName && productName !== product.productName) {
+    if (sanitizedProductName && sanitizedProductName !== product.productName) {
       const existingProduct = await IndexModel.Product.findOne({
-        productName,
+        productName: sanitizedProductName,
         companyId,
         deleted: false,
         _id: { $ne: id },
@@ -300,15 +386,15 @@ const updateProduct = async (req, res) => {
       if (existingProduct) {
         return res.status(400).json({
           success: false,
-          message: "Product with this name already exists",
+          message: 'Product with this name already exists',
         });
       }
     }
 
     // Check for duplicate SKU (excluding current product) if provided
-    if (SKU && SKU !== product.SKU) {
+    if (sanitizedSKU && sanitizedSKU !== product.SKU) {
       const existingSKU = await IndexModel.Product.findOne({
-        SKU,
+        SKU: sanitizedSKU,
         companyId,
         deleted: false,
         _id: { $ne: id },
@@ -317,15 +403,15 @@ const updateProduct = async (req, res) => {
       if (existingSKU) {
         return res.status(400).json({
           success: false,
-          message: "Provided SKU is already in use",
+          message: 'Provided SKU is already in use',
         });
       }
     }
 
     // Verify category exists and is active if categoryName is provided
-    if (categoryName && categoryName !== product.categoryName) {
+    if (sanitizedCategoryName && sanitizedCategoryName !== product.categoryName) {
       const category = await IndexModel.Category.findOne({
-        categoryName,
+        categoryName: sanitizedCategoryName,
         companyId,
         deleted: false,
         isActive: true,
@@ -334,24 +420,16 @@ const updateProduct = async (req, res) => {
       if (!category) {
         return res.status(400).json({
           success: false,
-          message: "Active category not found for the company",
+          message: 'Active category not found for the company',
         });
       }
 
       // Verify subCategory exists in category if provided
-      if (subCategory) {
-        if (typeof subCategory !== "string") {
-          return res.status(400).json({
-            success: false,
-            message: "subCategory must be a single string",
-          });
-        }
-        if (!category.subCategory.includes(subCategory)) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid subcategory: ${subCategory}`,
-          });
-        }
+      if (sanitizedSubCategory && !category.subCategory.includes(sanitizedSubCategory)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid subcategory: ${sanitizedSubCategory}`,
+        });
       }
     }
 
@@ -359,20 +437,20 @@ const updateProduct = async (req, res) => {
     if (attribute && !Array.isArray(attribute)) {
       return res.status(400).json({
         success: false,
-        message: "attribute must be an array of {key, value} objects",
+        message: 'attribute must be an array of {key, value} objects',
       });
     }
 
     // Update fields
-    product.productName = productName || product.productName;
-    product.categoryName = categoryName || product.categoryName;
+    product.productName = sanitizedProductName || product.productName;
+    product.categoryName = sanitizedCategoryName || product.categoryName;
     product.subCategory =
-      subCategory !== undefined ? subCategory : product.subCategory;
+      sanitizedSubCategory !== undefined ? sanitizedSubCategory : product.subCategory;
     product.description =
-      description !== undefined ? description : product.description;
-    product.tags = tags || product.tags;
+      sanitizedDescription !== undefined ? sanitizedDescription : product.description;
+    product.tags = sanitizedTags || product.tags;
     product.vendor = vendor || product.vendor;
-    product.SKU = SKU || product.SKU;
+    product.SKU = sanitizedSKU || product.SKU;
     product.sellingPrice =
       sellingPrice !== undefined ? sellingPrice : product.sellingPrice;
     product.costPrice = costPrice !== undefined ? costPrice : product.costPrice;
@@ -383,7 +461,7 @@ const updateProduct = async (req, res) => {
     product.customAttributes = customAttributes || product.customAttributes;
     product.updatedAt = new Date();
     product.history.push({
-      action: "UPDATED",
+      action: 'UPDATED',
       performedBy: userId,
       details: `Product updated by ${userId}`,
     });
@@ -393,29 +471,29 @@ const updateProduct = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Product updated successfully",
+      message: 'Product updated successfully',
       data: updatedProduct,
     });
   } catch (error) {
-    console.error("Error updating product:", error);
+    console.error('Error updating product:', error);
     return res.status(500).json({
       success: false,
-      message: "Error updating product",
+      message: 'Error updating product',
       error: error.message,
     });
   }
 };
 
 const deleteProduct = async (req, res) => {
+  console.log("the i am here in deleteing the product")
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
 
-    // Validate required fields
-    if (!id || !companyId || !userId) {
+    if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Product ID, company ID, and user ID are required",
+        message: 'Invalid product ID',
       });
     }
 
@@ -429,7 +507,7 @@ const deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found or does not belong to the company",
+        message: 'Product not found or does not belong to the company',
       });
     }
 
@@ -437,7 +515,7 @@ const deleteProduct = async (req, res) => {
     product.deleted = true;
     product.updatedAt = new Date();
     product.history.push({
-      action: "DELETED",
+      action: 'DELETED',
       performedBy: userId,
       details: `Product soft-deleted by ${userId}`,
     });
@@ -447,13 +525,13 @@ const deleteProduct = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Product deleted successfully",
+      message: 'Product deleted successfully',
     });
   } catch (error) {
-    console.error("Error deleting product:", error);
+    console.error('Error deleting product:', error);
     return res.status(500).json({
       success: false,
-      message: "Error deleting product",
+      message: 'Error deleting product',
       error: error.message,
     });
   }
@@ -464,11 +542,10 @@ const toggleProductStatus = async (req, res) => {
     const { companyId, userId } = req.user;
     const { id } = req.params;
 
-    // Validate required fields
-    if (!id || !companyId || !userId) {
+    if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Product ID, company ID, and user ID are required",
+        message: 'Invalid product ID',
       });
     }
 
@@ -482,7 +559,7 @@ const toggleProductStatus = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found or does not belong to the company",
+        message: 'Product not found or does not belong to the company',
       });
     }
 
@@ -490,9 +567,9 @@ const toggleProductStatus = async (req, res) => {
     product.isActive = !product.isActive;
     product.updatedAt = new Date();
     product.history.push({
-      action: product.isActive ? "ACTIVATED" : "DEACTIVATED",
+      action: product.isActive ? 'ACTIVATED' : 'DEACTIVATED',
       performedBy: userId,
-      details: `Product ${product.isActive ? "activated" : "deactivated"} by ${userId}`,
+      details: `Product ${product.isActive ? 'activated' : 'deactivated'} by ${userId}`,
     });
 
     // Save updated product
@@ -500,14 +577,14 @@ const toggleProductStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Product ${product.isActive ? "activated" : "deactivated"} successfully`,
+      message: `Product ${product.isActive ? 'activated' : 'deactivated'} successfully`,
       data: updatedProduct,
     });
   } catch (error) {
-    console.error("Error toggling product status:", error);
+    console.error('Error toggling product status:', error);
     return res.status(500).json({
       success: false,
-      message: "Error toggling product status",
+      message: 'Error toggling product status',
       error: error.message,
     });
   }
@@ -516,21 +593,21 @@ const toggleProductStatus = async (req, res) => {
 const updateProductStock = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
-    const { stockData } = req.body; // Array of { productId, quantity }
+    const { stockData } = req.body;
 
     if (!Array.isArray(stockData) || stockData.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Stock data must be a non-empty array of { productId, quantity } objects",
+        message: 'Stock data must be a non-empty array of { productId, quantity } objects',
       });
     }
 
     // Validate each stock entry
     for (const item of stockData) {
-      if (!item.productId || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+      if (!mongoose.isValidObjectId(item.productId) || !Number.isInteger(item.quantity)) {
         return res.status(400).json({
           success: false,
-          message: "Each stock entry must have a valid productId and positive integer quantity",
+          message: 'Each stock entry must have a valid productId and integer quantity',
         });
       }
 
@@ -554,6 +631,13 @@ const updateProductStock = async (req, res) => {
           message: `Product with ID ${item.productId} is inactive. Activate it before updating stock.`,
         });
       }
+
+      if ((product.quantity || 0) + item.quantity < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot reduce stock below 0 for product ${item.productId}`,
+        });
+      }
     }
 
     // Update stock for each product
@@ -568,7 +652,7 @@ const updateProductStock = async (req, res) => {
       product.quantity = (product.quantity || 0) + item.quantity;
       product.updatedAt = new Date();
       product.history.push({
-        action: "STOCK_UPDATED",
+        action: 'STOCK_UPDATED',
         performedBy: userId,
         details: `Added ${item.quantity} to stock by ${userId}`,
       });
@@ -579,14 +663,82 @@ const updateProductStock = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Product stock updated successfully",
+      message: 'Product stock updated successfully',
       data: updatedProducts,
     });
   } catch (error) {
-    console.error("Error updating product stock:", error);
+    console.error('Error updating product stock:', error);
     return res.status(500).json({
       success: false,
-      message: "Error updating product stock",
+      message: 'Error updating product stock',
+      error: error.message,
+    });
+  }
+};
+
+const searchProducts = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+    const { query, page = 1, limit = 10 } = req.query;
+
+    if (!query || typeof query !== 'string' || query.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Query must be a string with at least 2 characters',
+      });
+    }
+
+    const sanitizedQuery = sanitizeInput(query);
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build search query
+    const searchQuery = {
+      companyId,
+      deleted: false,
+      isActive: true,
+      $or: [
+        { productName: { $regex: sanitizedQuery, $options: 'i' } },
+        { SKU: { $regex: sanitizedQuery, $options: 'i' } },
+        { categoryName: { $regex: sanitizedQuery, $options: 'i' } },
+        { subCategory: { $regex: sanitizedQuery, $options: 'i' } },
+        { tags: { $regex: sanitizedQuery, $options: 'i' } },
+      ],
+    };
+
+    const [products, total] = await Promise.all([
+      IndexModel.Product.find(searchQuery)
+        .sort({ productName: 1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      IndexModel.Product.countDocuments(searchQuery),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No products found matching the query',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: products,
+      pagination: {
+        page: pageNum,
+        totalPages,
+        total,
+      },
+    });
+  } catch (error) {
+    console.error('Error searching products:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error searching products',
       error: error.message,
     });
   }
@@ -595,8 +747,10 @@ const updateProductStock = async (req, res) => {
 export default {
   createProduct,
   getAllProducts,
+  getProductById,
   updateProduct,
   deleteProduct,
   toggleProductStatus,
   updateProductStock,
+  searchProducts,
 };

@@ -34,17 +34,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 function fmtMoney(n) {
-  const num = Number(n || 0);
-  return num.toLocaleString(undefined, {
+  return Number(n || 0).toLocaleString('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EUR',
     maximumFractionDigits: 2,
-  });
+  }).replace('EUR', '€');
 }
 
 function fmtDate(d) {
   try {
-    return new Date(d).toLocaleString();
+    return new Date(d).toLocaleString('en-US');
   } catch {
     return String(d || '');
   }
@@ -52,7 +51,7 @@ function fmtDate(d) {
 
 function fmtShortDate(d) {
   try {
-    return new Date(d).toLocaleDateString();
+    return new Date(d).toLocaleDateString('en-US');
   } catch {
     return String(d || '');
   }
@@ -64,7 +63,7 @@ export default function BillDetailsSheet({
   bill,
   onPrint,
   totalRefundQty,
-  currencySymbol,
+  currencySymbol = '€',
 }) {
   const [activeTab, setActiveTab] = useState('items');
 
@@ -143,7 +142,6 @@ export default function BillDetailsSheet({
           </div>
         </SheetHeader>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="items" className="flex items-center gap-2">
@@ -160,9 +158,7 @@ export default function BillDetailsSheet({
             </TabsTrigger>
           </TabsList>
 
-          {/* Items Tab */}
           <TabsContent value="items" className="space-y-6 mt-6">
-            {/* Items Table */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">
@@ -174,6 +170,8 @@ export default function BillDetailsSheet({
                   <TableHeader className="bg-muted/50">
                     <TableRow>
                       <TableHead className="font-medium">Item</TableHead>
+                      <TableHead className="font-medium">Category</TableHead>
+                      <TableHead className="font-medium">Subcategory</TableHead>
                       <TableHead className="font-medium">SKU</TableHead>
                       <TableHead className="text-right font-medium">
                         Qty
@@ -190,45 +188,27 @@ export default function BillDetailsSheet({
                     {(bill?.items || []).length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
-                          className="text-center text-muted-foreground py-8"
+                          colSpan={7}
+                          className="text-center text-muted-foreground"
                         >
                           No items found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      bill.items.map((it, index) => (
-                        <TableRow
-                          key={it._id || `${it.sku}-${it.variantId}`}
-                          className={
-                            index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                          }
-                        >
-                          <TableCell>
-                            <div className="font-medium text-sm">
-                              {it.itemName || 'Unnamed Item'}
-                            </div>
-                            {it.variantName && (
-                              <div className="text-xs text-muted-foreground mt-1">
-                                {it.variantName}
-                              </div>
-                            )}
+                      bill.items.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.itemName}</TableCell>
+                          <TableCell>{item.categoryName}</TableCell>
+                          <TableCell>{item.subCategory || '—'}</TableCell>
+                          <TableCell>{item.sku}</TableCell>
+                          <TableCell className="text-right">
+                            {item.quantity}
                           </TableCell>
-                          <TableCell>
-                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                              {it.sku || '—'}
-                            </code>
+                          <TableCell className="text-right">
+                            {currencySymbol}{Number(item.price || 0).toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {it.quantity ?? it.qty ?? 0}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {currencySymbol}
-                            {it.price}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {currencySymbol}
-                            {it.total}
+                          <TableCell className="text-right">
+                            {currencySymbol}{Number(item.total || 0).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))
@@ -237,131 +217,76 @@ export default function BillDetailsSheet({
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Totals */}
+          <TabsContent value="details" className="space-y-6 mt-6">
             <Card>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>
-                      {' '}
-                      {currencySymbol}
-                      {totals.subtotal}
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">
+                  Buyer Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Name</span>
+                  <span className="font-semibold">
+                    {bill?.buyer?.name || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Email</span>
+                  <span className="font-semibold">
+                    {bill?.buyer?.email || '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Phone</span>
+                  <span className="font-semibold">
+                    {bill?.buyer?.phone || '—'}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Subtotal</span>
+                  <span className="font-semibold">
+                    {currencySymbol}{totals.subtotal.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Tax ({totals.taxPercent}%)
+                  </span>
+                  <span className="font-semibold">
+                    {currencySymbol}{totals.taxAmount.toFixed(2)}
+                  </span>
+                </div>
+                {bill?.paymentMethod && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Method</span>
+                    <Badge variant="outline" className="capitalize font-normal">
+                      {bill.paymentMethod.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                )}
+                {bill?.paymentNumber && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Reference</span>
+                    <span className="text-sm font-medium">
+                      {bill.paymentNumber}
                     </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Tax ({totals.taxPercent}%)
-                    </span>
-                    <span>
-                      {' '}
-                      {currencySymbol}
-                      {totals.taxAmount}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-primary">
-                      {currencySymbol} {totals.total}
+                )}
+                <div className="pt-2 border-t">
+                  <div className="flex justify-between items-center text-sm font-semibold">
+                    <span>Total Amount</span>
+                    <span className="text-lg">
+                      {currencySymbol}{totals.total.toFixed(2)}
                     </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Notes */}
-            {bill?.notes && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {bill.notes}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Details Tab */}
-          <TabsContent value="details" className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Buyer Information */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <User className="w-4 h-4" />
-                    Buyer Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">
-                      {bill?.buyer?.name || '—'}
-                    </div>
-                    {bill?.buyer?.email && (
-                      <div className="text-sm text-muted-foreground mt-1">
-                        {bill.buyer.email}
-                      </div>
-                    )}
-                    {bill?.buyer?.phone && (
-                      <div className="text-sm text-muted-foreground">
-                        {bill.buyer.phone}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Payment Information */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">
-                    Payment Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {bill?.paymentMethod && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Method
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className="capitalize font-normal"
-                      >
-                        {bill.paymentMethod.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  )}
-                  {bill?.paymentNumber && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Reference
-                      </span>
-                      <span className="text-sm font-medium">
-                        {bill.paymentNumber}
-                      </span>
-                    </div>
-                  )}
-                  <div className="pt-2 border-t">
-                    <div className="flex justify-between items-center text-sm font-semibold">
-                      <span>Total Amount</span>
-                      <span className="text-lg">
-                        {' '}
-                        {currencySymbol}
-                        {totals.total}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Refund Information */}
             {bill?.refundDetails && (
               <Card className="border-amber-200 bg-amber-50/50">
                 <CardHeader className="pb-3">
@@ -373,7 +298,7 @@ export default function BillDetailsSheet({
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">
-                      Total Refunded quantity
+                      Total Refunded Quantity
                     </span>
                     <span className="font-semibold text-amber-800">
                       {totalRefundQty}
@@ -385,14 +310,13 @@ export default function BillDetailsSheet({
                     </span>
                     <span className="font-semibold text-amber-800">
                       {currencySymbol}
-                      {bill.refundDetails.totalRefundAmount}
+                      {Number(bill.refundDetails.totalRefundAmount || 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Refunded At</span>
                     <span>{fmtDate(bill.refundDetails.refundedAt)}</span>
                   </div>
-
                   {bill.refundDetails.refundReason && (
                     <div className="pt-2 border-t border-amber-200">
                       <div className="text-sm">
@@ -404,59 +328,9 @@ export default function BillDetailsSheet({
                 </CardContent>
               </Card>
             )}
-
-            {/* Refund History */}
-            {bill?.refundHistory && bill.refundHistory.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">
-                    Refund History ({bill.refundHistory.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        <TableHead className="font-medium">Date</TableHead>
-                        <TableHead className="text-right font-medium">
-                          Amount
-                        </TableHead>
-                        <TableHead className="font-medium">Reason</TableHead>
-                        <TableHead className="font-medium">By</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bill.refundHistory.map((r) => (
-                        <TableRow key={r._id}>
-                          <TableCell className="text-sm">
-                            {fmtShortDate(r.refundedAt)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {fmtMoney(r.refundAmount)}
-                          </TableCell>
-                          <TableCell className="max-w-[200px]">
-                            <div
-                              className="text-sm truncate"
-                              title={r.refundReason || ''}
-                            >
-                              {r.refundReason || '—'}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {r.refundedBy || '—'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
 
-          {/* History Tab */}
           <TabsContent value="history" className="space-y-6 mt-6">
-            {/* History Timeline */}
             {bill?.history && bill.history.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
@@ -503,7 +377,6 @@ export default function BillDetailsSheet({
           </TabsContent>
         </Tabs>
 
-        {/* Footer with Print Action */}
         <SheetFooter className="mt-6 pt-4 border-t">
           <div className="w-full flex justify-end">
             {onPrint && (

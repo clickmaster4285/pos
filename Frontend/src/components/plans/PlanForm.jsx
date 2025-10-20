@@ -18,7 +18,7 @@ import {
 const ALLOWED_FEATURES = [
   'analytics',
   'reports',
-  'inventory_management',
+  'product_management',
   'vendor_management',
   'order_tracking',
   'support',
@@ -129,17 +129,17 @@ export function PlanForm({
         <div className="col-span-4 space-y-2">
           <Label
             htmlFor={
-              isEditMode ? 'edit-maxInventoryItems' : 'maxInventoryItems'
+              isEditMode ? 'edit-maxProductItems' : 'maxProductItems'
             }
           >
-            Max Inventory
+            Max Product
           </Label>
           <Input
-            id={isEditMode ? 'edit-maxInventoryItems' : 'maxInventoryItems'}
+            id={isEditMode ? 'edit-maxProductItems' : 'maxProductItems'}
             type="number"
-            value={readNum(formData.limitations?.maxInventoryItems)}
+            value={readNum(formData.limitations?.maxProductItems)}
             onChange={(e) =>
-              setLimit('maxInventoryItems', writeNum(e.target.value))
+              setLimit('maxProductItems', writeNum(e.target.value))
             }
           />
         </div>

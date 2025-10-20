@@ -65,7 +65,7 @@ const CompanySchema = new Schema(
     },
     gain: {
       staff: [String],
-      inventory: Number,
+      product: Number,
       vendor: Number,
       order: Number,
     },

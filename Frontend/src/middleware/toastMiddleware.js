@@ -20,11 +20,11 @@ export const toastMiddleware = (store) => (next) => (action) => {
     'cancelOrderItems',
     'requestReturn',
     'handleReturnRequest',
-    'createInventoryItem',
-    'updateInventoryInfo',
+    'createProductItem',
+    'updateProductInfo',
     'addStock',
-    'updateInventoryItem',
-    'deleteInventoryItem',
+    'updateProductItem',
+    'deleteProductItem',
     'createPayment',
     'updateSalary',
     'deleteSalary',
@@ -218,20 +218,20 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
-        // inventoryApi
-        createInventoryItem: {
+        // productApi
+        createProductItem: {
           type: 'success',
-          title: 'Inventory Item Created',
-          description: 'New inventory item added.',
+          title: 'Product Item Created',
+          description: 'New product item added.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
           actions: [],
         },
-        updateInventoryInfo: {
+        updateProductInfo: {
           type: 'success',
-          title: 'Inventory Updated',
-          description: 'Inventory details updated.',
+          title: 'Product Updated',
+          description: 'Product details updated.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
@@ -246,19 +246,19 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
-        updateInventoryItem: {
+        updateProductItem: {
           type: 'success',
-          title: 'Inventory Item Updated',
-          description: 'Inventory item updated successfully.',
+          title: 'Product Item Updated',
+          description: 'Product item updated successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
           actions: [],
         },
-        deleteInventoryItem: {
+        deleteProductItem: {
           type: 'success',
-          title: 'Inventory Item Deleted',
-          description: 'Inventory item removed.',
+          title: 'Product Item Deleted',
+          description: 'Product item removed.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
@@ -572,8 +572,8 @@ export const toastMiddleware = (store) => (next) => (action) => {
     // Only show error toast for allowed endpoints
     if (allowedEndpoints.includes(endpoint)) {
       const errorMessage =
+      action.payload?.data?.error ||
         action.payload?.data?.message ||
-        action.payload?.data?.error ||
         action.payload?.message ||
         'An unexpected error occurred.';
 

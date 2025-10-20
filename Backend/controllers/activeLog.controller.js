@@ -82,7 +82,7 @@ const ENTITY_NAME_CONFIG = {
   vendor: { select: 'name', pick: (r) => r?.name },
   bill: { select: 'billNumber', pick: (r) => r?.billNumber },
   order: { select: 'orderNumber', pick: (r) => r?.orderNumber },
-  inventory: { select: 'itemName', pick: (r) => r?.itemName },
+  product: { select: 'itemName', pick: (r) => r?.itemName },
   company: { select: 'name', pick: (r) => r?.name },
   user: {
     select: 'name email userId',
@@ -124,18 +124,18 @@ function isCompanyEchoAction(txt = '') {
   const t = String(txt).toLowerCase();
   return (
     t.includes('vendor created') ||
-    t.includes('inventory created') ||
+    t.includes('product created') ||
     (t.includes('employee ') && t.includes(' added to staff')) ||
     t.includes('order created') ||
     t.includes('bill created')
   );
 }
 
-// inventory adjustments caused by orders/bills
-function isInventoryOrderAdjustment(txt = '') {
+// product adjustments caused by orders/bills
+function isProductOrderAdjustment(txt = '') {
   return /^\s*order\s+[a-z0-9-]+:/i.test(String(txt));
 }
-function isInventoryBillAdjustment(txt = '') {
+function isProductBillAdjustment(txt = '') {
   const t = String(txt);
   return (
     /Refund:\s*Bill\s+/i.test(t) ||
@@ -143,8 +143,8 @@ function isInventoryBillAdjustment(txt = '') {
     /^\s*bill\s+[a-z0-9-]+:/i.test(t)
   );
 }
-function isInventoryAdjustmentLine(txt = '') {
-  return isInventoryOrderAdjustment(txt) || isInventoryBillAdjustment(txt);
+function isProductAdjustmentLine(txt = '') {
+  return isProductOrderAdjustment(txt) || isProductBillAdjustment(txt);
 }
 
 function eventKey(e) {
@@ -193,8 +193,8 @@ async function resolvePlatformUserId(input) {
 
 /* ------------- collector ------------- */
 
-// VERSION 1: hide inventory adjustments
-const SHOW_INVENTORY_ADJUSTMENTS = false;
+// VERSION 1: hide product adjustments
+const SHOW_PRODUCT_ADJUSTMENTS = false;
 
 async function collectActivities({ companyId, filterUserId = null }) {
   const models = getModelsWithHistory();
@@ -273,11 +273,11 @@ async function collectActivities({ companyId, filterUserId = null }) {
         for (const item of record.history) {
           if (key === 'company' && isCompanyEchoAction(item?.action)) continue;
 
-          // hide inventory +/- lines in Version 1
+          // hide product +/- lines in Version 1
           if (
-            key === 'inventory' &&
-            !SHOW_INVENTORY_ADJUSTMENTS &&
-            isInventoryAdjustmentLine(item?.action)
+            key === 'product' &&
+            !SHOW_PRODUCT_ADJUSTMENTS &&
+            isProductAdjustmentLine(item?.action)
           ) {
             continue;
           }

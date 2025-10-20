@@ -106,7 +106,7 @@ export function ProductManagement() {
   const [updateProductStock, { isLoading: updatingStock }] = useUpdateProductStockMutation();
 
   const filteredProducts = useMemo(() => {
-    let result = products.map(normalizeProduct);
+    let result = products?.data?.map(normalizeProduct);
     const term = searchTerm.toLowerCase().trim();
     if (term) {
       result = result.filter(
@@ -147,9 +147,8 @@ export function ProductManagement() {
     }
     return result;
   }, [products, searchTerm, statusFilter, quickRange]);
-
-  const total = filteredProducts.length;
-  const paginatedProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
+  const total = filteredProducts?.length;
+  const paginatedProducts = filteredProducts?.slice((page - 1) * pageSize, page * pageSize);
 
   const handleSaveProduct = async (formData) => {
     try {
@@ -193,12 +192,15 @@ export function ProductManagement() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteProduct = (product) => {
-    setDeleteDialog({ open: true, productId: getId(product), productName: product.productName });
-  };
+const handleDeleteProduct = (product) => {
+  console.log('Opening delete dialog for:', product);
+  setDeleteDialog({ open: true, productId: getId(product), productName: product.productName });
+};
+
 
   const confirmDelete = async () => {
     try {
+      console.log("the the deleteProduct")
       await deleteProduct(deleteDialog.productId).unwrap();
       setDeleteDialog({ open: false, productId: null });
     } catch (error) {
@@ -402,11 +404,12 @@ export function ProductManagement() {
       />
 
       <DeleteConfirmDialog
-        open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
-        onConfirm={confirmDelete}
-        isLoading={deleting}
-      />
+  open={deleteDialog.open}
+  onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+  onConfirm={confirmDelete}
+  productName={deleteDialog.productName}
+  isLoading={deleting}
+/>
 
       <ProductDetailsSheet
         open={isDetailsOpen}
@@ -428,7 +431,7 @@ export function ProductManagement() {
           setStockProduct(null);
         }}
         onSave={handleSaveStock}
-        products={products}
+        products={products.data}
         selectedProduct={stockProduct}
         isLoading={updatingStock}
       />

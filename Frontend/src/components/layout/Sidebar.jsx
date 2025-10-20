@@ -33,7 +33,7 @@ const iconMap = {
   Settings: Settings,
   Staff: ClipboardList,
   Permission: Store,
-  Inventory: Package,
+  Product: Package,
   Billing: Boxes,
   Vendors: Briefcase,
   Customers: Users,
@@ -145,16 +145,16 @@ function buildStaffLinks(user) {
 
   if (
     hasAny(user, [
-      'createInventory',
-      'updateInventory',
-      'deleteInventory',
-      'viewInventory',
+      'createProduct',
+      'updateProduct',
+      'deleteProduct',
+      'viewProduct',
     ])
   ) {
     links.push({
-      href: `${staffBase}/inventory`,
-      label: 'Inventory',
-      icon: iconMap['Inventory'],
+      href: `${staffBase}/product`,
+      label: 'Product',
+      icon: iconMap['Product'],
     });
   }
 
@@ -212,11 +212,11 @@ function buildStaffLinks(user) {
       'updateVendors',
       'deleteVendors',
       'viewVendors',
-      'manageInventory',
-      'createInventory',
-      'updateInventory',
-      'deleteInventory',
-      'viewInventory',
+      'manageProduct',
+      'createProduct',
+      'updateProduct',
+      'deleteProduct',
+      'viewProduct',
       'addBilling',
       'editBilling',
       'deleteBilling',
@@ -302,14 +302,14 @@ export default function Sidebar() {
         },
         { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
         {
-          href: '/admin/category',//             /admin/inventory
+          href: '/admin/category',//             /admin/product
           label: 'Category',
-          icon: iconMap['Inventory'],
+          icon: iconMap['Product'],
         },
         {
           href: '/admin/product',
           label: 'Product',
-          icon: iconMap['Inventory'],
+          icon: iconMap['Product'],
         },
         {
           href: '#',

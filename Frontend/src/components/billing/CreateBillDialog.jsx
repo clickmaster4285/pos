@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   Table,
@@ -32,24 +31,23 @@ import {
   Printer,
   CreditCard,
   Loader,
-  Package,
+  CheckCircle2,
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useClickOutside } from '@/utils/useClickOutside';
 import { useDebounce } from '@/utils/useDebounce';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
+import { useGetAllProductsQuery } from '@/features/productApi';
 
 CreateBillDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onOpenChange: PropTypes.func.isRequired,
   creating: PropTypes.bool.isRequired,
   searchRef: PropTypes.shape({ current: PropTypes.any }),
-  searchInventory: PropTypes.string.isRequired,
-  setSearchInventory: PropTypes.func.isRequired,
+  searchProduct: PropTypes.string.isRequired,
+  setSearchProduct: PropTypes.func.isRequired,
   showSearchResults: PropTypes.bool.isRequired,
   setShowSearchResults: PropTypes.func.isRequired,
-  inventoryLoading: PropTypes.bool.isRequired,
-  searchResults: PropTypes.arrayOf(PropTypes.object).isRequired,
   addItemToBill: PropTypes.func.isRequired,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   updateQty: PropTypes.func.isRequired,
@@ -60,8 +58,7 @@ CreateBillDialog.propTypes = {
     phone: PropTypes.string,
   }).isRequired,
   setBuyer: PropTypes.func.isRequired,
-  taxPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
-    .isRequired,
+  taxPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
   setTaxPercent: PropTypes.func.isRequired,
   notes: PropTypes.string.isRequired,
   setNotes: PropTypes.func.isRequired,
@@ -74,13 +71,13 @@ CreateBillDialog.propTypes = {
   setPaymentMethod: PropTypes.func.isRequired,
   paymentNumber: PropTypes.string,
   setPaymentNumber: PropTypes.func,
-  onPrintReceipt: PropTypes.func,
   companyId: PropTypes.string,
   taxRates: PropTypes.shape({
     taxRateCash: PropTypes.number,
     taxRateCard: PropTypes.number,
   }),
   companyLoading: PropTypes.bool,
+  currencySymbol: PropTypes.string,
 };
 
 export function CreateBillDialog({
@@ -88,12 +85,10 @@ export function CreateBillDialog({
   onOpenChange,
   creating,
   searchRef,
-  searchInventory,
-  setSearchInventory,
+  searchProduct,
+  setSearchProduct,
   showSearchResults,
   setShowSearchResults,
-  inventoryLoading,
-  searchResults,
   addItemToBill,
   items,
   updateQty,
@@ -113,39 +108,48 @@ export function CreateBillDialog({
   setPaymentMethod,
   paymentNumber,
   setPaymentNumber,
-  onPrintReceipt,
   companyId,
   taxRates,
   companyLoading,
-  currencySymbol,
-
+  currencySymbol = '€',
 }) {
-  const debouncedSearchInventory = useDebounce(searchInventory, 300);
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const debouncedSearchProduct = useDebounce(searchProduct, 300);
+  const { data: products = { data: [], pagination: { page: 1, totalPages: 1, total: 0 } }, isLoading: productsLoading } = useGetAllProductsQuery({ page: 1, limit: 100 });
   useClickOutside(searchRef, () => setShowSearchResults(false));
-
-  // Set default payment method to CASH on mount
-  useEffect(() => {
-    setPaymentMethod(PAYMENT_METHODS.CASH);
-  }, []); // Empty dependency array to run only once on mount
 
   // Update tax rate based on payment method
   useEffect(() => {
     if (taxRates) {
       if (paymentMethod === PAYMENT_METHODS.CASH) {
-        setTaxPercent(taxRates.taxRateCash || 0);
+        setTaxPercent(taxRates.taxRateCash || 18);
       } else if (
         paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
         paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
       ) {
-        setTaxPercent(taxRates.taxRateCard || 0);
+        setTaxPercent(taxRates.taxRateCard || 10);
       } else {
         setTaxPercent(0);
       }
     }
   }, [paymentMethod, taxRates, setTaxPercent]);
 
+  const filteredProducts = useMemo(() => {
+    if (!debouncedSearchProduct || showAllProducts) {
+      return products.data;
+    }
+    const query = debouncedSearchProduct.toLowerCase();
+    return products.data.filter(
+      (p) =>
+        p.productName.toLowerCase().includes(query) ||
+        p.SKU.toLowerCase().includes(query) ||
+        p.categoryName.toLowerCase().includes(query) ||
+        (p.subCategory && p.subCategory.toLowerCase().includes(query))
+    );
+  }, [debouncedSearchProduct, products.data, showAllProducts]);
+
   const isTaxRateSet = useMemo(() => {
-    return taxRates?.taxRateCash > 0 && taxRates?.taxRateCard > 0;
+    return taxRates?.taxRateCash > 0 || taxRates?.taxRateCard > 0;
   }, [taxRates]);
 
   const buyerDetailsRequired = useMemo(() => {
@@ -172,13 +176,16 @@ export function CreateBillDialog({
       billNumber: '(Preview)',
       createdAt: new Date().toISOString(),
       buyer,
+      companyId,
       items: items.map((it) => ({
+        productId: it.productId,
         sku: it.sku,
         itemName: it.itemName,
-        variantName: it.variantName,
+        categoryName: it.categoryName,
+        subCategory: it.subCategory,
         quantity: it.qty,
         price: it.price,
-        lineTotal: it.lineTotal,
+        total: it.lineTotal,
       })),
       subtotal,
       taxPercent: Number(taxPercent || 0),
@@ -186,10 +193,12 @@ export function CreateBillDialog({
       total: grandTotal,
       paymentMethod,
       paymentNumber,
-      status: 'pending',
+      notes,
+      status: paymentMethod === PAYMENT_METHODS.CASH ? 'paid' : 'pending',
     }),
     [
       buyer,
+      companyId,
       items,
       subtotal,
       taxPercent,
@@ -197,8 +206,22 @@ export function CreateBillDialog({
       grandTotal,
       paymentMethod,
       paymentNumber,
+      notes,
     ]
   );
+
+  const handleSave = () => {
+    if (!items.length) {
+      alert('Please add at least one item.');
+      return;
+    }
+    onSave?.(draftBill);
+  };
+
+  // Check if a product is already in the bill
+  const isProductSelected = (productId) => {
+    return items.some((item) => item.productId === productId);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -209,7 +232,7 @@ export function CreateBillDialog({
         <DialogHeader>
           <DialogTitle>Create New Bill</DialogTitle>
           <DialogDescription id="create-bill-description">
-            Search inventory, add items, and enter buyer details (optional).
+            Search products, add items, and enter buyer details (optional).
           </DialogDescription>
         </DialogHeader>
 
@@ -217,198 +240,138 @@ export function CreateBillDialog({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="bg-card border-border lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-card-foreground">
-                  Add Products
-                </CardTitle>
+                <CardTitle>Items</CardTitle>
                 <CardDescription>
-                  Search and add products to the bill
+                  Search and add items from products.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative" ref={searchRef}>
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <CardContent>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, SKU, type…"
-                    value={searchInventory}
+                    ref={searchRef}
+                    placeholder="Search products by name, SKU, or category..."
+                    value={searchProduct}
                     onChange={(e) => {
-                      setSearchInventory(e.target.value);
+                      setSearchProduct(e.target.value);
                       setShowSearchResults(true);
                     }}
+                    className="pl-10"
                     onFocus={() => setShowSearchResults(true)}
-                    className="pl-10 bg-input border-border"
-                    aria-label="Search inventory"
                   />
 
-                  {showSearchResults && debouncedSearchInventory.trim() && (
-                    <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                      {inventoryLoading ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                          <Loader className="w-4 h-4 animate-spin inline mr-2" />
-                          Searching…
-                        </div>
-                      ) : searchResults.length === 0 ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                          No products found
-                        </div>
+                  {showSearchResults && (
+                    <div className="absolute z-10 mt-2 w-full bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      {productsLoading ? (
+                        <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                      ) : filteredProducts.length === 0 ? (
+                        <div className="p-4 text-center text-muted-foreground">No products found</div>
                       ) : (
-                        searchResults.map((item, idx) => (
-                          <button
-                            key={item.sku || idx}
-                            className="w-full p-3 text-left hover:bg-muted/50 border-b border-border last:border-b-0 transition-colors"
-                            onClick={() => {
-                              addItemToBill(item);
+                        filteredProducts.map((product) => (
+                          <div
+                            key={product._id}
+                            className={`px-4 py-2 border-b last:border-b-0 flex justify-between items-center
+                              ${product.quantity === 0 ? 'text-red-500 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}`}
+                            onMouseDown={() => {
+                              if (product.quantity === 0) return;
+                              addItemToBill({
+                                productId: product._id,
+                                sku: product.SKU,
+                                itemName: product.productName,
+                                categoryName: product.categoryName,
+                                subCategory: product.subCategory,
+                                price: product.sellingPrice,
+                                availableQty: product.quantity,
+                              });
                               setShowSearchResults(false);
+                              setSearchProduct('');
                             }}
-                            aria-label={`Add ${item.productName} to bill`}
                           >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="font-medium text-foreground">
-                                  {item.productName}
-                                  {item.variantName && ` - ${item.variantName}`}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {item.sku && `SKU: ${item.sku} • `}
-                                  {item.productType &&
-                                    `Type: ${item.productType}`}
-                                </div>
-                                {item.quantity !== undefined && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Stock: {item.quantity}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <div className="font-semibold text-foreground">
-                                  {currencySymbol}
-                                  {Number(item.price || 0).toFixed(2)}
-                                </div>
-                                <Badge
-                                  variant="outline"
-                                  className="mt-1 text-xs"
-                                >
-                                  {item.type === 'variant'
-                                    ? 'Variant'
-                                    : 'Product'}
-                                </Badge>
-                              </div>
+                            <div>
+                              <p className="text-sm font-medium">{product.productName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {product.categoryName}
+                                {product.subCategory ? ` - ${product.subCategory}` : ''} · SKU: {product.SKU} ·{' '}
+                                {currencySymbol}
+                                {Number(product.sellingPrice).toFixed(2)} · {product.quantity} in stock
+                              </p>
                             </div>
-                          </button>
+                            {isProductSelected(product._id) && (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
                         ))
                       )}
                     </div>
                   )}
                 </div>
-
-                {items.length > 0 ? (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-muted/50">
-                          <TableHead scope="col">Product</TableHead>
-                          <TableHead scope="col" className="text-right">
-                            Price
-                          </TableHead>
-                          <TableHead scope="col" className="text-right">
-                            Qty
-                          </TableHead>
-                          <TableHead scope="col" className="text-right">
-                            Total
-                          </TableHead>
-                          <TableHead scope="col" className="text-right">
-                            Action
-                          </TableHead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Line Total</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          No items added
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      items.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.itemName}</TableCell>
+                          <TableCell>{item.categoryName}</TableCell>
+                          <TableCell>{item.sku}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={item.availableQty}
+                              value={item.qty}
+                              onChange={(e) =>
+                                updateQty(index, Number(e.target.value))
+                              }
+                              className="w-16 text-right"
+                              aria-label={`Quantity for ${item.itemName}`}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {currencySymbol}
+                            {Number(item.price).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {currencySymbol}
+                            {Number(item.lineTotal).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeItem(index)}
+                              aria-label={`Remove ${item.itemName}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.map((item) => (
-                          <TableRow
-                            key={item.variantId}
-                            className="border-border hover:bg-muted/50"
-                          >
-                            <TableCell>
-                              <div>
-                                <div className="font-medium text-card-foreground">
-                                  {item.itemName}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {item.variantName} • {item.sku}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  Stock: {item.availableQty}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right text-card-foreground">
-                              {currencySymbol}
-                              {Number(item.price).toFixed(2)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                min="1"
-                                max={item.availableQty}
-                                value={item.qty}
-                                onChange={(e) =>
-                                  updateQty(
-                                    item.variantId,
-                                    Math.min(
-                                      Number(e.target.value),
-                                      item.availableQty
-                                    )
-                                  )
-                                }
-                                className="w-20 ml-auto text-right"
-                                aria-label={`Quantity for ${item.itemName}`}
-                              />
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {currencySymbol}
-                              {Number(item.lineTotal).toFixed(2)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeItem(item.variantId)}
-                                aria-label={`Remove ${item.itemName} from bill`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-lg">
-                    <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No items added yet</p>
-                    <p className="text-sm">Search above to add items</p>
-                  </div>
-                )}
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
-
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle className="text-card-foreground">
-                  Buyer & Summary
-                </CardTitle>
-                <CardDescription>
-                  Customer details and order summary
-                  {/* {buyerDetailsRequired && (
-                    <span className="text-red-500">
-                      {" "}
-                      (Required for{" "}
-                      {paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                        ? "Credit Card"
-                        : "Bank Transfer"}
-                      )
-                    </span>
-                  )} */}
-                </CardDescription>
+                <CardTitle>Bill Details</CardTitle>
+                <CardDescription>Enter buyer and payment details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -423,93 +386,55 @@ export function CreateBillDialog({
                   </label>
                   <Input
                     id="buyer-name"
-                    placeholder="Enter buyer name"
+                    placeholder="John Doe"
                     value={buyer.name || ''}
                     onChange={(e) =>
-                      setBuyer((b) => ({ ...b, name: e.target.value }))
+                      setBuyer({ ...buyer, name: e.target.value })
                     }
                     required={buyerDetailsRequired}
                     aria-label="Buyer name"
                   />
+                  
                 </div>
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-email"
                   >
-                    Email{' '}
-                    {buyerDetailsRequired && (
-                      <span className="text-red-500">*</span>
-                    )}
+                    Buyer Email{' '}
+                    
                   </label>
                   <Input
                     id="buyer-email"
-                    placeholder="buyer@email.com"
+                    placeholder="john.doe@example.com"
                     value={buyer.email || ''}
                     onChange={(e) =>
-                      setBuyer((b) => ({ ...b, email: e.target.value }))
+                      setBuyer({ ...buyer, email: e.target.value })
                     }
                     required={buyerDetailsRequired}
+                    type="email"
                     aria-label="Buyer email"
                   />
+                  
                 </div>
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-phone"
                   >
-                    Phone{' '}
-                    {buyerDetailsRequired && (
-                      <span className="text-red-500">*</span>
-                    )}
+                    Buyer Phone{' '}
                   </label>
                   <Input
                     id="buyer-phone"
-                    placeholder="+92 3XX XXXXXXX"
+                    placeholder="+1234567890"
                     value={buyer.phone || ''}
                     onChange={(e) =>
-                      setBuyer((b) => ({ ...b, phone: e.target.value }))
+                      setBuyer({ ...buyer, phone: e.target.value })
                     }
                     required={buyerDetailsRequired}
                     aria-label="Buyer phone"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label
-                    className="text-sm font-medium text-foreground"
-                    htmlFor="tax-percent"
-                  >
-                    Tax (%)
-                  </label>
-                  {companyLoading ? (
-                    <div className="text-sm text-muted-foreground">
-                      <Loader className="w-4 h-4 animate-spin inline mr-2" />
-                      Loading tax settings…
-                    </div>
-                  ) : isTaxRateSet ? (
-                    <Input
-                      id="tax-percent"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={taxPercent}
-                      disabled
-                      aria-label="Tax percentage (set in company settings)"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="tax-percent"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Tax not set"
-                        value={taxPercent}
-                        disabled
-                        aria-label="Tax percentage (not set)"
-                      />
-                    </div>
-                  )}
+                
                 </div>
                 <div className="space-y-2">
                   <label
@@ -520,7 +445,7 @@ export function CreateBillDialog({
                   </label>
                   <select
                     id="payment-method"
-                    className="w-full border rounded px-3 py-2 bg-background"
+                    className="w-full border rounded px-3 py-2 bg-background text-foreground"
                     value={paymentMethod}
                     onChange={(e) => {
                       setPaymentMethod(e.target.value);
@@ -598,7 +523,6 @@ export function CreateBillDialog({
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-medium">
-                      {' '}
                       {currencySymbol}
                       {subtotal.toFixed(2)}
                     </span>
@@ -608,7 +532,6 @@ export function CreateBillDialog({
                       Tax ({taxPercent || 0}%):
                     </span>
                     <span className="font-medium">
-                      {' '}
                       {currencySymbol}
                       {taxAmount.toFixed(2)}
                     </span>
@@ -649,7 +572,11 @@ export function CreateBillDialog({
             <Button
               variant="header"
               onClick={() => {
-                onSave?.();
+                if (!items.length) {
+                  alert('Please add at least one item.');
+                  return;
+                }
+                onSave?.(draftBill);
                 onPrintReceipt?.(draftBill);
               }}
               disabled={items.length === 0}
@@ -660,7 +587,7 @@ export function CreateBillDialog({
             </Button>
             <div className="relative">
               <Button
-                onClick={onSave}
+                onClick={handleSave}
                 disabled={creating || items.length === 0}
                 aria-label="Save bill"
               >
@@ -668,13 +595,9 @@ export function CreateBillDialog({
                 <CreditCard className="w-4 h-4 mr-2" />
                 Save Bill
               </Button>
-              {/* {(items.length === 0 || !isBuyerDetailsValid) && (
-                <p className="text-sm text-red-500 mt-2 absolute">
-                  {items.length === 0
-                    ? "Please add at least one item."
-                    : "Please fill in all required buyer details and payment number."}
-                </p>
-              )} */}
+              {items.length === 0 && (
+                <p className="text-sm text-red-500 mt-2 absolute">Please add at least one item.</p>
+              )}
             </div>
           </div>
         </div>

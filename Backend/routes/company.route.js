@@ -24,7 +24,7 @@ router.get(
   '/get-company',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
-  // checkplan("inventory"),
+  // checkplan("product"),
   Indexcontroller.Company.getCompany
 );
 
