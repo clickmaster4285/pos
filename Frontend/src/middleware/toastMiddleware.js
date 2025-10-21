@@ -1,4 +1,3 @@
-// src/middleware/toastMiddleware.js
 import { isRejectedWithValue, isFulfilled } from '@reduxjs/toolkit';
 import { addToast } from '@/features/toastSlice';
 
@@ -57,6 +56,17 @@ export const toastMiddleware = (store) => (next) => (action) => {
     'updateShipmentStatus',
     'cancelShipment',
     'softDeleteShipment',
+    'createPaymentIntent',
+    'stripConfiguration',
+    'createProduct',
+    'updateProduct',
+    'deleteProduct',
+    'toggleProductStatus',
+    'updateProductStock',
+    'createCategory',
+    'updateCategory',
+    'deleteCategory',
+    'toggleCategoryStatus',
   ];
 
   if (isFulfilled(action)) {
@@ -264,6 +274,51 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
+        createProduct: {
+          type: 'success',
+          title: 'Product Created',
+          description: 'New product added successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        updateProduct: {
+          type: 'success',
+          title: 'Product Updated',
+          description: 'Product details updated successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        deleteProduct: {
+          type: 'success',
+          title: 'Product Deleted',
+          description: 'Product removed successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        toggleProductStatus: {
+          type: 'success',
+          title: 'Product Status Updated',
+          description: 'Product status changed successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        updateProductStock: {
+          type: 'success',
+          title: 'Product Stock Updated',
+          description: 'Product stock updated successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
         // staffSalaryApi
         createPayment: {
           type: 'success',
@@ -452,6 +507,25 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
+        // paymentGatewayApi
+        createPaymentIntent: {
+          type: 'success',
+          title: 'Payment Intent Created',
+          description: 'Payment intent created successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        stripConfiguration: {
+          type: 'success',
+          title: 'Stripe Configuration Updated',
+          description: 'Stripe configuration updated successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
         // Placeholder for email send endpoint
         emailSend: {
           type: 'success',
@@ -462,10 +536,10 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
-
+        // courierApi
         createCourier: {
           type: 'success',
-          title: 'Courier sucessfully created',
+          title: 'Courier Successfully Created',
           description: 'Courier created successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -474,7 +548,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         updateCourierCredentials: {
           type: 'success',
-          title: 'Courier credentials sucessfully updated',
+          title: 'Courier Credentials Successfully Updated',
           description: 'Courier credentials updated successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -483,7 +557,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         updateCourier: {
           type: 'success',
-          title: 'Courier sucessfully updated',
+          title: 'Courier Successfully Updated',
           description: 'Courier updated successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -492,8 +566,8 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         authTestCourier: {
           type: 'success',
-          title: 'Auth test sucessfull',
-          description: 'Auth test sucessfull.',
+          title: 'Auth Test Successful',
+          description: 'Auth test successful.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
@@ -501,17 +575,17 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         deleteCourier: {
           type: 'success',
-          title: 'Courier deleted sucessfully',
+          title: 'Courier Successfully Deleted',
           description: 'Courier deleted successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
           actions: [],
         },
-
+        // shipmentApi
         createShipment: {
           type: 'success',
-          title: 'Shipment sucessfully created',
+          title: 'Shipment Successfully Created',
           description: 'Shipment created successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -520,7 +594,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         updateShipment: {
           type: 'success',
-          title: 'Shipment sucessfully updated',
+          title: 'Shipment Successfully Updated',
           description: 'Shipment updated successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -529,7 +603,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         updateShipmentStatus: {
           type: 'success',
-          title: 'Shipment status sucessfully updated',
+          title: 'Shipment Status Successfully Updated',
           description: 'Shipment status updated successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -538,7 +612,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         cancelShipment: {
           type: 'success',
-          title: 'Shipment sucessfully cancelled',
+          title: 'Shipment Successfully Cancelled',
           description: 'Shipment cancelled successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
@@ -547,8 +621,45 @@ export const toastMiddleware = (store) => (next) => (action) => {
         },
         softDeleteShipment: {
           type: 'success',
-          title: 'Shipment sucessfully deleted',
+          title: 'Shipment Successfully Deleted',
           description: 'Shipment deleted successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        // categoryApi
+        createCategory: {
+          type: 'success',
+          title: 'Category Created',
+          description: 'New category added successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        updateCategory: {
+          type: 'success',
+          title: 'Category Updated',
+          description: 'Category details updated successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        deleteCategory: {
+          type: 'success',
+          title: 'Category Deleted',
+          description: 'Category removed successfully.',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-800',
+          icon: 'check-circle',
+          actions: [],
+        },
+        toggleCategoryStatus: {
+          type: 'success',
+          title: 'Category Status Updated',
+          description: 'Category status changed successfully.',
           bgColor: 'bg-green-100',
           textColor: 'text-green-800',
           icon: 'check-circle',
@@ -572,7 +683,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
     // Only show error toast for allowed endpoints
     if (allowedEndpoints.includes(endpoint)) {
       const errorMessage =
-      action.payload?.data?.error ||
+        action.payload?.data?.error ||
         action.payload?.data?.message ||
         action.payload?.message ||
         'An unexpected error occurred.';

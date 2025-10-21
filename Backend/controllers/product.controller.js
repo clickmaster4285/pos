@@ -34,15 +34,16 @@ const createProduct = async (req, res) => {
       SKU,
     } = req.body;
 
-    // Sanitize inputs
-    const sanitizedProductName = sanitizeInput(productName);
-    const sanitizedCategoryName = sanitizeInput(categoryName);
-    const sanitizedSubCategory = sanitizeInput(subCategory);
-    const sanitizedDescription = sanitizeInput(description);
-    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitizeInput) : [];
-    const sanitizedSKU = sanitizeInput(SKU);
+    // --- Sanitize ---
+    const sanitize = (v) => (typeof v === 'string' ? v.trim() : v);
+    const sanitizedProductName = sanitize(productName);
+    const sanitizedCategoryName = sanitize(categoryName);
+    const sanitizedSubCategory = sanitize(subCategory);
+    const sanitizedDescription = sanitize(description);
+    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitize) : [];
+    const sanitizedSKU = sanitize(SKU);
 
-    // Validate required fields
+    // --- Validate required ---
     if (
       !sanitizedProductName ||
       !sanitizedCategoryName ||
@@ -58,51 +59,47 @@ const createProduct = async (req, res) => {
       });
     }
 
-    // Validate vendor exists and is active
+    // --- Validate vendor ---
     const vendorRecord = await IndexModel.Vendor.findOne({
       _id: vendor,
       companyId,
       deleted: false,
       isActive: true,
     });
-
     if (!vendorRecord) {
       return res.status(400).json({
         success: false,
-        message: 'Vendor not found or is inactive',
+        message: 'Vendor not found or inactive',
       });
     }
 
-    // Check for existing product with same name and company
+    // --- Check duplicates ---
     const existingProduct = await IndexModel.Product.findOne({
       productName: sanitizedProductName,
       companyId,
       deleted: false,
     });
-
     if (existingProduct) {
       return res.status(400).json({
         success: false,
-        message: 'Product with this name already exists for the company',
+        message: 'Product with this name already exists',
       });
     }
 
-    // Verify category exists and is active
+    // --- Validate category ---
     const category = await IndexModel.Category.findOne({
       categoryName: sanitizedCategoryName,
       companyId,
       deleted: false,
       isActive: true,
     });
-
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: 'Active category not found for the company',
+        message: 'Active category not found',
       });
     }
 
-    // Verify subCategory exists in category if provided
     if (sanitizedSubCategory) {
       if (!category.subCategory.includes(sanitizedSubCategory)) {
         return res.status(400).json({
@@ -112,29 +109,12 @@ const createProduct = async (req, res) => {
       }
     }
 
-    // Validate attribute format
-    if (attribute && !Array.isArray(attribute)) {
-      return res.status(400).json({
-        success: false,
-        message: 'attribute must be an array of {key, value} objects',
-      });
-    }
-
-    // Validate customAttributes format
-    if (customAttributes && !Array.isArray(customAttributes)) {
-      return res.status(400).json({
-        success: false,
-        message: 'customAttributes must be an array of {key, value} objects',
-      });
-    }
-
-    // Handle SKU: use provided SKU or generate one
+    // --- Handle SKU ---
     let finalSKU = sanitizedSKU;
     if (!finalSKU || finalSKU.trim() === '') {
       const [generatedSKU] = await generateSKU('PRODUCT', companyId, 1);
       finalSKU = generatedSKU;
     } else {
-      // Validate provided SKU uniqueness
       const existingSKU = await IndexModel.Product.findOne({
         SKU: finalSKU,
         companyId,
@@ -143,12 +123,12 @@ const createProduct = async (req, res) => {
       if (existingSKU) {
         return res.status(400).json({
           success: false,
-          message: 'Provided SKU is already in use',
+          message: 'Provided SKU already in use',
         });
       }
     }
 
-    // Create new product
+    // --- Create and save product ---
     const product = new IndexModel.Product({
       productName: sanitizedProductName,
       categoryName: sanitizedCategoryName,
@@ -176,16 +156,48 @@ const createProduct = async (req, res) => {
       ],
     });
 
-    // Save product
     const savedProduct = await product.save();
 
+    // --- Try updating company ---
+    const company = await IndexModel.Company.findOneAndUpdate(
+      { companyId },
+      {
+        $inc: { 'gain.product': 1 },
+        $push: {
+          history: {
+            action: `Product created ${savedProduct._id}`,
+            performedBy: userId,
+            createdAt: new Date(),
+          },
+        },
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    // --- If company update fails, rollback product ---
+    if (!company) {
+      await IndexModel.Product.deleteOne({ _id: savedProduct._id });
+      return res.status(500).json({
+        success: false,
+        message: 'Company update failed — product rolled back',
+      });
+    }
+
+    // --- Success ---
     return res.status(201).json({
       success: true,
-      message: 'Product created successfully',
+      message: 'Product created successfully and company updated',
       data: savedProduct,
     });
   } catch (error) {
     console.error('Error creating product:', error);
+
+    // Rollback any product created if error happens mid-way
+    if (error._message === 'Company validation failed' && savedProduct?._id) {
+      await IndexModel.Product.deleteOne({ _id: savedProduct._id });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Error creating product',
@@ -193,6 +205,8 @@ const createProduct = async (req, res) => {
     });
   }
 };
+
+
 
 const getAllProducts = async (req, res) => {
   try {
