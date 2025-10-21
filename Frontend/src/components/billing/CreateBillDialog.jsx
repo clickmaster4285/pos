@@ -38,6 +38,7 @@ import { useClickOutside } from '@/utils/useClickOutside';
 import { useDebounce } from '@/utils/useDebounce';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 import { useGetAllProductsQuery } from '@/features/productApi';
+import { ThermalPrintSlip } from './ThermalPrintSlip';
 
 CreateBillDialog.propTypes = {
   open: PropTypes.bool.isRequired,
@@ -218,6 +219,49 @@ export function CreateBillDialog({
     onSave?.(draftBill);
   };
 
+  const handleSaveAndPrint = async () => {
+    if (!items.length) {
+      alert('Please add at least one item.');
+      return;
+    }
+    await onSave?.(draftBill);
+    // Trigger thermal print
+    const printWindow = window.open('', '_blank');
+    const formattedContent = [
+      '==============================',
+      `Bill #${draftBill.billNumber}`,
+      `Date: ${new Date(draftBill.createdAt).toLocaleString()}`,
+      '==============================',
+      'Items:',
+      ...draftBill.items.flatMap((item) => [
+        `${item.quantity}x ${item.itemName}`,
+        `  ${item.categoryName}${item.subCategory ? ` - ${item.subCategory}` : ''}`,
+        `  SKU: ${item.sku}`,
+        `  ${currencySymbol}${Number(item.price || 0).toFixed(2)} x ${item.quantity} = ${currencySymbol}${Number(item.total || 0).toFixed(2)}`,
+      ]),
+      '==============================',
+      `Subtotal: ${currencySymbol}${Number(draftBill.subtotal || 0).toFixed(2)}`,
+      `Tax (${draftBill.taxPercent}%): ${currencySymbol}${Number(draftBill.taxAmount || 0).toFixed(2)}`,
+      `Total: ${currencySymbol}${Number(draftBill.total || 0).toFixed(2)}`,
+      '==============================',
+      'Buyer:',
+      `  Name: ${draftBill.buyer?.name || '—'}`,
+      `  Email: ${draftBill.buyer?.email || '—'}`,
+      `  Phone: ${draftBill.buyer?.phone || '—'}`,
+      `Payment: ${draftBill.paymentMethod.replace('_', ' ')}`,
+      ...(draftBill.paymentNumber ? [`  Ref: ${draftBill.paymentNumber}`] : []),
+      '==============================',
+      'Thank you for your purchase!',
+    ].join('\n');
+    printWindow.document.write(`
+      <pre style="font-family: monospace; font-size: 12px; line-height: 1.2;">
+${formattedContent}
+      </pre>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   // Check if a product is already in the bill
   const isProductSelected = (productId) => {
     return items.some((item) => item.productId === productId);
@@ -394,7 +438,6 @@ export function CreateBillDialog({
                     required={buyerDetailsRequired}
                     aria-label="Buyer name"
                   />
-                  
                 </div>
                 <div className="space-y-2">
                   <label
@@ -402,7 +445,6 @@ export function CreateBillDialog({
                     htmlFor="buyer-email"
                   >
                     Buyer Email{' '}
-                    
                   </label>
                   <Input
                     id="buyer-email"
@@ -415,7 +457,6 @@ export function CreateBillDialog({
                     type="email"
                     aria-label="Buyer email"
                   />
-                  
                 </div>
                 <div className="space-y-2">
                   <label
@@ -434,7 +475,6 @@ export function CreateBillDialog({
                     required={buyerDetailsRequired}
                     aria-label="Buyer phone"
                   />
-                
                 </div>
                 <div className="space-y-2">
                   <label
@@ -571,24 +611,21 @@ export function CreateBillDialog({
             </Button>
             <Button
               variant="header"
-              onClick={() => {
-                if (!items.length) {
-                  alert('Please add at least one item.');
-                  return;
-                }
-                onSave?.(draftBill);
-                onPrintReceipt?.(draftBill);
-              }}
-              disabled={items.length === 0}
-              aria-label="Print receipt"
+              onClick={handleSaveAndPrint}
+              disabled={creating || items.length === 0 || !isBuyerDetailsValid}
+              aria-label="Save and print receipt"
             >
-              <Printer className="w-4 h-4 mr-2" />
+              {creating ? (
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Printer className="w-4 h-4 mr-2" />
+              )}
               Save & Print Receipt
             </Button>
             <div className="relative">
               <Button
                 onClick={handleSave}
-                disabled={creating || items.length === 0}
+                disabled={creating || items.length === 0 || !isBuyerDetailsValid}
                 aria-label="Save bill"
               >
                 {creating && <Loader className="w-4 h-4 mr-2 animate-spin" />}
@@ -597,6 +634,9 @@ export function CreateBillDialog({
               </Button>
               {items.length === 0 && (
                 <p className="text-sm text-red-500 mt-2 absolute">Please add at least one item.</p>
+              )}
+              {!isBuyerDetailsValid && items.length > 0 && (
+                <p className="text-sm text-red-500 mt-2 absolute">Please fill in all required buyer details.</p>
               )}
             </div>
           </div>

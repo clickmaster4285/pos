@@ -31,7 +31,6 @@ import {
   Download,
   MoreVertical,
   Trash2,
-  FilterIcon,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -40,9 +39,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { ThermalPrintSlip } from './ThermalPrintSlip';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const num = (v) => Number(v || 0);
 
@@ -110,54 +108,116 @@ export function BillRow({
   );
 
   const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(12);
-    doc.text(`Bill #${bill.billNumber}`, 14, 20);
-    doc.text(`Date: ${new Date(bill.createdAt).toLocaleString()}`, 14, 30);
+    try {
+      console.log('Initiating PDF download for bill:', bill.billNumber);
+      const doc = new jsPDF();
 
-    // Define table columns and rows
-    const tableColumn = ['Item', 'Category', 'Subcategory', 'SKU', 'Qty', 'Price', 'Total'];
-    const tableRows = bill.items.map((item) => [
-      item.itemName,
-      item.categoryName,
-      item.subCategory || '—',
-      item.sku,
-      item.quantity.toString(),
-      `${currencySymbol}${num(item.price).toFixed(2)}`,
-      `${currencySymbol}${num(item.total).toFixed(2)}`,
-    ]);
+      // Header
+      doc.setFillColor(59, 130, 246); // Blue background similar to AttendanceHeader
+      doc.rect(0, 0, 220, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.text(`Bill #${bill.billNumber}`, 14, 25);
 
-    // Add table using autoTable
-    doc.autoTable({
-      startY: 40,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'striped',
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [200, 200, 200] },
-      margin: { top: 40 },
-    });
+      // Subheader
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date(bill.createdAt).toLocaleString()}`, 14, 35);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 42);
 
-    // Add summary
-    const finalY = doc.lastAutoTable.finalY || 40;
-    doc.text(`Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`, 14, finalY + 10);
-    doc.text(`Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`, 14, finalY + 20);
-    doc.text(`Total: ${currencySymbol}${num(bill.total).toFixed(2)}`, 14, finalY + 30);
-    doc.text(`Refunded: ${currencySymbol}${refundedAmount.toFixed(2)}`, 14, finalY + 40);
-    doc.text(`Net Total: ${currencySymbol}${netTotal.toFixed(2)}`, 14, finalY + 50);
+      // Table
+      const tableColumn = ['Item', 'Category', 'Subcategory', 'SKU', 'Qty', 'Price', 'Total'];
+      const tableRows = bill.items.map((item) => [
+        item.itemName,
+        item.categoryName,
+        item.subCategory || '—',
+        item.sku,
+        item.quantity.toString(),
+        `${currencySymbol}${num(item.price).toFixed(2)}`,
+        `${currencySymbol}${num(item.total).toFixed(2)}`,
+      ]);
 
-    // Buyer details
-    doc.text('Buyer:', 14, finalY + 60);
-    doc.text(`Name: ${bill.buyer?.name || '—'}`, 14, finalY + 70);
-    doc.text(`Email: ${bill.buyer?.email || '—'}`, 14, finalY + 80);
-    doc.text(`Phone: ${bill.buyer?.phone || '—'}`, 14, finalY + 90);
-    doc.text(`Payment: ${bill.paymentMethod.replace('_', ' ')}`, 14, finalY + 100);
-    if (bill.paymentNumber) {
-      doc.text(`Ref: ${bill.paymentNumber}`, 14, finalY + 110);
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 50,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [30, 41, 59], // Dark slate background
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold',
+        },
+        bodyStyles: { fontSize: 9, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [248, 250, 252] }, // Light gray for alternate rows
+        margin: { left: 14, right: 14 },
+      });
+
+      // Summary
+      const finalY = doc.lastAutoTable.finalY || 50;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.text(`Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`, 14, finalY + 10);
+      doc.text(`Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`, 14, finalY + 20);
+      doc.text(`Total: ${currencySymbol}${num(bill.total).toFixed(2)}`, 14, finalY + 30);
+      doc.text(`Refunded: ${currencySymbol}${num(refundedAmount).toFixed(2)}`, 14, finalY + 40);
+      doc.text(`Net Total: ${currencySymbol}${num(netTotal).toFixed(2)}`, 14, finalY + 50);
+
+      // Buyer Details
+      doc.text('Buyer:', 14, finalY + 60);
+      doc.text(`Name: ${bill.buyer?.name || '—'}`, 14, finalY + 70);
+      doc.text(`Email: ${bill.buyer?.email || '—'}`, 14, finalY + 80);
+      doc.text(`Phone: ${bill.buyer?.phone || '—'}`, 14, finalY + 90);
+      doc.text(`Payment: ${bill.paymentMethod.replace('_', ' ')}`, 14, finalY + 100);
+      if (bill.paymentNumber) {
+        doc.text(`Ref: ${bill.paymentNumber}`, 14, finalY + 110);
+      }
+
+      doc.save(`bill_${bill.billNumber}.pdf`);
+      console.log('PDF downloaded successfully for bill:', bill.billNumber);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      alert('Failed to generate PDF. Please check the console for details.');
     }
+  };
 
-    // Save the PDF
-    doc.save(`bill_${bill.billNumber}.pdf`);
+  const handleThermalPrint = () => {
+    console.log('Initiating thermal print for bill:', bill.billNumber);
+    const formattedContent = [
+      '==============================',
+      `Bill #${bill.billNumber}`,
+      `Date: ${new Date(bill.createdAt).toLocaleString()}`,
+      '==============================',
+      'Items:',
+      ...bill.items.flatMap((item) => [
+        `${item.quantity}x ${item.itemName}`,
+        `  ${item.categoryName}${item.subCategory ? ` - ${item.subCategory}` : ''}`,
+        `  SKU: ${item.sku}`,
+        `  ${currencySymbol}${num(item.price).toFixed(2)} x ${item.quantity} = ${currencySymbol}${num(item.total).toFixed(2)}`,
+      ]),
+      '==============================',
+      `Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`,
+      `Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`,
+      `Total: ${currencySymbol}${num(bill.total).toFixed(2)}`,
+      '==============================',
+      'Buyer:',
+      `  Name: ${bill.buyer?.name || '—'}`,
+      `  Email: ${bill.buyer?.email || '—'}`,
+      `  Phone: ${bill.buyer?.phone || '—'}`,
+      `Payment: ${bill.paymentMethod.replace('_', ' ')}`,
+      ...(bill.paymentNumber ? [`  Ref: ${bill.paymentNumber}`] : []),
+      '==============================',
+      'Thank you for your purchase!',
+    ].join('\n');
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <pre style="font-family: monospace; font-size: 12px; line-height: 1.2;">
+${formattedContent}
+      </pre>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+    console.log('Thermal print completed for bill:', bill.billNumber);
   };
 
   return (
@@ -260,21 +320,28 @@ export function BillRow({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuItem
-                  className="text-popover-foreground hover:bg-accent"
-                  onClick={() => onPrintThermal(bill)}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  className="text-popover-foreground hover:bg-accent"
-                  onClick={handleDownloadPDF}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-popover-foreground hover:bg-accent">
+                    <Printer className="w-4 h-4 mr-2" />
+                    Print
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="bg-popover border-border">
+                    <DropdownMenuItem
+                      onClick={handleThermalPrint}
+                      className="text-popover-foreground hover:bg-accent"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Thermal Print
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={handleDownloadPDF}
+                      className="text-popover-foreground hover:bg-accent"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
 
                 <DropdownMenuItem
                   disabled={!deletePermission}
@@ -325,7 +392,7 @@ export function BillRow({
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Refunded:</span>
                     <span className="font-medium">
-                      {currencySymbol}{refundedAmount.toFixed(2)}
+                      {currencySymbol}{num(refundedAmount).toFixed(2)}
                     </span>
                   </div>
 
@@ -334,7 +401,7 @@ export function BillRow({
                       Net Total:
                     </span>
                     <span className="font-bold text-lg">
-                      {currencySymbol}{netTotal.toFixed(2)}
+                      {currencySymbol}{num(netTotal).toFixed(2)}
                     </span>
                   </div>
                 </div>
