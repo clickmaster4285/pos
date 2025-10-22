@@ -33,4 +33,11 @@ router.delete(
   Indexcontroller.Plan.deletePlan
 );
 
+router.put(
+  '/change-your-plan',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.Plan.changePlan
+);
+
 export default router;

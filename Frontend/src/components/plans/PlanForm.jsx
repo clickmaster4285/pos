@@ -1,4 +1,3 @@
-// components/PlanForm.jsx
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +15,15 @@ import {
 
 // Allowed selectable features (fixed list)
 const ALLOWED_FEATURES = [
-  'analytics',
-  'reports',
-  'product_management',
-  'vendor_management',
-  'order_tracking',
-  'support',
+  "Staff",
+  "Permissions",
+  "Vendors",
+  "Category",
+  "WareHouse",
+  "Attendance Device",
+  "Manage Attendance",
+  "Staff Salary",
+  "Courier & Shipment",
 ];
 
 export function PlanForm({
@@ -54,25 +56,44 @@ export function PlanForm({
 
   const toggleFeature = (feat, checked) => {
     const set = new Set(currentFeatures);
-    if (checked) set.add(feat);
-    else set.delete(feat);
+    if (checked) {
+      set.add(feat);
+    } else {
+      set.delete(feat);
+      // Clear related limitation when feature is unchecked
+      if (feat === 'Staff') setLimit('maxStaff', undefined);
+      if (feat === 'Vendors') setLimit('maxVendors', undefined);
+      if (feat === 'Category') setLimit('maxProductItems', undefined);
+    }
     setFeatures(Array.from(set));
   };
 
   const removeFeature = (idx) => {
+    const featureToRemove = currentFeatures[idx];
     const next = currentFeatures.filter((_, i) => i !== idx);
     setFeatures(next);
+    // Clear related limitation when feature is removed
+    if (featureToRemove === 'Staff') setLimit('maxStaff', undefined);
+    if (featureToRemove === 'Vendors') setLimit('maxVendors', undefined);
+    if (featureToRemove === 'Category') setLimit('maxProductItems', undefined);
     onCancel?.();
   };
 
   const selectAll = () => setFeatures([...ALLOWED_FEATURES]);
-  const clearAll = () => setFeatures([]);
-  const readNum = (v) => (v === 0 || typeof v === 'number' ? String(v) : ''); // for value=
-  const writeNum = (s) => (s === '' ? undefined : Number(s)); // for onChange
+  const clearAll = () => {
+    setFeatures([]);
+    // Clear all conditional limitations when clearing features
+    setLimit('maxStaff', undefined);
+    setLimit('maxVendors', undefined);
+    setLimit('maxProductItems', undefined);
+  };
+
+  const readNum = (v) => (v === 0 || typeof v === 'number' ? String(v) : '');
+  const writeNum = (s) => (s === '' ? undefined : Number(s));
 
   return (
     <div className="grid gap-4 py-4">
-      {/* Row 1: 4 fields - properly aligned */}
+      {/* Row 1: Plan Name, Validate Days, Price */}
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-4 space-y-2">
           <Label htmlFor={isEditMode ? 'edit-name' : 'name'}>
@@ -110,7 +131,7 @@ export function PlanForm({
         </div>
       </div>
 
-      {/* Row 2: Description - spans full width */}
+      {/* Row 2: Description */}
       <div className="space-y-2">
         <Label htmlFor={isEditMode ? 'edit-description' : 'description'}>
           Description
@@ -124,53 +145,52 @@ export function PlanForm({
         />
       </div>
 
-      {/* Row 3: 3 limitation fields - equal width */}
+      {/* Row 3: Conditional Limitation Fields */}
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-4 space-y-2">
-          <Label
-            htmlFor={
-              isEditMode ? 'edit-maxProductItems' : 'maxProductItems'
-            }
-          >
-            Max Product
-          </Label>
-          <Input
-            id={isEditMode ? 'edit-maxProductItems' : 'maxProductItems'}
-            type="number"
-            value={readNum(formData.limitations?.maxProductItems)}
-            onChange={(e) =>
-              setLimit('maxProductItems', writeNum(e.target.value))
-            }
-          />
-        </div>
-        <div className="col-span-4 space-y-2">
-          <Label htmlFor={isEditMode ? 'edit-maxStaff' : 'maxStaff'}>
-            Max Staff
-          </Label>
-          <Input
-            id={isEditMode ? 'edit-maxStaff' : 'maxStaff'}
-            type="number"
-            value={readNum(formData.limitations?.maxStaff)}
-            onChange={(e) => setLimit('maxStaff', writeNum(e.target.value))}
-          />
-        </div>
-        <div className="col-span-4 space-y-2">
-          <Label htmlFor={isEditMode ? 'edit-maxVendors' : 'maxVendors'}>
-            Max Vendors
-          </Label>
-          <Input
-            id={isEditMode ? 'edit-maxVendors' : 'maxVendors'}
-            type="number"
-            value={readNum(formData.limitations?.maxVendors)}
-            onChange={(e) => setLimit('maxVendors', writeNum(e.target.value))}
-          />
-        </div>
+        {/* {currentFeatures.includes('Category') && ( */}
+          <div className="col-span-4 space-y-2">
+            <Label htmlFor={isEditMode ? 'edit-maxProductItems' : 'maxProductItems'}>
+              Max Product
+            </Label>
+            <Input
+              id={isEditMode ? 'edit-maxProductItems' : 'maxProductItems'}
+              type="number"
+              value={readNum(formData.limitations?.maxProductItems)}
+              onChange={(e) => setLimit('maxProductItems', writeNum(e.target.value))}
+            />
+          </div>
+        {/* )} */}
+        {currentFeatures.includes('Staff') && (
+          <div className="col-span-4 space-y-2">
+            <Label htmlFor={isEditMode ? 'edit-maxStaff' : 'maxStaff'}>
+              Max Staff
+            </Label>
+            <Input
+              id={isEditMode ? 'edit-maxStaff' : 'maxStaff'}
+              type="number"
+              value={readNum(formData.limitations?.maxStaff)}
+              onChange={(e) => setLimit('maxStaff', writeNum(e.target.value))}
+            />
+          </div>
+        )}
+        {currentFeatures.includes('Vendors') && (
+          <div className="col-span-4 space-y-2">
+            <Label htmlFor={isEditMode ? 'edit-maxVendors' : 'maxVendors'}>
+              Max Vendors
+            </Label>
+            <Input
+              id={isEditMode ? 'edit-maxVendors' : 'maxVendors'}
+              type="number"
+              value={readNum(formData.limitations?.maxVendors)}
+              onChange={(e) => setLimit('maxVendors', writeNum(e.target.value))}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Row 4: Features (multi-select dropdown from ALLOWED_FEATURES) */}
+      {/* Row 4: Features */}
       <div className="space-y-2">
         <Label>Features</Label>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

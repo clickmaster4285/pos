@@ -5,6 +5,7 @@ import Stripe from "stripe";
 const createPaymentIntent = async (req, res) => {
   try {
     const { userId, companyId, email } = req.user;
+    console.log("the req.body: ",req.body)
     const { priceId, currency, planId } = req.body;
       const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
     

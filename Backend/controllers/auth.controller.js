@@ -57,7 +57,7 @@ const login = async (req, res, next) => {
     if (!user) {
       return next(new ErrorResponse("Invalid credentials", 401));
     }
-    console.log("User found:", user.isActive);
+    // console.log("User found:", user.isActive);
     if (user.isActive === false) {
       return res.status(401).json({
         success: false,
@@ -76,6 +76,16 @@ const login = async (req, res, next) => {
     const { accessToken, refreshToken } = await generateTokens(user);
     setTokens(res, accessToken, refreshToken);
 
+    const company = await IndexModel.Company.findOne({companyId: user.companyId, deleted:false, isActive:true}).lean()
+    if (!company) {
+      return next(new ErrorResponse("company not found: you cann't be able to login, Please contact you company Admin", 401));
+    }
+
+      const activePlans = company.plan.find((plan) => plan.isActive === true);
+      if (!company) {
+      return next(new ErrorResponse("the plan are Expired: Please contact you company Admin", 401));
+    }
+
     res.status(200).json({
       success: true,
       status: 200,
@@ -90,6 +100,7 @@ const login = async (req, res, next) => {
           department: user.department,
           permissions: user.permissions,
           isActive: user.isActive,
+          extraFeature: activePlans.limitations.features,
         },
         token: accessToken,
         refreshToken, 
@@ -164,6 +175,16 @@ const getme = async (req, res, next) => {
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
+    
+    const company = await IndexModel.Company.findOne({companyId: user.companyId, deleted:false, isActive:true}).lean()
+    if (!company) {
+      return next(new ErrorResponse("company not found: you cann't be able to login, Please contact you company Admin", 401));
+    }
+
+      const activePlans = company.plan.find((plan) => plan.isActive === true);
+      if (!company) {
+      return next(new ErrorResponse("the plan are Expired: Please contact you company Admin", 401));
+    }
 
     res.status(200).json({
       success: true,
@@ -178,6 +199,8 @@ const getme = async (req, res, next) => {
           department: user.department,
           permissions: user.permissions,
           isActive: user.isActive,
+          extraFeature: activePlans.limitations.features,
+
         },
       },
     });

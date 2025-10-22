@@ -90,7 +90,6 @@ const getAuthState = () => {
     if (localAuthState) {
       return JSON.parse(localAuthState);
     }
-
     return null;
   } catch (error) {
     console.error('Error reading auth state:', error);
@@ -102,146 +101,123 @@ const getAuthState = () => {
 const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
 const hasAny = (user, keys = []) => keys.some((k) => hasPerm(user, k));
 
-function buildStaffLinks(user) {
-  const subRoleLower = user?.subRole?.toLowerCase() || '';
-  const staffBase = subRoleLower
-    ? `/staff/${encodeURIComponent(subRoleLower)}`
-    : '/staff';
-
-  const links = [];
-
-  // Role-based links for specific subRoles
-  if (subRoleLower === 'receptionist') {
-    links.push({
-      href: `${staffBase}/orders`,
-      label: 'Orders',
-      icon: iconMap['Orders'],
-    });
+// ---- Feature to Link Mapping ----
+const featureLinkMap = {
+  'Staff': {
+    href: '/admin/staff',
+    label: 'Staff',
+    icon: iconMap['Staff'],
+    permissions: ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete']
+  },
+  'Staff Salary': {
+    href: '/admin/staff-salaries',
+    label: 'Staff Salaries',
+    icon: iconMap['Staff Salaries'],
+    permissions: ['createPayment', 'viewAllStaffSalaries', 'updateSalary', 'deletePayment', 'staffSummary', 'viewActiveLog', 'viewCompanySummary']
+  },
+  'Vendors': {
+    href: '/admin/vendors',
+    label: 'Vendors',
+    icon: iconMap['Vendors'],
+    permissions: ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors']
+  },
+  'Attendance': {
+    href: '/admin/attendance',
+    label: 'Manage Attendance',
+    icon: iconMap['Attendance'],
+    permissions: ['manageAppointments']
+  },
+  'Attendance Devices': {
+    href: '/admin/attendance-devices',
+    label: 'Attendance Devices Setting',
+    icon: iconMap['Attendance'],
+    permissions: ['manageAppointments']
+  },
+  'Couriers': {
+    href: '/admin/couriers',
+    label: 'Couriers & Shipment',
+    icon: iconMap['Couriers'],
+    permissions: ['assignTasks']
+  },
+  'Reports': {
+    href: '/admin/reports',
+    label: 'Reports',
+    icon: iconMap['Reports'],
+    permissions: ['viewReports']
+  },
+  'Warehouse': {
+    href: '/admin/warehouse',
+    label: 'Warehouse',
+    icon: iconMap['Warehouse'],
+    permissions: ['manageTeams']
+  },
+  'Permissions': {
+    href: '/admin/permissions',
+    label: 'Permission',
+    icon: iconMap['Permission'],
+    permissions: ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete']
+  },
+  'Category': {
+    href: '/admin/category',
+    label: 'Category',
+    icon: iconMap['Product'],
+    permissions: ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct']
   }
+};
 
-  // Permission-based links
-  if (hasAny(user, ['managePlans'])) {
-    links.push({
-      href: `${staffBase}/plans`,
-      label: 'Plans',
-      icon: iconMap['Plans'],
-    });
-  }
-
-  if (
-    hasAny(user, [
-      'createVendors',
-      'updateVendors',
-      'deleteVendors',
-      'viewVendors',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/vendors`,
-      label: 'Vendors',
-      icon: iconMap['Vendors'],
-    });
-  }
-
-  if (
-    hasAny(user, [
-      'createProduct',
-      'updateProduct',
-      'deleteProduct',
-      'viewProduct',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/product`,
+// ---- Core links that are always available for admin/staff ----
+const getCoreLinks = (user) => {
+  const coreLinks = [
+    {
+      href: '/admin/dashboard',
+      label: 'Dashboard',
+      icon: iconMap['Dashboard'],
+      alwaysShow: true
+    },
+    {
+      href: '/admin/product',
       label: 'Product',
       icon: iconMap['Product'],
-    });
-  }
-
-  if (
-    hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling'])
-  ) {
-    links.push({
-      href: `${staffBase}/billing`,
+      alwaysShow: true,
+      permissions: ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct']
+    },
+    {
+      href: '/admin/billing',
       label: 'Billing',
       icon: iconMap['Billing'],
-    });
-  }
+      alwaysShow: true,
+      permissions: ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling']
+    }
+  ];
 
-  if (hasAny(user, ['viewReports'])) {
-    links.push({
-      href: `${staffBase}/reports`,
-      label: 'Reports',
-      icon: iconMap['Reports'],
-    });
-  }
+  // Filter core links based on permissions
+  return coreLinks.filter(link => 
+    link.alwaysShow || (link.permissions && hasAny(user, link.permissions))
+  );
+};
 
-  if (
-    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
-  ) {
-    links.push({
-      href: `${staffBase}/staff`,
-      label: 'Staff',
-      icon: iconMap['Staff'],
-    });
-  }
+// ---- Build dynamic links based ONLY on extraFeatures ----
+const buildDynamicLinks = (user) => {
+  if (!user?.extraFeature || !Array.isArray(user.extraFeature)) return [];
 
-  if (
-    hasAny(user, [
-      'createPayment',
-      'viewAllStaffSalaries',
-      'updateSalary',
-      'deletePayment',
-      'staffSummary',
-      'viewActiveLog',
-      'viewCompanySummary',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/staff-salaries`,
-      label: 'Payments',
-      icon: iconMap['Staff Salaries'],
-    });
-  }
+  const dynamicLinks = [];
 
-  // Settings: show if user has any relevant permission
-  if (
-    hasAny(user, [
-      'manageVendors',
-      'createVendors',
-      'updateVendors',
-      'deleteVendors',
-      'viewVendors',
-      'manageProduct',
-      'createProduct',
-      'updateProduct',
-      'deleteProduct',
-      'viewProduct',
-      'addBilling',
-      'editBilling',
-      'deleteBilling',
-      'viewBilling',
-      'viewReports',
-      'viewallstaff',
-      'staffCreate',
-      'staffUpdate',
-      'staffDelete',
-      'manageAppointments',
-      'assignTasks',
-      'approveRequests',
-      'manageTeams',
-      'managePlans',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/settings`,
-      label: 'Settings',
-      icon: iconMap['Settings'],
-    });
-  }
+  user.extraFeature.forEach(feature => {
+    const linkConfig = featureLinkMap[feature];
+    if (linkConfig) {
+      // Check if user has required permissions for this feature
+      if (!linkConfig.permissions || hasAny(user, linkConfig.permissions)) {
+        dynamicLinks.push({
+          href: linkConfig.href,
+          label: linkConfig.label,
+          icon: linkConfig.icon
+        });
+      }
+    }
+  });
 
-  return links;
-}
+  return dynamicLinks;
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -266,8 +242,9 @@ export default function Sidebar() {
   }, []);
 
   const roleBasedLinks = useMemo(() => {
-    return {
-      superAdmin: [
+    // SuperAdmin - fixed links
+    if (user?.role === 'superAdmin') {
+      return [
         {
           href: '/superadmin/dashboard',
           label: 'Dashboard',
@@ -286,83 +263,56 @@ export default function Sidebar() {
           icon: iconMap['Payment / Billing'],
         },
         { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-        { href: '/superadmin/payment-gateway-config', label: 'Payment GateWay Configuration', icon: iconMap['Settings'] },
-      ],
-      admin: [
-        {
-          href: '/admin/dashboard',
-          label: 'Dashboard',
-          icon: iconMap['Dashboard'],
+        { 
+          href: '/superadmin/payment-gateway-config', 
+          label: 'Payment GateWay Configuration', 
+          icon: iconMap['Settings'] 
         },
-        { href: '/admin/staff', label: 'Staff', icon: iconMap['Staff'] },
-        {
-          href: '/admin/permissions',
-          label: 'Permission',
-          icon: iconMap['Permission'],
-        },
-        { href: '/admin/vendors', label: 'Vendors', icon: iconMap['Vendors'] },
-        {
-          href: '/admin/category',//             /admin/product
-          label: 'Category',
-          icon: iconMap['Product'],
-        },
-        {
-          href: '/admin/product',
-          label: 'Product',
-          icon: iconMap['Product'],
-        },
-        {
-          href: '#',
-          label: 'Warehouse',
-          icon: iconMap['Warehouse'],
-        },
-        { href: '/admin/billing', label: 'Billing', icon: iconMap['Billing'] },
+      ];
+    }
 
-        {
-          href: '/admin/attendance-devices',
-          label: 'Attendance Devices Setting',
-          icon: iconMap['Attendance'],
-        },
-        {
-          href: '/admin/attendance',
-          label: 'Manage Attendance',
-          icon: iconMap['Attendance'],
-        },
-        {
-          href: '/admin/staff-salaries',
-          label: 'Staff Salaries',
-          icon: iconMap['Staff Salaries'],
-        },
-        {
-          href: '/admin/couriers',
-          label: 'Couriers & Shipment',
-          icon: iconMap['Couriers'],
-        },
-        {
-          href: '/admin/setting',
+    // Admin/Staff - dynamic links
+    if (user?.role === 'admin' || user?.role === 'staff') {
+      const coreLinks = getCoreLinks(user);
+      const dynamicLinks = buildDynamicLinks(user);
+
+      // Combine only Core + ExtraFeature links (NO permission-based links)
+      const allLinks = [...coreLinks, ...dynamicLinks];
+
+      // Add Settings link if user has any significant permissions
+      if (hasAny(user, [
+        'manageVendors', 'createVendors', 'updateVendors', 'deleteVendors', 'viewVendors',
+        'manageProduct', 'createProduct', 'updateProduct', 'deleteProduct', 'viewProduct',
+        'addBilling', 'editBilling', 'deleteBilling', 'viewBilling',
+        'viewReports', 'viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete',
+        'manageAppointments', 'assignTasks', 'approveRequests', 'manageTeams', 'managePlans'
+      ])) {
+        allLinks.push({
+          href: user.role === 'admin' ? '/admin/setting' : `/staff/${encodeURIComponent(user?.subRole?.toLowerCase() || '')}/settings`,
           label: 'Settings',
           icon: iconMap['Settings'],
-        },
-      ],
-      staff: buildStaffLinks(user),
-      user: [
+        });
+      }
+
+      return allLinks;
+    }
+
+    // User role
+    if (user?.role === 'user') {
+      return [
         { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
         { href: '#', label: 'Orders', icon: iconMap['Orders'] },
         { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-      ],
-      guest: [],
-    };
-  }, [user?.subRole, user?.role, user?.permissions]);
+      ];
+    }
+
+    // Guest - no links
+    return [];
+  }, [user]);
 
   const mainLinks = useMemo(() => {
-    if (loading || !user?.role) return roleBasedLinks.guest;
-    // Restrict superAdmin links to superAdmin role only
-    if (user.role !== 'superAdmin' && roleBasedLinks[user.role]) {
-      return roleBasedLinks[user.role];
-    } else if (user.role === 'superAdmin') {
-      return roleBasedLinks.superAdmin;
-    }
-    return roleBasedLinks.guest;
+    if (loading || !user?.role) return [];
+    return roleBasedLinks;
   }, [user, loading, roleBasedLinks]);
 
   return (

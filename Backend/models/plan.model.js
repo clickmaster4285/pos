@@ -1,12 +1,16 @@
 import mongoose, { Schema } from "mongoose";
 
 const ALLOWED_FEATURES = [
-  "analytics",
-  "reports",
-  "product_management",
-  "vendor_management",
-  "order_tracking",
-  "support",
+  "Staff",
+  "Permissions",
+  "Vendors",
+  "Category",
+  "WareHouse",
+  "Attendance Device",
+  "Manage Attendance",
+  "Staff Salary",
+  "Courier & Shipment",
+  "Settings"
 ];
 
 const PlanSchema = new Schema(
@@ -14,7 +18,6 @@ const PlanSchema = new Schema(
     name: {
       type: String,
       required: [true, "Plan name is required"],
-      unique: true,
       trim: true,
       maxlength: [50, "Plan name cannot exceed 50 characters"],
       minlength: [3, "Plan name must be at least 3 characters"],
@@ -47,26 +50,24 @@ const PlanSchema = new Schema(
         default: 50,
       },
       features: [
-      {
-        type: String,
-        trim: true,
-        lowercase: true,
-        validate: {
-          validator: (value) => ALLOWED_FEATURES.includes(value),
-          message: `Feature must be one of: ${ALLOWED_FEATURES.join(", ")}`,
+        {
+          type: String,
+          validate: {
+            validator: (value) => ALLOWED_FEATURES.includes(value),
+            message: `Feature must be one of: ${ALLOWED_FEATURES.join(", ")}`,
+          },
         },
-      },
-    ],
+      ],
     },
     history: [
       {
         action: String,
         performedBy: String, //userId
-      createdAt: {
+        createdAt: {
           type: Date,
           default: Date.now,
         },
-      }
+      },
     ],
     deleted: { type: Boolean, default: false },
     createdBy: {
@@ -88,5 +89,6 @@ const PlanSchema = new Schema(
 // Indexes for better query performance
 // PlanSchema.index({ name: 1 });
 // PlanSchema.index({ createdBy: 1, isActive: 1 });
+PlanSchema.index({ name: 1 }, { unique: true, partialFilterExpression: { deleted: false } });
 
 export default mongoose.model("Plan", PlanSchema);
