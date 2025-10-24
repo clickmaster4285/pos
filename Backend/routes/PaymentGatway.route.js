@@ -24,5 +24,10 @@ router.get(
   Indexcontroller.PaymentGatway.getstrippublishkey
 );
 
+router.post(
+  '/upgrade-plan',
+  passport.authenticate('jwt', { session: false }),
+  Indexcontroller.PaymentGatway.confirmAndUpgradePlan
+);
 
 export default router;

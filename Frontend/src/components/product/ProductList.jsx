@@ -19,6 +19,15 @@ import {
 } from '@/components/ui/hover-card';
 import { Tag, Edit, Trash2, MoreVertical, PackagePlus } from 'lucide-react';
 
+const hasVendorsFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+  }
+  return false;
+};
+
 function getStatusVariant(status) {
   switch (status) {
     case 'active':
@@ -40,7 +49,7 @@ export function ProductList({
   handleToggle,
   pendingId,
   onOpenSheet,
-  onAddStock, // New prop for handling stock addition
+  onAddStock,
 }) {
   if (!products?.length) {
     return (
@@ -57,10 +66,10 @@ export function ProductList({
 
   return (
     <Card className="divide-y border-border p-2">
-      <div className="grid grid-cols-18 items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className={`grid ${hasVendorsFeature() ? 'grid-cols-18' : 'grid-cols-16'} items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}>
         <div className="col-span-2">Product</div>
         <div className="col-span-2">Category</div>
-        <div className="col-span-2">Vendor</div>
+        {hasVendorsFeature() && <div className="col-span-2">Vendor</div>}
         <div className="col-span-2">SKU</div>
         <div className="col-span-2">Cost Price</div>
         <div className="col-span-2">Selling Price</div>
@@ -76,7 +85,7 @@ export function ProductList({
         return (
           <div
             key={p.id}
-            className="grid grid-cols-18 items-center px-4 py-3 hover:bg-accent/30 transition-colors"
+            className={`grid ${hasVendorsFeature() ? 'grid-cols-18' : 'grid-cols-16'} items-center px-4 py-3 hover:bg-accent/30 transition-colors`}
           >
             <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
               <div className="flex items-center gap-2">
@@ -91,9 +100,11 @@ export function ProductList({
               <p className="text-sm text-muted-foreground truncate">{p.categoryName || '—'}</p>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">{getVendorName(p.vendor)}</p>
-            </div>
+            {hasVendorsFeature() && (
+              <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
+                <p className="text-sm text-muted-foreground truncate">{getVendorName(p.vendor)}</p>
+              </div>
+            )}
 
             <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
               <p className="text-sm text-muted-foreground truncate">{p.SKU || '—'}</p>
@@ -130,14 +141,14 @@ export function ProductList({
                 </Button>
 
                 <Button
-  size="sm"
-  variant="delete"
-  onClick={() => onDelete(p)}
-  className="h-8 w-8 p-0"
-  aria-label="Delete product"
->
-  <Trash2 className="h-3 w-3" />
-</Button>
+                  size="sm"
+                  variant="delete"
+                  onClick={() => onDelete(p)}
+                  className="h-8 w-8 p-0"
+                  aria-label="Delete product"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

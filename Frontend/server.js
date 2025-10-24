@@ -15,8 +15,8 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 const HOST = process.env.NEXT_PUBLIC_FRONTEND_HOST || 'localhost';
-const HTTPS_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 8000);
-const HTTP_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 8050);
+const HTTPS_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 9000);
+const HTTP_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 9050);
 console.log('HTTP_PORT', HTTPS_PORT, HTTP_PORT);
 // Certs in ./certificate (or override via env)
 const CERT_DIR = path.resolve(__dirname, 'certificate');

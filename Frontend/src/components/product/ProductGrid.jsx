@@ -19,6 +19,24 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Tag, Edit, Trash2, Calendar, MoreVertical, PackagePlus } from 'lucide-react';
 
+const hasVendorsFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+  }
+  return false;
+};
+
+const hasCategoriesFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Category') || false;
+  }
+  return false;
+};
+
 const safe = (v) => (typeof v === 'string' ? v : '');
 const getId = (p) => p?.id ?? p?._id ?? '';
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
@@ -37,7 +55,7 @@ export function ProductGrid({
   handleToggle,
   pendingId,
   onOpenSheet,
-  onAddStock, // New prop for handling stock addition
+  onAddStock,
 }) {
   if (!products?.length) {
     return (
@@ -87,7 +105,7 @@ export function ProductGrid({
                       {safe(product.productName) || 'Untitled product'}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground truncate">
-                      {product.subCategory || 'No subcategory'}
+                      {hasCategoriesFeature() ? (product.subCategory || 'No subcategory') : '—'}
                     </p>
                   </div>
 
@@ -166,19 +184,23 @@ export function ProductGrid({
             </div>
 
             <div className="space-y-4 mt-3" onClick={(e) => { e.stopPropagation(); onOpenSheet(product); }}>
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Category</p>
-                <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
-                  <span className="truncate">{safe(product.categoryName) || '—'}</span>
+              {hasCategoriesFeature() && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Category</p>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
+                    <span className="truncate">{safe(product.categoryName) || '—'}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Vendor</p>
-                <div className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                  <span className="truncate">{getVendorName(product.vendor)}</span>
+              {hasVendorsFeature() && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Vendor</p>
+                  <div className="mt-1 flex items-center gap-2 text-sm text-foreground">
+                    <span className="truncate">{getVendorName(product.vendor)}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">SKU</p>

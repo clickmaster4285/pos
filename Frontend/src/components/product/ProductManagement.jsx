@@ -23,6 +23,24 @@ import {
 import { useGetAllCategoriesQuery } from '@/features/categoryApi';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
 
+const hasVendorsFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+  }
+  return false;
+};
+
+const hasCategoriesFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Category') || false;
+  }
+  return false;
+};
+
 const getId = (p) => String(p?.id ?? p?._id ?? '').trim();
 const norm = (s) => (typeof s === 'string' ? s : '');
 
@@ -30,9 +48,9 @@ function normalizeProduct(p) {
   return {
     id: getId(p),
     productName: norm(p?.productName),
-    categoryName: norm(p?.categoryName),
-    subCategory: norm(p?.subCategory),
-    vendor: norm(p?.vendor),
+    categoryName: hasCategoriesFeature() ? norm(p?.categoryName) : '',
+    subCategory: hasCategoriesFeature() ? norm(p?.subCategory) : '',
+    vendor: hasVendorsFeature() ? norm(p?.vendor) : '',
     SKU: norm(p?.SKU),
     sellingPrice: p?.sellingPrice || 0,
     costPrice: p?.costPrice || 0,
@@ -97,8 +115,8 @@ export function ProductManagement() {
   const [stockProduct, setStockProduct] = useState(null);
 
   const { data: products = [], isLoading: productsLoading } = useGetAllProductsQuery();
-  const { data: categories = [], isLoading: categoriesLoading } = useGetAllCategoriesQuery();
-  const { data: vendors = [], isLoading: vendorsLoading } = useGetAllVendorsQuery();
+  const { data: categories = [], isLoading: categoriesLoading } = hasCategoriesFeature() ? useGetAllCategoriesQuery() : { data: [], isLoading: false };
+  const { data: vendors = [], isLoading: vendorsLoading } = hasVendorsFeature() ? useGetAllVendorsQuery() : { data: [], isLoading: false };
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: deleting }] = useDeleteProductMutation();
@@ -147,6 +165,7 @@ export function ProductManagement() {
     }
     return result;
   }, [products, searchTerm, statusFilter, quickRange]);
+
   const total = filteredProducts?.length;
   const paginatedProducts = filteredProducts?.slice((page - 1) * pageSize, page * pageSize);
 
@@ -154,13 +173,13 @@ export function ProductManagement() {
     try {
       const payload = {
         productName: formData.productName,
-        categoryName: formData.categoryName,
-        subCategory: formData.subCategory,
-        vendor: formData.vendor,
+        categoryName: hasCategoriesFeature() ? formData.categoryName : '',
+        subCategory: hasCategoriesFeature() ? formData.subCategory : '',
+        vendor: hasVendorsFeature() ? formData.vendor : '',
         SKU: formData.SKU,
-        sellingPrice: Number(formData.sellingPrice) || 0,
-        costPrice: Number(formData.costPrice) || 0,
-        quantity: Number(formData.quantity) || 0,
+        sellingPrice: Number(formData.sellingPrice),
+        costPrice: Number(formData.costPrice),
+        quantity: Number(formData.quantity),
         location: formData.location,
         condition: formData.condition,
         attribute: formData.attribute,
@@ -176,77 +195,70 @@ export function ProductManagement() {
       setIsModalOpen(false);
       setSelectedProduct(null);
     } catch (error) {
-      console.error('Error saving product:', error);
+      console.error('Failed to save product:', error);
     }
   };
 
   const handleEditProduct = (product) => {
+    setSelectedProduct(product);
     setModalMode('edit');
-    setSelectedProduct(normalizeProduct(product));
     setIsModalOpen(true);
   };
 
-    const handleViewProduct = (product) => {
-    setSelectedProduct(normalizeProduct(product));
-    setModalMode('view');
-    setIsModalOpen(true);
+  const handleDeleteProduct = (product) => {
+    setDeleteDialog({ open: true, productId: getId(product), productName: product.productName });
   };
-
-const handleDeleteProduct = (product) => {
-  console.log('Opening delete dialog for:', product);
-  setDeleteDialog({ open: true, productId: getId(product), productName: product.productName });
-};
-
 
   const confirmDelete = async () => {
     try {
-      console.log("the the deleteProduct")
       await deleteProduct(deleteDialog.productId).unwrap();
       setDeleteDialog({ open: false, productId: null });
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error('Failed to delete product:', error);
     }
   };
 
   const handleToggle = async (product) => {
-    setPendingId(getId(product));
     try {
+      setPendingId(getId(product));
       await toggleProductStatus(getId(product)).unwrap();
     } catch (error) {
-      console.error('Error toggling product status:', error);
+      console.error('Failed to toggle product status:', error);
     } finally {
       setPendingId(null);
     }
   };
 
+  const handleViewProduct = (product) => {
+    setSelectedProduct(product);
+    setModalMode('view');
+    setIsModalOpen(true);
+  };
+
   const openProductDetailsSheet = (product) => {
-    setDetailsProduct(normalizeProduct(product));
+    setDetailsProduct(product);
     setIsDetailsOpen(true);
   };
 
   const handleAddStock = (product) => {
-    setStockProduct(product ? normalizeProduct(product) : null);
+    setStockProduct(product);
     setIsStockModalOpen(true);
   };
 
   const handleSaveStock = async (stockData) => {
     try {
-      setPendingId(stockData[0]?.productId); // Use first product ID for pending state
       await updateProductStock(stockData).unwrap();
       setIsStockModalOpen(false);
       setStockProduct(null);
     } catch (error) {
-      console.error('Error updating stock:', error);
-      // Add toast notification or inline error here if desired
-    } finally {
-      setPendingId(null);
+      console.error('Failed to update stock:', error);
     }
   };
 
   return (
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-foreground">Products</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Products</h1>
         <div className="flex gap-2">
           <Button
             onClick={() => {
@@ -349,8 +361,8 @@ const handleDeleteProduct = (product) => {
           {view === 'grid' ? (
             <ProductGrid
               products={paginatedProducts}
-              categories={categories}
-              vendors={vendors}
+              categories={hasCategoriesFeature() ? categories : []}
+              vendors={hasVendorsFeature() ? vendors : []}
               onView={handleViewProduct}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
@@ -362,8 +374,8 @@ const handleDeleteProduct = (product) => {
           ) : (
             <ProductList
               products={paginatedProducts}
-              categories={categories}
-              vendors={vendors}
+              categories={hasCategoriesFeature() ? categories : []}
+              vendors={hasVendorsFeature() ? vendors : []}
               onView={handleViewProduct}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
@@ -399,24 +411,24 @@ const handleDeleteProduct = (product) => {
         onSave={handleSaveProduct}
         product={selectedProduct}
         mode={modalMode}
-        categories={categories}
-        vendors={vendors}
+        categories={hasCategoriesFeature() ? categories : []}
+        vendors={hasVendorsFeature() ? vendors : []}
       />
 
       <DeleteConfirmDialog
-  open={deleteDialog.open}
-  onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
-  onConfirm={confirmDelete}
-  productName={deleteDialog.productName}
-  isLoading={deleting}
-/>
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        onConfirm={confirmDelete}
+        productName={deleteDialog.productName}
+        isLoading={deleting}
+      />
 
       <ProductDetailsSheet
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         product={detailsProduct}
-        categories={categories}
-        vendors={vendors}
+        categories={hasCategoriesFeature() ? categories : []}
+        vendors={hasVendorsFeature() ? vendors : []}
         onEdit={handleEditProduct}
         onDelete={handleDeleteProduct}
         onToggle={handleToggle}

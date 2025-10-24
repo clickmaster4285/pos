@@ -4,15 +4,16 @@ const CategorySchema = new Schema(
   {
     categoryName: {
       type: String,
+      trim: true,
       required: [true, "Category name is required"],
     },
     subCategory: [{
       type: String,
+      trim: true,
     }],
     companyId: {
       type: String,
       unique: true,
-      required: [true, "Company ID is required"],
       trim: true,
     },
     description: {

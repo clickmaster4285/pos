@@ -15,6 +15,24 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Clock, Pencil, Trash2, Tag } from 'lucide-react';
 
+const hasVendorsFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+  }
+  return false;
+};
+
+const hasCategoriesFeature = () => {
+  const authState = sessionStorage.getItem('authUser');
+  if (authState) {
+    const parsedAuthState = JSON.parse(authState);
+    return parsedAuthState.extraFeature?.includes('Category') || false;
+  }
+  return false;
+};
+
 function initials(name) {
   return (name || '')
     .trim()
@@ -62,7 +80,7 @@ export function ProductDetailsSheet({
   }
 
   const isActive = !!product.isActive;
-  const vendorName = vendors.find((v) => v._id === product.vendor)?.vendorName || product.vendor || '—';
+  const vendorName = hasVendorsFeature() ? (vendors.find((v) => v._id === product.vendor)?.vendorName || product.vendor || '—') : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -77,7 +95,7 @@ export function ProductDetailsSheet({
                 <div className="min-w-0">
                   <SheetTitle className="truncate text-gray-900 dark:text-white">{product.productName || 'Product'}</SheetTitle>
                   <SheetDescription className="truncate text-gray-600 dark:text-gray-300">
-                    {product.subCategory || 'No subcategory'}
+                    {hasCategoriesFeature() ? (product.subCategory || 'No subcategory') : '—'}
                   </SheetDescription>
                 </div>
               </div>
@@ -98,25 +116,29 @@ export function ProductDetailsSheet({
         <div className="p-6 space-y-6">
           <Card>
             <CardContent className="p-4 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
-                  <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              {hasCategoriesFeature() && (
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
+                    <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-muted-foreground">Category</div>
+                    <div className="text-sm font-medium">{product.categoryName || '—'}</div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground">Category</div>
-                  <div className="text-sm font-medium">{product.categoryName || '—'}</div>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
-                  <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              {hasVendorsFeature() && (
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
+                    <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs text-muted-foreground">Vendor</div>
+                    <div className="text-sm font-medium">{vendorName}</div>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground">Vendor</div>
-                  <div className="text-sm font-medium">{vendorName}</div>
-                </div>
-              </div>
+              )}
 
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
@@ -201,7 +223,7 @@ export function ProductDetailsSheet({
                   </div>
                   <div className="text-sm font-medium">{prettyDate(product.createdAt)}</div>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex_items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Last Updated</span>

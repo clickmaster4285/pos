@@ -1,4 +1,3 @@
-// src/controllers/product.controller.js
 import IndexModel from '../models/indexModel.js';
 import { generateSKU } from '../utils/generateUniqueSKU.js';
 import mongoose from 'mongoose';
@@ -12,6 +11,14 @@ const sanitizeInput = (input) => {
     }).trim();
   }
   return input;
+};
+
+const hasVendorsFeature = (activePlansFeature) => {
+  return activePlansFeature?.limitations?.features?.includes('Vendors') || false;
+};
+
+const hasCategoriesFeature = (activePlansFeature) => {
+  return activePlansFeature?.limitations?.features?.includes('Category') || false;
 };
 
 const createProduct = async (req, res) => {
@@ -43,34 +50,44 @@ const createProduct = async (req, res) => {
     const sanitizedTags = Array.isArray(tags) ? tags.map(sanitize) : [];
     const sanitizedSKU = sanitize(SKU);
 
+    // --- Validate company ---
+    const companyFeature = await IndexModel.Company.findOne({
+      companyId,
+      deleted: false,
+      isActive: true,
+    }).lean();
+    if (!companyFeature) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not Authorized: the company was not found',
+      });
+    }
+
+    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
+
     // --- Validate required ---
-    if (
-      !sanitizedProductName ||
-      !sanitizedCategoryName ||
-      !companyId ||
-      !userId ||
-      !vendor ||
-      !sellingPrice
-    ) {
+    if (!sanitizedProductName || !companyId || !userId || !sellingPrice) {
       return res.status(400).json({
         success: false,
-        message:
-          'Product name, category name, company ID, creator ID, vendor, and selling price are required',
+        message: 'Product name, company ID, creator ID, and selling price are required',
       });
     }
 
     // --- Validate vendor ---
-    const vendorRecord = await IndexModel.Vendor.findOne({
-      _id: vendor,
-      companyId,
-      deleted: false,
-      isActive: true,
-    });
-    if (!vendorRecord) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor not found or inactive',
+    let vendorRecord = null;
+    if (hasVendorsFeature(activePlansFeature) && vendor) {
+      vendorRecord = await IndexModel.Vendor.findOne({
+        _id: vendor,
+        companyId,
+        deleted: false,
+        isActive: true,
       });
+      if (!vendorRecord) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vendor not found or inactive',
+        });
+      }
     }
 
     // --- Check duplicates ---
@@ -87,25 +104,28 @@ const createProduct = async (req, res) => {
     }
 
     // --- Validate category ---
-    const category = await IndexModel.Category.findOne({
-      categoryName: sanitizedCategoryName,
-      companyId,
-      deleted: false,
-      isActive: true,
-    });
-    if (!category) {
-      return res.status(400).json({
-        success: false,
-        message: 'Active category not found',
+    let category = null;
+    if (hasCategoriesFeature(activePlansFeature) && sanitizedCategoryName) {
+      category = await IndexModel.Category.findOne({
+        categoryName: sanitizedCategoryName,
+        companyId: req.user.companyId,
+        deleted: false,
+        isActive: true,
       });
-    }
-
-    if (sanitizedSubCategory) {
-      if (!category.subCategory.includes(sanitizedSubCategory)) {
+      if (!category) {
         return res.status(400).json({
           success: false,
-          message: `Invalid subcategory: ${sanitizedSubCategory}`,
+          message: 'Active category not found',
         });
+      }
+
+      if (sanitizedSubCategory) {
+        if (!category.subCategory.includes(sanitizedSubCategory)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid subcategory: ${sanitizedSubCategory}`,
+          });
+        }
       }
     }
 
@@ -131,12 +151,12 @@ const createProduct = async (req, res) => {
     // --- Create and save product ---
     const product = new IndexModel.Product({
       productName: sanitizedProductName,
-      categoryName: sanitizedCategoryName,
-      subCategory: sanitizedSubCategory || '',
+      categoryName: hasCategoriesFeature(activePlansFeature) ? sanitizedCategoryName || '' : '',
+      subCategory: hasCategoriesFeature(activePlansFeature) ? sanitizedSubCategory || '' : '',
       companyId,
       description: sanitizedDescription,
       tags: sanitizedTags,
-      vendor,
+      vendor: hasVendorsFeature(activePlansFeature) ? vendor || '' : '',
       SKU: finalSKU,
       sellingPrice,
       costPrice: costPrice || 0,
@@ -180,24 +200,17 @@ const createProduct = async (req, res) => {
       await IndexModel.Product.deleteOne({ _id: savedProduct._id });
       return res.status(500).json({
         success: false,
-        message: 'Company update failed — product rolled back',
+        message: 'Failed to update company after creating product',
       });
     }
 
-    // --- Success ---
     return res.status(201).json({
       success: true,
-      message: 'Product created successfully and company updated',
+      message: 'Product created successfully',
       data: savedProduct,
     });
   } catch (error) {
     console.error('Error creating product:', error);
-
-    // Rollback any product created if error happens mid-way
-    if (error._message === 'Company validation failed' && savedProduct?._id) {
-      await IndexModel.Product.deleteOne({ _id: savedProduct._id });
-    }
-
     return res.status(500).json({
       success: false,
       message: 'Error creating product',
@@ -206,62 +219,22 @@ const createProduct = async (req, res) => {
   }
 };
 
-
-
 const getAllProducts = async (req, res) => {
   try {
     const { companyId } = req.user;
-    const { categoryName, subCategory, page = 1, limit = 10 } = req.query;
-
-    const query = {
-      companyId,
-      deleted: false,
-      isActive: true, // Only return active products
-    };
-
-    if (categoryName) {
-      query.categoryName = sanitizeInput(categoryName);
-    }
-    if (subCategory) {
-      query.subCategory = sanitizeInput(subCategory);
-    }
-
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-
-    const [products, total] = await Promise.all([
-      IndexModel.Product.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      IndexModel.Product.countDocuments(query),
-    ]);
-
-    const totalPages = Math.ceil(total / limitNum);
-
-    if (!products || products.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No products found',
-      });
-    }
+    const products = await IndexModel.Product.find({ companyId, deleted: false })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.status(200).json({
       success: true,
       data: products,
-      pagination: {
-        page: pageNum,
-        totalPages,
-        total,
-      },
     });
   } catch (error) {
     console.error('Error fetching products:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error while fetching products',
+      message: 'Error fetching products',
       error: error.message,
     });
   }
@@ -288,7 +261,7 @@ const getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found or does not belong to the company',
+        message: 'Product not found',
       });
     }
 
@@ -300,7 +273,7 @@ const getProductById = async (req, res) => {
     console.error('Error fetching product:', error);
     return res.status(500).json({
       success: false,
-      message: 'Server error while fetching product',
+      message: 'Error fetching product',
       error: error.message,
     });
   }
@@ -317,7 +290,6 @@ const updateProduct = async (req, res) => {
       description,
       tags,
       vendor,
-      SKU,
       sellingPrice,
       costPrice,
       quantity,
@@ -325,23 +297,8 @@ const updateProduct = async (req, res) => {
       condition,
       attribute,
       customAttributes,
+      SKU,
     } = req.body;
-
-    // Sanitize inputs
-    const sanitizedProductName = sanitizeInput(productName);
-    const sanitizedCategoryName = sanitizeInput(categoryName);
-    const sanitizedSubCategory = sanitizeInput(subCategory);
-    const sanitizedDescription = sanitizeInput(description);
-    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitizeInput) : [];
-    const sanitizedSKU = sanitizeInput(SKU);
-
-    // Validate required fields
-    if (!id || !companyId || !userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product ID, company ID, and user ID are required',
-      });
-    }
 
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({
@@ -350,7 +307,39 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    // Find the product
+    // --- Sanitize ---
+    const sanitize = (v) => (typeof v === 'string' ? v.trim() : v);
+    const sanitizedProductName = sanitize(productName);
+    const sanitizedCategoryName = sanitize(categoryName);
+    const sanitizedSubCategory = sanitize(subCategory);
+    const sanitizedDescription = sanitize(description);
+    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitize) : [];
+    const sanitizedSKU = sanitize(SKU);
+
+    // --- Validate company ---
+    const companyFeature = await IndexModel.Company.findOne({
+      companyId,
+      deleted: false,
+      isActive: true,
+    }).lean();
+    if (!companyFeature) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not Authorized: the company was not found',
+      });
+    }
+
+    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
+
+    // --- Validate required ---
+    if (!sanitizedProductName || !sellingPrice) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product name and selling price are required',
+      });
+    }
+
+    // --- Find product ---
     const product = await IndexModel.Product.findOne({
       _id: id,
       companyId,
@@ -360,119 +349,98 @@ const updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found or does not belong to the company',
+        message: 'Product not found',
       });
     }
 
-    if (product.isActive === false) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product is inactive. Activate it before updating.',
-      });
-    }
-
-    // Validate vendor exists and is active
-    if (vendor && vendor !== product.vendor) {
-      const vendorRecord = await IndexModel.Vendor.findOne({
+    // --- Validate vendor ---
+    let vendorRecord = null;
+    if (hasVendorsFeature(activePlansFeature) && vendor) {
+      vendorRecord = await IndexModel.Vendor.findOne({
         _id: vendor,
         companyId,
         deleted: false,
         isActive: true,
       });
-
       if (!vendorRecord) {
         return res.status(400).json({
           success: false,
-          message: 'Vendor not found or is inactive',
+          message: 'Vendor not found or inactive',
         });
       }
     }
 
-    // Check for duplicate product name (excluding current product)
-    if (sanitizedProductName && sanitizedProductName !== product.productName) {
-      const existingProduct = await IndexModel.Product.findOne({
-        productName: sanitizedProductName,
+    // --- Check duplicate product name ---
+    const existingProduct = await IndexModel.Product.findOne({
+      productName: sanitizedProductName,
+      companyId,
+      deleted: false,
+      _id: { $ne: id },
+    });
+    if (existingProduct) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product with this name already exists',
+      });
+    }
+
+    // --- Validate category ---
+    let category = null;
+    if (hasCategoriesFeature(activePlansFeature) && sanitizedCategoryName) {
+      category = await IndexModel.Category.findOne({
+        categoryName: sanitizedCategoryName,
         companyId,
         deleted: false,
-        _id: { $ne: id },
+        isActive: true,
       });
-
-      if (existingProduct) {
+      if (!category) {
         return res.status(400).json({
           success: false,
-          message: 'Product with this name already exists',
+          message: 'Active category not found',
         });
+      }
+
+      if (sanitizedSubCategory) {
+        if (!category.subCategory.includes(sanitizedSubCategory)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid subcategory: ${sanitizedSubCategory}`,
+          });
+        }
       }
     }
 
-    // Check for duplicate SKU (excluding current product) if provided
-    if (sanitizedSKU && sanitizedSKU !== product.SKU) {
+    // --- Validate SKU ---
+    if (sanitizedSKU && sanitizedSKU.trim() !== '') {
       const existingSKU = await IndexModel.Product.findOne({
         SKU: sanitizedSKU,
         companyId,
         deleted: false,
         _id: { $ne: id },
       });
-
       if (existingSKU) {
         return res.status(400).json({
           success: false,
-          message: 'Provided SKU is already in use',
+          message: 'Provided SKU already in use',
         });
       }
     }
 
-    // Verify category exists and is active if categoryName is provided
-    if (sanitizedCategoryName && sanitizedCategoryName !== product.categoryName) {
-      const category = await IndexModel.Category.findOne({
-        categoryName: sanitizedCategoryName,
-        companyId,
-        deleted: false,
-        isActive: true,
-      });
-
-      if (!category) {
-        return res.status(400).json({
-          success: false,
-          message: 'Active category not found for the company',
-        });
-      }
-
-      // Verify subCategory exists in category if provided
-      if (sanitizedSubCategory && !category.subCategory.includes(sanitizedSubCategory)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid subcategory: ${sanitizedSubCategory}`,
-        });
-      }
-    }
-
-    // Validate attribute format
-    if (attribute && !Array.isArray(attribute)) {
-      return res.status(400).json({
-        success: false,
-        message: 'attribute must be an array of {key, value} objects',
-      });
-    }
-
-    // Update fields
-    product.productName = sanitizedProductName || product.productName;
-    product.categoryName = sanitizedCategoryName || product.categoryName;
-    product.subCategory =
-      sanitizedSubCategory !== undefined ? sanitizedSubCategory : product.subCategory;
-    product.description =
-      sanitizedDescription !== undefined ? sanitizedDescription : product.description;
-    product.tags = sanitizedTags || product.tags;
-    product.vendor = vendor || product.vendor;
+    // --- Update product ---
+    product.productName = sanitizedProductName;
+    product.categoryName = hasCategoriesFeature(activePlansFeature) ? sanitizedCategoryName || '' : '';
+    product.subCategory = hasCategoriesFeature(activePlansFeature) ? sanitizedSubCategory || '' : '';
+    product.description = sanitizedDescription;
+    product.tags = sanitizedTags;
+    product.vendor = hasVendorsFeature(activePlansFeature) ? vendor || '' : '';
     product.SKU = sanitizedSKU || product.SKU;
-    product.sellingPrice =
-      sellingPrice !== undefined ? sellingPrice : product.sellingPrice;
-    product.costPrice = costPrice !== undefined ? costPrice : product.costPrice;
-    product.quantity = quantity !== undefined ? quantity : product.quantity;
-    product.location = location !== undefined ? location : product.location;
-    product.condition = condition || product.condition;
-    product.attribute = attribute || product.attribute;
-    product.customAttributes = customAttributes || product.customAttributes;
+    product.sellingPrice = sellingPrice;
+    product.costPrice = costPrice || 0;
+    product.quantity = quantity || 0;
+    product.location = location;
+    product.condition = condition;
+    product.attribute = attribute || [];
+    product.customAttributes = customAttributes || [];
     product.updatedAt = new Date();
     product.history.push({
       action: 'UPDATED',
@@ -480,7 +448,6 @@ const updateProduct = async (req, res) => {
       details: `Product updated by ${userId}`,
     });
 
-    // Save updated product
     const updatedProduct = await product.save();
 
     return res.status(200).json({
@@ -499,7 +466,6 @@ const updateProduct = async (req, res) => {
 };
 
 const deleteProduct = async (req, res) => {
-  console.log("the i am here in deleteing the product")
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
@@ -511,7 +477,6 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    // Find the product
     const product = await IndexModel.Product.findOne({
       _id: id,
       companyId,
@@ -521,20 +486,18 @@ const deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found or does not belong to the company',
+        message: 'Product not found',
       });
     }
 
-    // Soft delete by setting deleted flag
     product.deleted = true;
     product.updatedAt = new Date();
     product.history.push({
       action: 'DELETED',
       performedBy: userId,
-      details: `Product soft-deleted by ${userId}`,
+      details: `Product deleted by ${userId}`,
     });
 
-    // Save updated product
     await product.save();
 
     return res.status(200).json({
@@ -563,7 +526,6 @@ const toggleProductStatus = async (req, res) => {
       });
     }
 
-    // Find the product
     const product = await IndexModel.Product.findOne({
       _id: id,
       companyId,
@@ -573,11 +535,10 @@ const toggleProductStatus = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found or does not belong to the company',
+        message: 'Product not found',
       });
     }
 
-    // Toggle status
     product.isActive = !product.isActive;
     product.updatedAt = new Date();
     product.history.push({
@@ -586,7 +547,6 @@ const toggleProductStatus = async (req, res) => {
       details: `Product ${product.isActive ? 'activated' : 'deactivated'} by ${userId}`,
     });
 
-    // Save updated product
     const updatedProduct = await product.save();
 
     return res.status(200).json({
@@ -625,7 +585,6 @@ const updateProductStock = async (req, res) => {
         });
       }
 
-      // Find the product
       const product = await IndexModel.Product.findOne({
         _id: item.productId,
         companyId,
@@ -702,6 +661,21 @@ const searchProducts = async (req, res) => {
       });
     }
 
+    // --- Validate company ---
+    const companyFeature = await IndexModel.Company.findOne({
+      companyId,
+      deleted: false,
+      isActive: true,
+    }).lean();
+    if (!companyFeature) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not Authorized: the company was not found',
+      });
+    }
+
+    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
+
     const sanitizedQuery = sanitizeInput(query);
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -715,8 +689,12 @@ const searchProducts = async (req, res) => {
       $or: [
         { productName: { $regex: sanitizedQuery, $options: 'i' } },
         { SKU: { $regex: sanitizedQuery, $options: 'i' } },
-        { categoryName: { $regex: sanitizedQuery, $options: 'i' } },
-        { subCategory: { $regex: sanitizedQuery, $options: 'i' } },
+        ...(hasCategoriesFeature(activePlansFeature)
+          ? [
+              { categoryName: { $regex: sanitizedQuery, $options: 'i' } },
+              { subCategory: { $regex: sanitizedQuery, $options: 'i' } },
+            ]
+          : []),
         { tags: { $regex: sanitizedQuery, $options: 'i' } },
       ],
     };

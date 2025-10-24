@@ -15,11 +15,8 @@ import {
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { useLogoutMutation } from '@/features/authApi';
-
-import { toast } from 'sonner';
-import { Car, FileText, Settings, Users } from 'lucide-react';
-import Home from '../landing/Hero';
 import { Button } from '../ui/button';
+import Link from 'next/link';
 
 export default function Navbar({ setErrorMessage }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -70,13 +67,23 @@ export default function Navbar({ setErrorMessage }) {
     } catch (error) {
       console.error('Logout failed:', error);
       setErrorMessage('Logout failed. Please try again.');
-      toast.error('Logout failed. Please try again.');
     }
+  };
+
+  // Construct the settings route based on role and subRole
+  const getSettingsRoute = () => {
+    if (!user?.role) return '/settings/profile';
+    if (user.role === 'superAdmin') return '/superadmin/profile-setting';
+    if (user.role === 'admin') return '/admin/profile-setting';
+    if (user.role === 'staff' && user.subRole) {
+      return `/staff/${encodeURIComponent(user.subRole)}/profile-setting`;
+    }
+    return '/staff/profile-setting'; // Fallback for staff without subRole
   };
 
   return (
     <nav className="p-3 w-full bg-sidebar border-b border-gray-200">
-      <div className="h-16 flex justify-between px-6 relative ">
+      <div className="h-14 flex justify-between px-6 relative ">
         {/* Mobile menu button */}
         <div className="flex ">
           <Button
@@ -86,23 +93,13 @@ export default function Navbar({ setErrorMessage }) {
             {isMobileMenuOpen ? <FiX /> : <FiMenu />}
           </Button>
 
-          {/* Logo / Brand */}
-          {/* <div className="flex items-center gap-3  py-4 ">
-            <div>
-              <h2 className="font-bold text-lg text-foreground">AutoAdmin</h2>
-              <p className="text-xs text-muted-foreground">
-                Super Administrator
-              </p>
-            </div>
-          </div> */}
-
           {/* Search Bar */}
           <div className="hidden md:flex items-center align-middle gap-2 rounded-lg mx-6 mt-2 px-3 py-2 h-11 w-96 bg-muted-foreground/20">
             <FiSearch className="w-5 h-5 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search vehicles, dealers, reports..."
-              className=" border-none outline-none flex-1 text-sm"
+              className="border-none outline-none flex-1 text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -162,10 +159,6 @@ export default function Navbar({ setErrorMessage }) {
             )}
           </div>
 
-          <Button variant="ghost" size="icon">
-            <Settings className="w-5 h-5" />
-          </Button>
-
           {/* Profile */}
           <div className="relative" ref={profileRef}>
             <button
@@ -190,24 +183,24 @@ export default function Navbar({ setErrorMessage }) {
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-gray-200">
                 <div className="py-1">
-                  <a
-                    href="#"
+                  <Link
+                    href={getSettingsRoute()}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     <div className="flex items-center">
                       <FiUser className="mr-2" />
                       View Profile
                     </div>
-                  </a>
-                  <a
-                    href="#"
+                  </Link>
+                  <Link
+                    href={getSettingsRoute()}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     <div className="flex items-center">
                       <FiSettings className="mr-2" />
                       Settings
                     </div>
-                  </a>
+                  </Link>
                   <button
                     onClick={handleLogOut}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-200"
@@ -252,6 +245,13 @@ export default function Navbar({ setErrorMessage }) {
                   </span>
                 )}
               </button>
+              <Link
+                href={getSettingsRoute()}
+                className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200"
+              >
+                <FiSettings className="mr-3" />
+                <span>Settings</span>
+              </Link>
               <button
                 onClick={(e) => {
                   e.stopPropagation();

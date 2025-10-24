@@ -33,6 +33,7 @@ router.delete(
   Indexcontroller.Plan.deletePlan
 );
 
+
 router.put(
   '/change-your-plan',
   passport.authenticate('jwt', { session: false }),

@@ -1,48 +1,69 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useCreatePaymentIntentMutation, useGetStripPublishKeyQuery  } from '@/features/paymentGatewayApi';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  useCreatePaymentIntentMutation,
+  useGetStripPublishKeyQuery,
+  useConfirmAndUpgradePlanMutation,
+} from '@/features/paymentGatewayApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from '@stripe/react-stripe-js';
 import { Shield, Lock, CreditCard, CheckCircle } from 'lucide-react';
 import { loadStripe } from '@stripe/stripe-js';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
 
-
-function CheckoutForm({ 
-  priceId, 
-  plan, 
-  isLoading: isPlanLoading, 
-  showPlanSelection, 
-  currentPlanId, 
+function CheckoutForm({
+  priceId,
+  plan,
+  isLoading: isPlanLoading,
+  showPlanSelection,
+  currentPlanId,
   isPlanChanged,
-  onPaymentComplete 
+  onPaymentComplete,
 }) {
   const stripe = useStripe();
   const elements = useElements();
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const [createPaymentIntent] = useCreatePaymentIntentMutation();
-  const { data: companyData, isLoading: companyLoading } = useGetCompanyQuery();
+  const [confirmAndUpgradePlan] = useConfirmAndUpgradePlanMutation();
+  const { data: companyData } = useGetCompanyQuery();
+
   // Reset form when plan changes
   useEffect(() => {
     setError('');
     setPaymentSuccess(false);
   }, [priceId]);
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setPaymentSuccess(false);
 
+ 
+
     if (!stripe || !elements || !priceId) {
       setError('Please select a plan and ensure payment is ready');
+      return;
+    }
+
+    if (!currentPlanId) {
+   
+      setError('No pending company plan entry. Please reselect a plan.');
       return;
     }
 
@@ -54,42 +75,62 @@ function CheckoutForm({
     setIsLoading(true);
 
     try {
+      // 1) Create PaymentIntent
       const response = await createPaymentIntent({
         priceId,
-        currency: "PKR",
+        currency: 'PKR',
         planId: currentPlanId,
       }).unwrap();
-      
+
+
       const { clientSecret } = response;
 
+      // 2) Confirm card payment
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
-          billing_details: {
-            name: 'Customer Name',
-          },
+          billing_details: { name: 'Customer Name' },
         },
       });
 
       if (result.error) {
-        setError(result.error.message);
+       
+        setError(result.error.message || 'Payment failed.');
       } else if (result.paymentIntent.status === 'succeeded') {
+     
         setPaymentSuccess(true);
-        console.log('Payment completed successfully!');
+
+        // 3) Flip plans on the server (new endpoint)
+        try {
+          const upgradePayload = {
+            companyId: companyData?.data?.companyId, // e.g. "CMNGBLJ0"
+            pricePlanMongoId: priceId, // selected plan _id
+            planId: currentPlanId, // your company-level plan id
+            paymentIntentId: result.paymentIntent.id,
+          };
         
-        // Notify parent component about successful payment
-        if (onPaymentComplete) {
-          onPaymentComplete();
+
+          const upgradeRes = await confirmAndUpgradePlan(
+            upgradePayload
+          ).unwrap();
+       
+        } catch (err) {
+          console.error('Failed to upgrade plan:', err);
+          setError(err?.data?.error || 'Plan upgrade failed.');
         }
+
+        // 4) Notify parent (you already refresh UI there)
+        if (onPaymentComplete) onPaymentComplete();
       }
-    } catch (error) {
-      setError(error.data?.error || 'Failed to process payment');
+    } catch (err) {
+     
+      setError(err?.data?.error || 'Failed to process payment');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Only show the "Please select a plan" message if not in plan selection mode and no plan is selected
+  // Only show message if not in plan selection mode and no plan is selected
   if (!priceId && !showPlanSelection) {
     return (
       <Card>
@@ -107,17 +148,19 @@ function CheckoutForm({
     <Card className="shadow-xl border border-gray-200">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-gray-800">
-          <CreditCard className="w-6 h-6 text-blue-600" />
+          <CreditCard className="w-6 h-6 text-primary/60" />
           Payment Details
         </CardTitle>
       </CardHeader>
+
       <CardContent className="p-6">
-        {paymentSuccess && (
+        {paymentSuccess && !error && (
           <Alert className="mb-6 bg-green-50 border-green-200">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-600" />
               <AlertDescription className="text-green-700">
-                Payment completed successfully! The page will refresh shortly.
+                Payment and Plan Upgrade completed successfully! The page will
+                refresh shortly.
               </AlertDescription>
             </div>
           </Alert>
@@ -125,10 +168,14 @@ function CheckoutForm({
 
         {plan && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
-            <h4 className="font-semibold text-gray-900 text-lg">Order Summary</h4>
+            <h4 className="font-semibold text-gray-900 text-lg">
+              Order Summary
+            </h4>
             <div className="flex justify-between items-center mt-2">
               <span className="text-gray-600">{plan.name} Plan</span>
-              <span className="font-semibold text-gray-900">Rs {plan.price}</span>
+              <span className="font-semibold text-gray-900">
+                Rs {plan.price}
+              </span>
             </div>
             <div className="flex justify-between items-center mt-1 text-sm text-gray-600">
               <span>Billing Cycle</span>
@@ -146,14 +193,19 @@ function CheckoutForm({
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && !paymentSuccess && (
             <Alert variant="destructive" className="bg-red-50 border-red-200">
-              <AlertDescription className="text-red-700">{error}</AlertDescription>
+              <AlertDescription className="text-red-700">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
           {!paymentSuccess && (
             <>
               <div className="space-y-4">
-                <Label htmlFor="card-element" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="card-element"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Card Information
                 </Label>
                 <div className="border rounded-lg p-3 bg-white shadow-sm border-gray-200">
@@ -164,13 +216,9 @@ function CheckoutForm({
                           fontSize: '16px',
                           color: '#374151',
                           fontFamily: 'Inter, sans-serif',
-                          '::placeholder': {
-                            color: '#9CA3AF',
-                          },
+                          '::placeholder': { color: '#9CA3AF' },
                         },
-                        invalid: {
-                          color: '#EF4444',
-                        },
+                        invalid: { color: '#EF4444' },
                       },
                       hidePostalCode: true,
                     }}
@@ -183,30 +231,41 @@ function CheckoutForm({
                   <Checkbox
                     id="terms"
                     checked={acceptedTerms}
-                    onCheckedChange={(checked) => setAcceptedTerms(checked)}
+                    onCheckedChange={(checked) => setAcceptedTerms(!!checked)}
                     disabled={isLoading}
                   />
-                  <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer">
+                  <Label
+                    htmlFor="terms"
+                    className="text-sm text-gray-600 cursor-pointer"
+                  >
                     I agree to the{' '}
-                    <a href="/terms" className="text-blue-600 hover:underline">
+                    <a
+                      href="/terms"
+                      className="text-primary/60 hover:underline"
+                    >
                       Terms and Conditions
                     </a>{' '}
                     and{' '}
-                    <a href="/privacy" className="text-blue-600 hover:underline">
+                    <a
+                      href="/privacy"
+                      className="text-primary/60 hover:underline"
+                    >
                       Privacy Policy
                     </a>
                   </Label>
                 </div>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4 space-y-3 border border-blue-100">
-                <div className="flex items-center gap-2 text-blue-800">
+              <div className="rounded-lg p-4 space-y-3 border border-primary/10">
+                <div className="flex items-center gap-2 text-primary/80">
                   <Lock className="w-4 h-4" />
                   <span className="text-sm font-medium">Secure Payment</span>
                 </div>
-                <div className="flex items-center gap-2 text-blue-700">
+                <div className="flex items-center gap-2 text-primary/70">
                   <Shield className="w-4 h-4" />
-                  <span className="text-sm">Your payment information is encrypted and secure</span>
+                  <span className="text-sm">
+                    Your payment information is encrypted and secure
+                  </span>
                 </div>
               </div>
             </>
@@ -214,8 +273,14 @@ function CheckoutForm({
 
           <Button
             type="submit"
-            disabled={!stripe || isLoading || !priceId || !acceptedTerms || paymentSuccess}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={
+              !stripe ||
+              isLoading ||
+              !priceId ||
+              !acceptedTerms ||
+              paymentSuccess
+            }
+            className="w-full bg-primary/60 hover:bg-primary/70 text-white font-semibold py-3 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             size="lg"
           >
             {isLoading ? (
@@ -238,18 +303,33 @@ function CheckoutForm({
   );
 }
 
-export default function PaymentForm({ 
-  priceId, 
-  plan, 
-  isLoading, 
-  showPlanSelection, 
-  currentPlanId, 
+export default function PaymentForm({
+  priceId,
+  plan,
+  isLoading,
+  showPlanSelection,
+  currentPlanId,
   isPlanChanged,
-  onPaymentComplete 
+  onPaymentComplete,
 }) {
   const { data: publishKey } = useGetStripPublishKeyQuery();
-  // console.log(":the data publishKey is : ", publishKey)
-  const stripePromise = loadStripe(publishKey?.data);
+
+  // ✅ keep Elements stable
+  const stripePromise = useMemo(() => {
+    if (!publishKey?.data) return null;
+    return loadStripe(publishKey.data);
+  }, [publishKey?.data]);
+
+  if (!stripePromise) {
+    return (
+      <Alert>
+        <AlertDescription>Loading payment gateway…</AlertDescription>
+      </Alert>
+    );
+  }
+
+  
+
   return (
     <Elements stripe={stripePromise}>
       <CheckoutForm

@@ -123,12 +123,12 @@ export function CreateBillDialog({
   useEffect(() => {
     if (taxRates) {
       if (paymentMethod === PAYMENT_METHODS.CASH) {
-        setTaxPercent(taxRates.taxRateCash || 18);
+        setTaxPercent(taxRates.taxRateCash);
       } else if (
         paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
         paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
       ) {
-        setTaxPercent(taxRates.taxRateCard || 10);
+        setTaxPercent(taxRates.taxRateCard);
       } else {
         setTaxPercent(0);
       }

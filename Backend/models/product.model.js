@@ -13,7 +13,6 @@ const ProductSchema = new Schema(
     },
     categoryName: {
       type: String,
-      required: [true, "Category name is required"],
     },
     subCategory: {
       type: String,
@@ -64,8 +63,6 @@ const ProductSchema = new Schema(
     },
     vendor: {
       type: String,
-      trim: true,
-      required: [true, "Vendor is required"],
     },
     location: {
       type: String,

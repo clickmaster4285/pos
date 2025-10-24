@@ -199,6 +199,42 @@ export const companyApi = createApi({
       }),
       providesTags: (result, error, id) => [{ type: 'Company', id }],
     }),
+    /* ===================== EMAIL CHANGE ======== */
+
+    /** POST /api/user/email/change/initiate */
+    initiateEmailChange: builder.mutation({
+      query: (body) => ({
+        url: '/company-email-change',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (res) => ({
+        success: res?.success,
+        message: res?.message,
+        expiresAt: res?.data?.expiresAt ?? null,
+      }),
+    }),
+
+    /** POST /api/user/email/change/verify */
+    verifyEmailChange: builder.mutation({
+      query: (body) => ({
+        url: '/verify-company-email',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (res) => ({
+        success: res?.success,
+        message: res?.message,
+        data: res?.data,
+      }),
+      invalidatesTags: (result) =>
+        result?.data?.id
+          ? [
+              { type: 'Company', id: result.data.id },
+              { type: 'Company', id: 'LIST' },
+            ]
+          : [{ type: 'Company', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -210,4 +246,6 @@ export const {
   useResendVerificationCodeMutation,
   useToggleCompanyStatusMutation,
   useGetCompanyQuery,
+  useInitiateEmailChangeMutation,
+  useVerifyEmailChangeMutation,
 } = companyApi;

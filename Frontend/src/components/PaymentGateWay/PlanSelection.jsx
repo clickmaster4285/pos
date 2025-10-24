@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check, Star } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Check, Star } from 'lucide-react';
 
 export default function PlanSelection({
   plans,
@@ -38,9 +38,9 @@ export default function PlanSelection({
   const getPlanFeatures = (plan) => [
     `${plan.limitations?.maxStaff || 0} Staff Members`,
     `${plan.limitations?.maxVendors || 0} Vendors`,
-    `${plan.limitations?.maxProductItems || 0} Product Items`,
+    `${plan.limitations?.maxInventoryItems || 0} Inventory Items`,
     ...(plan.limitations?.features || []).map((feature) =>
-      feature.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      feature.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
     ),
   ];
 
@@ -57,16 +57,16 @@ export default function PlanSelection({
         {plans?.map((plan, index) => (
           <Card
             key={plan._id}
-            className={`relative cursor-pointer transition-all duration-200 hover:z-5 hover:outline-blue-500 outline min-w-62 ${
+            className={`relative cursor-pointer transition-all duration-200 hover:z-5 hover:outline-primary/50 outline min-w-62 ${
               selectedPlan === plan._id
-                ? "ring-2 ring-blue-500 border-blue-500 shadow-lg"
-                : "hover:shadow-md hover:border-gray-300"
-            } ${isChangingPlan ? "opacity-50 pointer-events-none" : ""}`}
+                ? 'ring-2 ring-primary/50 border-primary/50 shadow-lg'
+                : 'hover:shadow-md hover:border-gray-300'
+            } ${isChangingPlan ? 'opacity-50 pointer-events-none' : ''}`}
             onClick={() => !isChangingPlan && onPlanSelect(plan._id)}
           >
             {index === 0 && (
               <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white flex items-center gap-1">
+                <Badge className="bg-primary text-secondary-foreground flex items-center gap-1">
                   <Star className="w-3 h-3" />
                   Popular
                 </Badge>
@@ -86,7 +86,7 @@ export default function PlanSelection({
                         Rs {plan.price}
                       </span>
                       <span className="text-gray-600">
-                        /{plan.interval || "month"}
+                        /{plan.interval || 'month'}
                       </span>
                     </div>
                     {plan.description && (
@@ -99,7 +99,7 @@ export default function PlanSelection({
                   <div className="space-y-3 mt-6">
                     {getPlanFeatures(plan).map((feature, idx) => (
                       <div key={idx} className="flex items-center gap-3">
-                        <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <Check className="w-4 h-4 text-primary flex-shrink-0" />
                         <span className="text-sm text-gray-700">{feature}</span>
                       </div>
                     ))}
@@ -111,21 +111,21 @@ export default function PlanSelection({
               <Button
                 className={`w-full mt-6 ${
                   selectedPlan === plan._id
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-blue-900 hover:bg-blue-800"
-                } ${isChangingPlan ? "opacity-50 cursor-not-allowed" : ""}`}
-                variant={selectedPlan === plan._id ? "default" : "outline"}
+                    ? 'bg-primary text-secondary-foreground  hover:bg-primary/80'
+                    : 'bg-primary text-secondary-foreground  hover:bg-primary/80'
+                } ${isChangingPlan ? 'opacity-50 cursor-not-allowed' : ''}`}
+                variant={selectedPlan === plan._id ? 'default' : 'outline'}
                 disabled={isChangingPlan}
               >
                 {isChangingPlan ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin   " />
                     Changing...
                   </div>
                 ) : selectedPlan === plan._id ? (
-                  "Selected"
+                  'Selected'
                 ) : (
-                  "Select Plan"
+                  'Select Plan'
                 )}
               </Button>
             </CardContent>

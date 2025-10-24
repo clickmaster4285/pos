@@ -7,6 +7,7 @@ import ErrorResponse from "../utils/errorResponse.js";
 import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
 import { generateOTP } from "../utils/generate_verifyOTP.js";
 import sendEmail from "../utils/sendEmail.js";
+import { fetchToolLogoName } from "../utils/fetchToolLogoName.js";
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -32,15 +33,15 @@ const generateTokens = async (user) => {
 
 const setTokens = (res, accessToken, refreshToken) => {
   res.cookie("authToken", accessToken, {
-    httpOnly: true,             // true
+    httpOnly: true, // true
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",          // strict
+    sameSite: "strict", // strict
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,            // true
+    httpOnly: true, // true
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",     // strict
+    sameSite: "strict", // strict
     maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days
   });
 };
@@ -53,7 +54,9 @@ const login = async (req, res, next) => {
       return next(new ErrorResponse("Please provide email and password", 400));
     }
 
-    const user = await User.findOne({ email, deleted:false }).select("+password");
+    const user = await User.findOne({ email, deleted: false }).select(
+      "+password"
+    );
     if (!user) {
       return next(new ErrorResponse("Invalid credentials", 401));
     }
@@ -72,20 +75,34 @@ const login = async (req, res, next) => {
 
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
+    const toolNameLogo = await fetchToolLogoName()
 
     const { accessToken, refreshToken } = await generateTokens(user);
     setTokens(res, accessToken, refreshToken);
-
-    const company = await IndexModel.Company.findOne({companyId: user.companyId, deleted:false, isActive:true}).lean()
-    if (!company) {
-      return next(new ErrorResponse("company not found: you cann't be able to login, Please contact you company Admin", 401));
-    }
-
-      const activePlans = company.plan.find((plan) => plan.isActive === true);
+    let activePlans;
+    if (user.role !== "superAdmin") {
+      const company = await IndexModel.Company.findOne({
+        companyId: user.companyId,
+        deleted: false,
+        isActive: true,
+      }).lean();
       if (!company) {
-      return next(new ErrorResponse("the plan are Expired: Please contact you company Admin", 401));
+        return next(
+          new ErrorResponse(
+            "company not found: you cann't be able to login, Please contact you company Admin",
+            401
+          )
+        );
+      }
+    // console.log("the user: ", user)
+
+      activePlans = company.plan.find((plan) => plan.isActive === true);
+      if (!activePlans) {
+        activePlans = company.plan.find((plan) => plan.isActive === false && (plan.status === "not started" || plan.status === "rejected"));
+      }
     }
 
+// console.log("the activePlans: ", activePlans)
     res.status(200).json({
       success: true,
       status: 200,
@@ -100,10 +117,12 @@ const login = async (req, res, next) => {
           department: user.department,
           permissions: user.permissions,
           isActive: user.isActive,
-          extraFeature: activePlans.limitations.features,
+          extraFeature: user.role !== "superAdmin" ? activePlans.limitations.features : [],
+          toolName: toolNameLogo.toolName,
+          toolLogo: toolNameLogo.toolLogo,
         },
         token: accessToken,
-        refreshToken, 
+        refreshToken,
       },
     });
   } catch (error) {
@@ -140,32 +159,37 @@ const logout = async (req, res, next) => {
         }
 
         // 4. Tell browser to clear site data (cookies, storage, cache)
-        return res.status(200).set({
+        return res
+          .status(200)
+          .set({
+            "Clear-Site-Data": '"cookies", "storage", "cache"',
+            "Cache-Control": "no-store",
+          })
+          .json({
+            success: true,
+            message: "Logged out successfully",
+            cookiesCleared: true,
+          });
+      });
+    } else {
+      // If no session, just clear cookies + respond
+      return res
+        .status(200)
+        .set({
           "Clear-Site-Data": '"cookies", "storage", "cache"',
           "Cache-Control": "no-store",
-        }).json({
+        })
+        .json({
           success: true,
           message: "Logged out successfully",
           cookiesCleared: true,
         });
-      });
-    } else {
-      // If no session, just clear cookies + respond
-      return res.status(200).set({
-        "Clear-Site-Data": '"cookies", "storage", "cache"',
-        "Cache-Control": "no-store",
-      }).json({
-        success: true,
-        message: "Logged out successfully",
-        cookiesCleared: true,
-      });
     }
   } catch (error) {
     console.error("[auth.controller] Error during logout:", error);
     return next(new ErrorResponse("Server error during logout", 500));
   }
 };
-
 
 const getme = async (req, res, next) => {
   try {
@@ -175,15 +199,53 @@ const getme = async (req, res, next) => {
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
-    
-    const company = await IndexModel.Company.findOne({companyId: user.companyId, deleted:false, isActive:true}).lean()
-    if (!company) {
-      return next(new ErrorResponse("company not found: you cann't be able to login, Please contact you company Admin", 401));
+    const toolNameLogo = await fetchToolLogoName()
+    let activePlans;
+    if(user.role === "superAdmin"){
+      return(
+      res.status(200).json({
+      success: true,
+      data: {
+        user: {
+          id: user.userId,
+          name: user.name,
+          email: user.email,
+          companyId: user.companyId,
+          role: user.role,
+          subRole: user.subRole,
+          department: user.department,
+          permissions: user.permissions,
+          isActive: user.isActive,
+          extraFeature: activePlans?.limitations?.features || [],
+          toolName: toolNameLogo.toolName,
+          toolLogo: toolNameLogo.toolLogo,
+        },
+      },
+    }))
     }
 
-      const activePlans = company.plan.find((plan) => plan.isActive === true);
-      if (!company) {
-      return next(new ErrorResponse("the plan are Expired: Please contact you company Admin", 401));
+    const company = await IndexModel.Company.findOne({
+      companyId: user.companyId,
+      deleted: false,
+      isActive: true,
+    }).lean();
+    if (!company) {
+      return next(
+        new ErrorResponse(
+          "company not found: you cann't be able to login, Please contact you company Admin",
+          401
+        )
+      );
+    }
+
+    activePlans = company.plan.find((plan) => plan.isActive === true);
+    if (!company) {
+      return next(
+        new ErrorResponse(
+          "the plan are Expired: Please contact you company Admin",
+          401
+        )
+      );
     }
 
     res.status(200).json({
@@ -200,7 +262,8 @@ const getme = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature: activePlans.limitations.features,
-
+          toolName: toolNameLogo.toolName,
+          toolLogo: toolNameLogo.toolLogo,
         },
       },
     });
@@ -226,7 +289,10 @@ const refreshToken = async (req, res, next) => {
       return next(new ErrorResponse("User not found or inactive", 401));
     }
 
-    const tokenRecord = await RefreshToken.findOne({ token: refreshToken, revoked: false });
+    const tokenRecord = await RefreshToken.findOne({
+      token: refreshToken,
+      revoked: false,
+    });
     if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
       return next(new ErrorResponse("Invalid or expired refresh token", 401));
     }
@@ -319,7 +385,8 @@ const registerUser = async (req, res) => {
         await IndexModel.User.findByIdAndDelete(user._id);
         return res.status(500).json({
           success: false,
-          message: "Failed to send verification email, user creation rolled back",
+          message:
+            "Failed to send verification email, user creation rolled back",
           error: emailError.message,
         });
       }
@@ -329,7 +396,8 @@ const registerUser = async (req, res) => {
 
       return res.status(201).json({
         success: true,
-        message: "User registered successfully. Please verify via the OTP sent to your email within 1 minute.",
+        message:
+          "User registered successfully. Please verify via the OTP sent to your email within 1 minute.",
         data: {
           id: user._id,
           userId: user.userId,
@@ -355,9 +423,6 @@ const registerUser = async (req, res) => {
     });
   }
 };
-
-
-
 
 export default {
   login,

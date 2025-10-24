@@ -30,8 +30,6 @@ const BillingSchema = new Schema(
         sku: {
           type: String,
           required: true,
-          trim: true,
-          match: [/^[A-Z0-9-]+$/],
         },
         quantity: {
           type: Number,

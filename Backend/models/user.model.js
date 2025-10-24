@@ -1,6 +1,37 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 
+const EmailChangeSchema = new mongoose.Schema(
+  {
+    newEmail: { type: String, lowercase: true, trim: true },
+    codeHash: String,
+    expiresAt: Date,
+    attempts: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const PasswordChangeSchema = new mongoose.Schema(
+  {
+    codeHash: String, // hashed OTP
+    newPassHash: String, // hashed new password (temporary)
+    expiresAt: Date,
+    attempts: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+const SecuritySchema = new mongoose.Schema(
+  {
+    emailChange: { type: EmailChangeSchema, default: undefined },
+    passwordChange: { type: PasswordChangeSchema, default: undefined },
+  },
+  { _id: false }
+);
+
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -10,6 +41,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+  },
+  toolName: {
+    type: String,
+  },
+  toolLogo: {
+    type: String,
   },
   companyId: {
     type: String,
@@ -66,6 +103,7 @@ const userSchema = new mongoose.Schema({
     staffSummary: { type: Boolean, default: false },
     viewActiveLog: { type: Boolean, default: false },
     viewCompanySummary: { type: Boolean, default: false },
+    companyprofileupdate: { type: Boolean, default: false },
   },
   phone: {
     type: String,
@@ -100,9 +138,9 @@ const userSchema = new mongoose.Schema({
       type: Date,
     },
   },
-  stripeConfig:{
+  stripeConfig: {
     publishableKey: String,
-    secretKey : String,
+    secretKey: String,
     webhookSigningSecret: String,
   },
   history: [
@@ -164,6 +202,7 @@ const userSchema = new mongoose.Schema({
       ref: 'Address',
     },
   ],
+  security: { type: SecuritySchema, default: {} },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -179,6 +218,22 @@ userSchema.pre('save', async function (next) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   this.updatedAt = Date.now();
+  next();
+});
+
+
+userSchema.pre('save', async function (next) {
+  this.updatedAt = Date.now();
+
+  if (!this.isModified('password')) return next();
+
+  // Prevent double-hash if already hashed
+  if (typeof this.password === 'string' && this.password.startsWith('$2')) {
+    return next();
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 

@@ -4,6 +4,7 @@ import { generateUniqueUserId } from '../utils/generateUniqueUserId.js';
 import { generateOTP } from '../utils/generate_verifyOTP.js';
 import sendEmail from '../utils/sendEmail.js';
 import ZKDeviceService from "../utils/zkDeviceService.js";
+import bcrypt from 'bcrypt';
 
 const createStaff = async (req, res) => {
   try {
@@ -546,6 +547,285 @@ const active_inactiveUser = async (req, res) => {
   }
 };
 
+//--------------helper--------------------
+const send = (res, code, payload) => res.status(code).json(payload);
+
+/* =========================================================
+   EMAIL CHANGE – INITIATE
+========================================================= */
+export const initiateEmailChange = async (req, res) => {
+  try {
+    const { currentEmail, newEmail, userId } = req.body || {};
+    const targetId = userId || req.user?.id || req.user?._id;
+
+    if (!targetId || !currentEmail || !newEmail) {
+      return res.status(400).json({ success: false, message: 'currentEmail, newEmail, and userId/req.user are required' });
+    }
+
+    const user = await IndexModel.User.findById(targetId);
+    if (!user || user.deleted || user.isActive === false) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.email.trim().toLowerCase() !== currentEmail.trim().toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'Current email does not match' });
+    }
+
+    const exists = await IndexModel.User.findOne({
+      email: newEmail.trim().toLowerCase(),
+      deleted: false,
+      isActive: true,
+      _id: { $ne: user._id },
+    }).lean();
+    if (exists) {
+      return res.status(409).json({ success: false, message: 'New email already exists' });
+    }
+
+    const { otp, hashedOTP } = await generateOTP();
+
+    user.security = user.security || {};
+    user.security.emailChange = {
+      newEmail: newEmail.trim().toLowerCase(),
+      codeHash: hashedOTP,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      attempts: 0,
+      createdAt: new Date(),
+    };
+
+    user.markModified('security');   // <-- ensure persistence
+    await user.save();
+
+    try {
+      await sendEmail({
+        email: user.email,                 // send to current email
+        subject: 'Email Change Verification',
+        template: 'emailVerification',
+        data: { name: user.name, otp },
+      });
+    } catch (e) {
+      // rollback pending
+      user.security.emailChange = undefined;
+      user.markModified('security');
+      await user.save();
+      return res.status(500).json({ success: false, message: 'Failed to send verification email', error: e.message });
+    }
+
+    return res.status(200).json({ success: true, message: 'OTP sent to current email.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+
+/* =========================================================
+   EMAIL CHANGE – VERIFY
+========================================================= */
+export const verifyEmailChange = async (req, res) => {
+  try {
+    const { code, userId } = req.body || {};
+    const targetId = userId || req.user?.id || req.user?._id;
+    if (!targetId || !code)
+      return res
+        .status(400)
+        .json({ success: false, message: 'code and userId/req.user required' });
+
+    const user = await IndexModel.User.findById(targetId);
+    if (!user?.security?.emailChange) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No pending email change' });
+    }
+
+    const pending = user.security.emailChange;
+    if (Date.now() > pending.expiresAt) {
+      user.security.emailChange = undefined;
+      user.markModified('security');
+      await user.save();
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+
+    const ok = await bcrypt.compare(String(code), pending.codeHash || '');
+    if (!ok) {
+      user.security.emailChange.attempts = (pending.attempts || 0) + 1;
+      user.markModified('security');
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Invalid code' });
+    }
+
+    const oldEmail = user.email;
+    user.email = pending.newEmail;
+    user.security.emailChange = undefined;
+
+    // history (matches your schema: action, performedBy, createdAt auto)
+    user.history = user.history || [];
+    user.history.push({
+      action: 'EMAIL_UPDATED',
+      performedBy: String(targetId),
+    });
+
+    user.markModified('security');
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Email updated successfully',
+      data: { id: user._id, email: user.email },
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+
+/* =========================================================
+   PASSWORD CHANGE – INITIATE
+========================================================= */
+export const initiatePasswordChange = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, userId } = req.body || {};
+    const targetId = userId || req.user?.id || req.user?._id;
+
+    if (!targetId || !currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            'currentPassword, newPassword, and userId/req.user are required',
+        });
+    }
+    if (String(newPassword).length < 8) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: 'newPassword must be at least 8 characters',
+        });
+    }
+
+    const user = await IndexModel.User.findById(targetId).select('+password');
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found' });
+
+    const match = await bcrypt.compare(currentPassword, user.password || '');
+    if (!match)
+      return res
+        .status(400)
+        .json({ success: false, message: 'Current password incorrect' });
+
+    const { otp, hashedOTP } = await generateOTP();
+    const newPassHash = await bcrypt.hash(newPassword, 10);
+
+    user.security = user.security || {};
+    user.security.passwordChange = {
+      codeHash: hashedOTP,
+      newPassHash,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      attempts: 0,
+      createdAt: new Date(),
+    };
+
+    user.markModified('security');
+    await user.save();
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password Change Verification',
+        template: 'emailVerification',
+        data: { name: user.name, otp },
+      });
+    } catch (e) {
+      user.security.passwordChange = undefined;
+      user.markModified('security');
+      await user.save();
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: 'Failed to send verification email',
+          error: e.message,
+        });
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: 'OTP sent to your email.' });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+
+/* =========================================================
+   PASSWORD CHANGE – VERIFY
+========================================================= */
+export const verifyPasswordChange = async (req, res) => {
+  try {
+    const { code, userId } = req.body || {};
+    const targetId = userId || req.user?.id || req.user?._id;
+    if (!targetId || !code)
+      return res
+        .status(400)
+        .json({ success: false, message: 'code and userId/req.user required' });
+
+    const user = await IndexModel.User.findById(targetId).lean();
+    if (!user?.security?.passwordChange) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No pending password change' });
+    }
+
+    const pending = user.security.passwordChange;
+    if (Date.now() > new Date(pending.expiresAt).getTime()) {
+      await IndexModel.User.updateOne(
+        { _id: targetId },
+        { $unset: { 'security.passwordChange': 1 } }
+      );
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+
+    const ok = await bcrypt.compare(String(code), pending.codeHash || '');
+    if (!ok) {
+      await IndexModel.User.updateOne(
+        { _id: targetId },
+        { $inc: { 'security.passwordChange.attempts': 1 } }
+      );
+      return res.status(400).json({ success: false, message: 'Invalid code' });
+    }
+
+    // Atomic commit: set password to stored hash, unset pending, push history
+    await IndexModel.User.updateOne(
+      { _id: targetId },
+      {
+        $set: { password: pending.newPassHash, passwordChangedAt: new Date() },
+        $unset: { 'security.passwordChange': 1 },
+        $push: {
+          history: {
+            action: 'PASSWORD_UPDATED',
+            performedBy: String(targetId),
+            // createdAt auto by schema default
+          },
+        },
+      }
+    );
+
+    return res
+      .status(200)
+      .json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
 export default {
   createStaff,
   registerUser,
@@ -556,4 +836,9 @@ export default {
   getAllCustomerUsers,
   deleteStaff,
   active_inactiveUser,
+  //
+  initiateEmailChange,
+  verifyEmailChange,
+  initiatePasswordChange,
+  verifyPasswordChange,
 };

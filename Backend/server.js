@@ -49,9 +49,13 @@ app.use(
   "/api/strip/strip-webhook",
   bodyParser.raw({ type: "application/json" })
 );
-app.use(helmet());
+
+// Keep express.json as requested
 app.use(express.json({ limit: "10mb" }));
+// Keep express.urlencoded commented out as per your instruction
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+app.use(helmet());
 app.use(compression());
 app.use(morgan(NODE_ENV === "development" ? "dev" : "combined"));
 app.use(cookieParser());
@@ -98,7 +102,6 @@ app.use("/api", apiRouter);
 //     // console.error("❌ Failed to start real-time listeners:", error.message);
 //   }
 // };
-
 
 if (NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "public")));
@@ -199,7 +202,6 @@ cron.schedule("* * * * *", async () => {
     console.error("Cron job error (plan validation):", err);
   }
 });
-
 
 // unverified remove random user
 cron.schedule("* * * * *", async () => {

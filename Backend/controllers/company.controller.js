@@ -112,6 +112,7 @@ const createCompany = async (req, res) => {
         staffSummary: true,
         viewActiveLog: true,
         viewCompanySummary: true,
+        companyprofileupdate: true,
       },
       history: [
         {
@@ -226,7 +227,6 @@ const createCompany = async (req, res) => {
 const verifyCompany_Admin = async (req, res) => {
   const { id, action } = req.query;
   try {
-    console.log("the id and action is : ", id, action);
     if (req.user.role !== "superAdmin") {
       return res.status(401).json({
         success: false,
@@ -264,15 +264,15 @@ const verifyCompany_Admin = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
     // Update user to set status.isaccepted and status.isactive
     const updatedUser = await IndexModel.User.findOneAndUpdate(
-      { userId: company.owner, deleted: false, isActive: true, verified: true },
+      { userId: company.owner, deleted: false, isActive: false, verified: true },
       {
         $set: {
           "status.isaccepted": isActive,
           "status.performedBy": performedBy,
           "status.updatedAt": new Date(),
+          isActive:true,
         },
         $push: {
           history: {
@@ -284,7 +284,6 @@ const verifyCompany_Admin = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
-
     if (!updatedUser) {
       return res.status(404).json({
         success: false,
@@ -535,6 +534,192 @@ const active_inactiveCompany = async (req, res) => {
     });
   }
 };
+const send = (res, code, payload) => res.status(code).json(payload);
+
+//------------company email change
+export const initiateCompanyEmailChange = async (req, res) => {
+  try {
+    const { currentEmail, newEmail } = req.body || {};
+
+    // Basic validation
+    if (!currentEmail || !newEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both currentEmail and newEmail are required',
+      });
+    }
+
+    const curr = currentEmail.trim().toLowerCase();
+    const next = newEmail.trim().toLowerCase();
+
+    // Find company by current email
+    const company = await IndexModel.Company.findOne({
+      contactEmail: curr,
+      deleted: false,
+      isActive: true,
+    });
+
+    if (!company) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Company not found with that email' });
+    }
+
+    // Check if same email
+    if (curr === next) {
+      return res.status(400).json({
+        success: false,
+        message: 'New email must be different from current email',
+      });
+    }
+
+    // Check for duplicate email in other companies
+    const exists = await IndexModel.Company.findOne({
+      contactEmail: next,
+      deleted: false,
+      isActive: true,
+      _id: { $ne: company._id },
+    }).lean();
+
+    if (exists) {
+      return res
+        .status(409)
+        .json({ success: false, message: 'New email already exists' });
+    }
+
+    // Generate OTP
+    const { otp, hashedOTP } = await generateOTP();
+
+    company.security = company.security || {};
+    company.security.emailChange = {
+      newEmail: next,
+      codeHash: hashedOTP,
+      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+      attempts: 0,
+      createdAt: new Date(),
+    };
+
+    company.markModified('security');
+    await company.save();
+
+    // Send verification email to current email
+    try {
+      await sendEmail({
+        email: company.contactEmail,
+        subject: 'Company Email Change Verification',
+        template: 'emailVerification',
+        data: { name: company.name || 'there', otp },
+      });
+    } catch (e) {
+      // Rollback pending email change on failure
+      company.security.emailChange = undefined;
+      company.markModified('security');
+      await company.save();
+
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email',
+        error: e.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP sent to current company email.',
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
+  }
+};
+
+//company verify email change
+export const verifyCompanyEmailChange = async (req, res) => {
+  try {
+    const { code, currentEmail } = req.body || {};
+
+    // Validate inputs
+    if (!code || !currentEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both code and currentEmail are required',
+      });
+    }
+
+    // Find company by current contactEmail
+    const company = await IndexModel.Company.findOne({
+      contactEmail: currentEmail.trim().toLowerCase(),
+      deleted: false,
+      isActive: true,
+    });
+
+    if (!company) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Company not found with that email' });
+    }
+
+    const pending = company?.security?.emailChange;
+    if (!pending) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'No pending email change' });
+    }
+
+    // Check expiry
+    if (Date.now() > pending.expiresAt) {
+      company.security.emailChange = undefined;
+      company.markModified('security');
+      await company.save();
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+
+    // Compare OTP
+    const ok = await bcrypt.compare(String(code), pending.codeHash || '');
+    if (!ok) {
+      company.security.emailChange.attempts = (pending.attempts || 0) + 1;
+      company.markModified('security');
+      await company.save();
+      return res.status(400).json({ success: false, message: 'Invalid code' });
+    }
+
+    // Success — update contactEmail
+    const oldEmail = company.contactEmail;
+    company.contactEmail = pending.newEmail;
+    company.security.emailChange = undefined;
+
+    // Log history
+    company.history = company.history || [];
+    company.history.push({
+      action: 'EMAIL_UPDATED',
+      performedBy: 'system',
+      createdAt: new Date(),
+    });
+
+    company.markModified('security');
+    await company.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Company email updated successfully',
+      data: {
+        id: company._id,
+        oldEmail,
+        newEmail: company.contactEmail,
+      },
+    });
+  } catch (err) {
+    console.error('verifyCompanyEmailChange error:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
+  }
+};
 
 
 
@@ -545,4 +730,6 @@ export default {
   getAllCompany,
   active_inactiveCompany,
   updateCompanySettings,
+  initiateCompanyEmailChange,
+  verifyCompanyEmailChange,
 };

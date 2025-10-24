@@ -75,4 +75,34 @@ router.put(
   passport.authenticate('jwt', { session: false }),
   addStripeConfig
 );
+
+//---email and password update
+
+router.post(
+  '/email-change',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.User.initiateEmailChange
+);
+
+router.post(
+  '/verify-email',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.User.verifyEmailChange
+);
+router.post(
+  '/password-change',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.User.initiatePasswordChange
+);
+router.post(
+  '/password-verify',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.User.verifyPasswordChange
+);
+
+
 export default router;

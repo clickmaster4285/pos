@@ -46,4 +46,18 @@ router.put(
   upload.single('companyLogo'),
   Indexcontroller.Company.updateCompanySettings
 );
+
+router.post(
+  '/company-email-change',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.Company.initiateCompanyEmailChange
+);
+
+router.post(
+  '/verify-company-email',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.Company.verifyCompanyEmailChange
+);
 export default router;

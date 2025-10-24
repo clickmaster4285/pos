@@ -20,7 +20,6 @@ passport.use(
         verified: true,
         isActive: true,
       });
-      // console.log("the users are in passport: ", user)
       if (!user) {
         return done(null, false, { message: "User not found" });
       }

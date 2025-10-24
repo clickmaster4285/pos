@@ -132,6 +132,8 @@ const Staff = () => {
     staffSummary: 'Staff Summary',
     viewActiveLog: 'View Active Log',
     viewCompanySummary: 'View Company Summary',
+
+    companyprofileupdate: 'Update Company Setting'
   };
 
   const staffPermissionKeys = [
@@ -278,6 +280,8 @@ const Staff = () => {
           staffSummary: false,
           viewActiveLog: false,
           viewCompanySummary: false,
+
+          companyprofileupdate: false,
         },
       });
       setIsAddDialogOpen(false);

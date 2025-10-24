@@ -1,7 +1,7 @@
 // settingsApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -54,7 +54,18 @@ export const settingsApi = createApi({
       transformResponse: (res, meta) => {
         // console.log('Raw response from getCompanySettings:', res);
         if (res?.success && res?.data?.invoiceSettings) {
-          return { invoiceSettings: res.data.invoiceSettings, companyInfo:{companyName: res.data.name, companyLogo: res.data.companyLogo, contactPhone: res.data.contactPhone, address: res.data.address}, status: meta?.response?.status || 200 };
+          return {
+            invoiceSettings: res.data.invoiceSettings,
+            plan: res.data.plan || ' ',
+            companyInfo: {
+              companyName: res.data.name,
+              companyLogo: res.data.companyLogo,
+              contactPhone: res.data.contactPhone,
+              address: res.data.address,
+            },
+
+            status: meta?.response?.status || 200,
+          };
         }
         throw { message: res?.message || 'Failed to fetch settings', status: meta?.response?.status || 400 };
       },

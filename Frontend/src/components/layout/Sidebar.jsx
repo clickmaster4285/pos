@@ -22,6 +22,7 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
+  UserSquare2,
 } from 'lucide-react';
 
 const iconMap = {
@@ -45,6 +46,7 @@ const iconMap = {
   'Staff Salaries': CreditCard,
   Couriers: ShoppingCart,
   Warehouse: Truck,
+  'Profile Setting': UserSquare2,
 };
 
 function SidebarFooter({ userName, userRole }) {
@@ -62,8 +64,11 @@ function SidebarFooter({ userName, userRole }) {
             {userRole || 'unauthenticated'}
           </p>
         </div>
+  
+        {/* {console.log("the userRole:  under sdi: ",userRole)} */}
+        {}
         <Link
-          href="/settings/profile"
+          href={`profile-setting`}
           className="flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-accent-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 transition-all duration-200"
           aria-label="Settings"
           title="Settings"
@@ -90,6 +95,7 @@ const getAuthState = () => {
     if (localAuthState) {
       return JSON.parse(localAuthState);
     }
+
     return null;
   } catch (error) {
     console.error('Error reading auth state:', error);
@@ -101,123 +107,106 @@ const getAuthState = () => {
 const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
 const hasAny = (user, keys = []) => keys.some((k) => hasPerm(user, k));
 
-// ---- Feature to Link Mapping ----
-const featureLinkMap = {
-  'Staff': {
-    href: '/admin/staff',
-    label: 'Staff',
-    icon: iconMap['Staff'],
-    permissions: ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete']
-  },
-  'Staff Salary': {
-    href: '/admin/staff-salaries',
-    label: 'Staff Salaries',
-    icon: iconMap['Staff Salaries'],
-    permissions: ['createPayment', 'viewAllStaffSalaries', 'updateSalary', 'deletePayment', 'staffSummary', 'viewActiveLog', 'viewCompanySummary']
-  },
-  'Vendors': {
-    href: '/admin/vendors',
-    label: 'Vendors',
-    icon: iconMap['Vendors'],
-    permissions: ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors']
-  },
-  'Attendance': {
-    href: '/admin/attendance',
-    label: 'Manage Attendance',
-    icon: iconMap['Attendance'],
-    permissions: ['manageAppointments']
-  },
-  'Attendance Devices': {
-    href: '/admin/attendance-devices',
-    label: 'Attendance Devices Setting',
-    icon: iconMap['Attendance'],
-    permissions: ['manageAppointments']
-  },
-  'Couriers': {
-    href: '/admin/couriers',
-    label: 'Couriers & Shipment',
-    icon: iconMap['Couriers'],
-    permissions: ['assignTasks']
-  },
-  'Reports': {
-    href: '/admin/reports',
-    label: 'Reports',
-    icon: iconMap['Reports'],
-    permissions: ['viewReports']
-  },
-  'Warehouse': {
-    href: '/admin/warehouse',
-    label: 'Warehouse',
-    icon: iconMap['Warehouse'],
-    permissions: ['manageTeams']
-  },
-  'Permissions': {
-    href: '/admin/permissions',
-    label: 'Permission',
-    icon: iconMap['Permission'],
-    permissions: ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete']
-  },
-  'Category': {
-    href: '/admin/category',
-    label: 'Category',
-    icon: iconMap['Product'],
-    permissions: ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct']
-  }
-};
+function buildStaffLinks(user) {
+  const subRoleLower = user?.subRole?.toLowerCase() || '';
+  const staffBase = subRoleLower
+    ? `/staff/${encodeURIComponent(subRoleLower)}`
+    : '/staff';
 
-// ---- Core links that are always available for admin/staff ----
-const getCoreLinks = (user) => {
-  const coreLinks = [
+  const links = [
+    // Compulsory links for ALL staff - always show
     {
-      href: '/admin/dashboard',
+      href: `${staffBase}/dashboard`,
       label: 'Dashboard',
       icon: iconMap['Dashboard'],
       alwaysShow: true
     },
     {
-      href: '/admin/product',
-      label: 'Product',
-      icon: iconMap['Product'],
-      alwaysShow: true,
-      permissions: ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct']
+      href: `${staffBase}/profile-setting`,
+      label: 'Settings',
+      icon: iconMap['Settings'],
+      alwaysShow: true
     },
-    {
-      href: '/admin/billing',
-      label: 'Billing',
-      icon: iconMap['Billing'],
-      alwaysShow: true,
-      permissions: ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling']
-    }
   ];
 
-  // Filter core links based on permissions
-  return coreLinks.filter(link => 
-    link.alwaysShow || (link.permissions && hasAny(user, link.permissions))
-  );
-};
+  // Product - show based on product permissions
+  if (hasAny(user, ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct'])) {
+    links.push({
+      href: `${staffBase}/product`,
+      label: 'Product',
+      icon: iconMap['Product'],
+    });
+  }
 
-// ---- Build dynamic links based ONLY on extraFeatures ----
-const buildDynamicLinks = (user) => {
-  if (!user?.extraFeature || !Array.isArray(user.extraFeature)) return [];
+  // Billing - show based on billing permissions
+  if (hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling', 'createPayment'])) {
+    links.push({
+      href: `${staffBase}/billing`,
+      label: 'Billing',
+      icon: iconMap['Billing'],
+    });
+  }
 
-  const dynamicLinks = [];
+  // Role-based links for specific subRoles
+  if (subRoleLower === 'receptionist' && hasAny(user, ['viewProduct'])) {
+    links.push({
+      href: `${staffBase}/orders`,
+      label: 'Orders',
+      icon: iconMap['Orders'],
+    });
+  }
 
-  user.extraFeature.forEach(feature => {
-    const linkConfig = featureLinkMap[feature];
-    if (linkConfig) {
-      // Check if user has required permissions for this feature
-      if (!linkConfig.permissions || hasAny(user, linkConfig.permissions)) {
-        dynamicLinks.push({
-          href: linkConfig.href,
-          label: linkConfig.label,
-          icon: linkConfig.icon
-        });
-      }
-    }
-  });
+  // Other permission-based links
+  if (hasAny(user, ['managePlans'])) {
+    links.push({
+      href: `${staffBase}/plans`,
+      label: 'Plans',
+      icon: iconMap['Plans'],
+    });
+  }
 
-  return dynamicLinks;
-};
+  if (hasAny(user, ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors'])) {
+    links.push({
+      href: `${staffBase}/vendors`,
+      label: 'Vendors',
+      icon: iconMap['Vendors'],
+    });
+  }
+
+  if (hasAny(user, ['viewReports'])) {
+    links.push({
+      href: `${staffBase}/reports`,
+      label: 'Reports',
+      icon: iconMap['Reports'],
+    });
+  }
+
+  if (hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])) {
+    links.push({
+      href: `${staffBase}/staff`,
+      label: 'Staff',
+      icon: iconMap['Staff'],
+    });
+  }
+
+  if (hasAny(user, [
+    'createPayment',
+    'viewAllStaffSalaries',
+    'updateSalary',
+    'deletePayment',
+    'staffSummary',
+    'viewActiveLog',
+    'viewCompanySummary',
+  ])) {
+    links.push({
+      href: `${staffBase}/staff-salaries`,
+      label: 'Payments',
+      icon: iconMap['Staff Salaries'],
+    });
+  }
+
+  return links;
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -242,9 +231,102 @@ export default function Sidebar() {
   }, []);
 
   const roleBasedLinks = useMemo(() => {
-    // SuperAdmin - fixed links
-    if (user?.role === 'superAdmin') {
-      return [
+    // Compulsory admin links - always show for admin
+    const compulsoryAdminLinks = [
+      {
+        href: '/admin/dashboard',
+        label: 'Dashboard',
+        icon: iconMap['Dashboard'],
+        compulsory: true
+      },
+      {
+        href: '/admin/product',
+        label: 'Product',
+        icon: iconMap['Product'],
+        compulsory: true
+      },
+      {
+        href: '/admin/billing',
+        label: 'Billing',
+        icon: iconMap['Billing'],
+        compulsory: true
+      },
+      {
+        href: '/admin/profile-setting',
+        label: 'Setting',
+        icon: iconMap['Profile Setting'],
+        compulsory: true
+      },
+      {
+        href: '/admin/setting',
+        label: 'Company Profile',
+        icon: iconMap['Settings'],
+        compulsory: true
+
+      },
+    ];
+
+    // Optional admin links - show based on extraFeature
+    const optionalAdminLinks = [
+      {
+        href: '/admin/staff',
+        label: 'Staff',
+        icon: iconMap['Staff'],
+        extraFeature: 'Staff',
+      },
+      {
+        href: '/admin/permissions',
+        label: 'Permission',
+        icon: iconMap['Permission'],
+        extraFeature: 'Permissions',
+      },
+      {
+        href: '/admin/vendors',
+        label: 'Vendors',
+        icon: iconMap['Vendors'],
+        extraFeature: 'Vendors',
+      },
+      {
+        href: '/admin/category',
+        label: 'Category',
+        icon: iconMap['Product'],
+        extraFeature: 'Category',
+      },
+      {
+        href: '/admin/warehouse',
+        label: 'Warehouse',
+        icon: iconMap['Warehouse'],
+        extraFeature: 'WareHouse',
+      },
+      {
+        href: '/admin/attendance-devices',
+        label: 'Attendance Devices Setting',
+        icon: iconMap['Attendance'],
+        extraFeature: 'Attendance Device',
+      },
+      {
+        href: '/admin/attendance',
+        label: 'Manage Attendance',
+        icon: iconMap['Attendance'],
+        extraFeature: 'Manage Attendance',
+      },
+      {
+        href: '/admin/staff-salaries',
+        label: 'Staff Salaries',
+        icon: iconMap['Staff Salaries'],
+        extraFeature: 'Staff Salary',
+      },
+      {
+        href: '/admin/couriers',
+        label: 'Couriers & Shipment',
+        icon: iconMap['Couriers'],
+        extraFeature: 'Courier & Shipment',
+      },
+      
+    ];
+
+    return {
+      superAdmin: [
         {
           href: '/superadmin/dashboard',
           label: 'Dashboard',
@@ -262,57 +344,58 @@ export default function Sidebar() {
           label: 'Payment / Billing',
           icon: iconMap['Payment / Billing'],
         },
-        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-        { 
-          href: '/superadmin/payment-gateway-config', 
-          label: 'Payment GateWay Configuration', 
-          icon: iconMap['Settings'] 
-        },
-      ];
-    }
-
-    // Admin/Staff - dynamic links
-    if (user?.role === 'admin' || user?.role === 'staff') {
-      const coreLinks = getCoreLinks(user);
-      const dynamicLinks = buildDynamicLinks(user);
-
-      // Combine only Core + ExtraFeature links (NO permission-based links)
-      const allLinks = [...coreLinks, ...dynamicLinks];
-
-      // Add Settings link if user has any significant permissions
-      if (hasAny(user, [
-        'manageVendors', 'createVendors', 'updateVendors', 'deleteVendors', 'viewVendors',
-        'manageProduct', 'createProduct', 'updateProduct', 'deleteProduct', 'viewProduct',
-        'addBilling', 'editBilling', 'deleteBilling', 'viewBilling',
-        'viewReports', 'viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete',
-        'manageAppointments', 'assignTasks', 'approveRequests', 'manageTeams', 'managePlans'
-      ])) {
-        allLinks.push({
-          href: user.role === 'admin' ? '/admin/setting' : `/staff/${encodeURIComponent(user?.subRole?.toLowerCase() || '')}/settings`,
-          label: 'Settings',
+        { href: '/superadmin/profile-setting', label: 'Settings', icon: iconMap['Settings'] },
+        {
+          href: '/superadmin/payment-gateway-config',
+          label: 'Payment GateWay Configuration',
           icon: iconMap['Settings'],
-        });
-      }
-
-      return allLinks;
-    }
-
-    // User role
-    if (user?.role === 'user') {
-      return [
+        },
+      ],
+      admin: [...compulsoryAdminLinks, ...optionalAdminLinks],
+      staff: buildStaffLinks(user),
+      user: [
         { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
         { href: '#', label: 'Orders', icon: iconMap['Orders'] },
         { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-      ];
-    }
-
-    // Guest - no links
-    return [];
+      ],
+      guest: [],
+    };
   }, [user]);
 
+  // Filter links based on extraFeature and permissions
   const mainLinks = useMemo(() => {
-    if (loading || !user?.role) return [];
-    return roleBasedLinks;
+    if (loading || !user?.role) return roleBasedLinks.guest;
+
+    let links = [];
+    if (user.role === 'superAdmin') {
+      links = roleBasedLinks.superAdmin;
+    } else if (roleBasedLinks[user.role]) {
+      links = roleBasedLinks[user.role].filter((link) => {
+        // Always show compulsory links for admin
+        if (user.role === 'admin' && link.compulsory) {
+          return true;
+        }
+
+        // Always show alwaysShow links for staff
+        if (user.role === 'staff' && link.alwaysShow) {
+          return true;
+        }
+
+        // For admin optional links, check extraFeature
+        if (user.role === 'admin' && link.extraFeature) {
+          return user?.extraFeature?.includes(link.extraFeature);
+        }
+
+        // For staff links (except alwaysShow), they're already filtered in buildStaffLinks
+        if (user.role === 'staff') {
+          return true; // All staff links are pre-filtered
+        }
+
+        return true;
+      });
+    }
+
+    return links.length > 0 ? links : roleBasedLinks.guest;
   }, [user, loading, roleBasedLinks]);
 
   return (
@@ -326,7 +409,7 @@ export default function Sidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent">
-              AutoMotive
+              {user?.toolName || 'AutoMotive'}
             </h1>
           </div>
         </div>

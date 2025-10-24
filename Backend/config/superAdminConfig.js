@@ -1,26 +1,21 @@
-import mongoose from 'mongoose';
-import IndexModel from '../models/indexModel.js';
-import { generateUniqueUserId } from '../utils/generateUniqueUserId.js';
+import mongoose from "mongoose";
+import IndexModel from "../models/indexModel.js";
+import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
+import path from "path";
+import fs from "fs";
 
-// Function to create a superAdmin user if none exists
 const createSuperAdmin = async () => {
   try {
-    // Check if a superAdmin already exists
     const superAdminExists = await IndexModel.User.findOne({ role: "superAdmin" });
     if (superAdminExists) {
       console.log("SuperAdmin already exists:", superAdminExists.email);
       return;
     }
 
-    // Get default credentials from env or fallback
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "superadmin123@example.com";
     const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || "123";
     const superAdminName = process.env.SUPER_ADMIN_NAME || "Super Admin";
 
-
-    // Hash the password
-    // const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
-    // Create new superAdmin
     const superAdmin = new IndexModel.User({
       name: superAdminName,
       userId: await generateUniqueUserId(superAdminName),
@@ -31,11 +26,11 @@ const createSuperAdmin = async () => {
       mfaEnabled: false,
       permissions: ["full-access"],
       status: {
-      isaccepted:true,
-      performedBy: "superAdmin",
-    },
-    history: [{
-        action: 'Super Admin Create auto',
+        isaccepted: true,
+        performedBy: "superAdmin",
+      },
+      history: [{
+        action: "Super Admin Create auto",
         performedBy: "superAdmin"
       }],
       createdAt: new Date(),
@@ -50,19 +45,16 @@ const createSuperAdmin = async () => {
 };
 
 export const addStripeConfig = async (req, res) => {
-  // console.log("➡ addStripeConfig triggered");
   try {
     const { userId, role } = req.user;
     const { publishableKey, secretKey, webhookSigningSecret } = req.body;
 
-    // ✅ Allow only superAdmin
     if (role !== "superAdmin") {
       return res
         .status(403)
         .json({ message: "Unauthorized — only super admins can add or update the Stripe configuration" });
     }
 
-    // Find the user (superAdmin)
     const user = await IndexModel.User.findOne({
       userId,
       deleted: false,
@@ -73,7 +65,7 @@ export const addStripeConfig = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "Super admin user not found" });
     }
-    // Add or update the stripeConfig field
+
     user.stripeConfig = {
       publishableKey,
       secretKey,
@@ -92,5 +84,132 @@ export const addStripeConfig = async (req, res) => {
   }
 };
 
+export const updateSuperAdminInfo = async (req, res) => {
+  try {
+    const { name, email, password, toolName } = req.body || {};
+    const userId = req.user.userId;
+    const updateData = {};
+
+    // Validate and process fields
+    if (name && name.trim()) {
+      updateData.name = name.trim();
+    }
+
+    if (email && email.trim()) {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        const existingUser = await IndexModel.User.findOne({ email, userId: { $ne: userId } });
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: "Email already exists"
+          });
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email format"
+        });
+      }
+    }
+
+    if (password) {
+      if (password.length >= 8) {
+        updateData.password = password; // Hashing should be added here if required
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters long"
+        });
+      }
+    }
+
+    if (toolName && toolName.trim()) {
+      updateData.toolName = toolName.trim();
+    }
+
+    // Handle file upload
+    if (req.file) {
+      updateData.toolLogo = `/Uploads/tool/${req.file.filename}`;
+
+      // Optional: Delete old logo if it exists
+      const oldUser = await IndexModel.User.findOne({ userId });
+      if (oldUser && oldUser.toolLogo && oldUser.toolLogo.startsWith('/Uploads/tool/')) {
+        const oldFilePath = path.join(process.cwd(), oldUser.toolLogo);
+        try {
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        } catch (deleteError) {
+          console.warn("⚠️ Could not delete old logo file:", deleteError.message);
+        }
+      }
+    }
+
+    // Check if there's anything to update
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update"
+      });
+    }
+
+
+    // Update the user
+    const updatedUser = await IndexModel.User.findOneAndUpdate(
+      { userId, role: "superAdmin", isActive: true },
+      { $set: updateData },
+      {
+        new: true,
+        runValidators: true,
+        select: "userId name email toolName toolLogo role createdAt"
+      }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "SuperAdmin not found or inactive"
+      });
+    }
+
+    console.log("✅ Successfully updated user:", updatedUser.userId);
+
+    res.status(200).json({
+      success: true,
+      message: "SuperAdmin information updated successfully",
+      data: {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        toolName: updatedUser.toolName,
+        toolLogo: updatedUser.toolLogo,
+        userId: updatedUser.userId,
+      },
+      updatedFields: Object.keys(updateData),
+    });
+  } catch (error) {
+    console.error("❌ Error updating SuperAdmin:", error);
+
+    if (error.code === 11000 || error.name === "MongoError") {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(", ")
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+};
 
 export default createSuperAdmin;
