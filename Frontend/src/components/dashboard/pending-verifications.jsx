@@ -40,7 +40,7 @@ export function PendingVerifications() {
   };
 
   const pendingUsers = (Array.isArray(users) ? users : []).filter(
-    (u) => u?.status?.isaccepted !== 'true' && u?.status?.isactive !== 'true'
+    (u) => u?.status?.isaccepted !== 'true' && u?.isactive !== 'true'
   );
 
   const handleVerify = async (id, action) => {

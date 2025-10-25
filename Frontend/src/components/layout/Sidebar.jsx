@@ -338,12 +338,12 @@ export default function Sidebar() {
           label: 'Companies',
           icon: iconMap['Companies'],
         },
-        { href: '#', label: 'Users', icon: iconMap['Users'] },
-        {
-          href: '#',
-          label: 'Payment / Billing',
-          icon: iconMap['Payment / Billing'],
-        },
+        // { href: '#', label: 'Users', icon: iconMap['Users'] },
+        // {
+        //   href: '#',
+        //   label: 'Payment / Billing',
+        //   icon: iconMap['Payment / Billing'],
+        // },
         { href: '/superadmin/profile-setting', label: 'Settings', icon: iconMap['Settings'] },
         {
           href: '/superadmin/payment-gateway-config',
