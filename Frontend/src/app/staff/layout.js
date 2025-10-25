@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
-import PaymentGateway from '@/components/PaymentGateWay/PaymentGateWay';
+import PaymentGateway from '@/components/PaymentGateWay/PaymentGateway';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
 
 export default function Layout({ children }) {

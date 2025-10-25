@@ -1,4 +1,4 @@
-import  PaymentGateway  from '@/components/PaymentGateWay/PaymentGateWay';
+import  PaymentGateway  from '@/components/PaymentGateWay/PaymentGateway';
 
 export default function PaymentGateWayPage() {
   return (
