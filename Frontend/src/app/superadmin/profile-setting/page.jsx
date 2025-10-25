@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useUpdateSuperAdminInfoMutation } from "@/features/userApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Loader2, 
-  CheckCircle2, 
-  AlertCircle, 
-  Upload, 
-  User, 
-  Mail, 
-  Lock, 
+import {
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Upload,
+  User,
+  Mail,
+  Lock,
   Settings,
   Building,
   Image,
-  Shield
+  Shield,
+  RefreshCw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -39,64 +42,89 @@ const SuperAdminUpdatePage = () => {
   const [message, setMessage] = useState(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  
   const [updateSuperAdminInfo, { isLoading: isUpdating, error: updateError }] = useUpdateSuperAdminInfoMutation();
 
-  const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
-  useEffect(() => {
-    const fetchSuperAdmin = async () => {
-      try {
-        const authState = sessionStorage.getItem("authUser");
-        if (authState) {
-          const parsedUser = JSON.parse(authState);
-          if (parsedUser.role === "superAdmin") {
-            setSuperAdmin(parsedUser);
+  // Fetch super admin data with auto-refresh capability
+  const fetchSuperAdmin = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    }
+    
+    try {
+      const authState = sessionStorage.getItem("authUser");
+      if (authState) {
+        const parsedUser = JSON.parse(authState);
+        if (parsedUser.role === "superAdmin") {
+          setSuperAdmin(parsedUser);
+          setSettings({
+            name: parsedUser.name || "",
+            email: parsedUser.email || "",
+            password: "",
+            toolName: parsedUser.toolName || "",
+            toolLogo: parsedUser.toolLogo || null,
+          });
+          setLogoPreview(parsedUser.toolLogo ? `${API_URL}${parsedUser.toolLogo.replace(/\\/g, "/")}` : null);
+          setLastUpdated(new Date());
+        } else {
+          setMessage({ type: "error", text: "Access denied: Not a SuperAdmin" });
+        }
+      } else {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          cache: 'no-cache'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data.role === "superAdmin") {
+            setSuperAdmin(data.data);
             setSettings({
-              name: parsedUser.name || "",
-              email: parsedUser.email || "",
+              name: data.data.name || "",
+              email: data.data.email || "",
               password: "",
-              toolName: parsedUser.toolName || "",
-              toolLogo: parsedUser.toolLogo || null,
+              toolName: data.data.toolName || "",
+              toolLogo: data.data.toolLogo || null,
             });
-            // Ensure logoPreview uses the correct path
-            setLogoPreview(parsedUser.toolLogo ? `${API_URL}${parsedUser.toolLogo.replace(/\\/g, "/")}` : null);
+            setLogoPreview(data.data.toolLogo ? `${API_URL}${data.data.toolLogo.replace(/\\/g, "/")}` : null);
+            setLastUpdated(new Date());
           } else {
             setMessage({ type: "error", text: "Access denied: Not a SuperAdmin" });
           }
         } else {
-          // Fallback to API if session data is not available
-          const response = await fetch(`${API_URL}/api/auth/me`, {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.data.role === "superAdmin") {
-              setSuperAdmin(data.data);
-              setSettings({
-                name: data.data.name || "",
-                email: data.data.email || "",
-                password: "",
-                toolName: data.data.toolName || "",
-                toolLogo: data.data.toolLogo || null,
-              });
-              setLogoPreview(data.data.toolLogo ? `${API_URL}${data.data.toolLogo.replace(/\\/g, "/")}` : null);
-            } else {
-              setMessage({ type: "error", text: "Access denied: Not a SuperAdmin" });
-            }
-          } else {
-            setMessage({ type: "error", text: "No SuperAdmin data found" });
-          }
+          setMessage({ type: "error", text: "No SuperAdmin data found" });
         }
-      } catch (err) {
-        setMessage({ type: "error", text: "Error retrieving SuperAdmin data" });
-        console.error("[SuperAdminUpdatePage] Error fetching auth/me:", err.message);
       }
-    };
-    fetchSuperAdmin();
+    } catch (err) {
+      setMessage({ type: "error", text: "Error retrieving SuperAdmin data" });
+      console.error("[SuperAdminUpdatePage] Error fetching auth/me:", err.message);
+    } finally {
+      if (isRefresh) {
+        setIsRefreshing(false);
+      }
+    }
   }, [API_URL]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchSuperAdmin();
+  }, [fetchSuperAdmin]);
+
+  // Auto-refresh data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSuperAdmin(true);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchSuperAdmin]);
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePassword = (password) => password.length >= 8;
@@ -120,14 +148,38 @@ const SuperAdminUpdatePage = () => {
     setMessage(null);
   };
 
+  const handleManualRefresh = () => {
+    fetchSuperAdmin(true);
+    setMessage({ type: "success", text: "Data refreshed successfully!" });
+  };
+
   const confirmUpdate = async () => {
     try {
+      // Validate inputs
+      if (settings.email && !validateEmail(settings.email)) {
+        setMessage({ type: "error", text: "Invalid email format" });
+        setIsConfirmOpen(false);
+        return;
+      }
+      if (settings.password && !validatePassword(settings.password)) {
+        setMessage({ type: "error", text: "Password must be at least 8 characters" });
+        setIsConfirmOpen(false);
+        return;
+      }
+
       const formData = new FormData();
       if (settings.name.trim()) formData.append("name", settings.name.trim());
       if (settings.email.trim()) formData.append("email", settings.email.trim());
       if (settings.password.trim()) formData.append("password", settings.password.trim());
       if (settings.toolName.trim()) formData.append("toolName", settings.toolName.trim());
       if (logoFile) formData.append("toolLogo", logoFile);
+
+      // Check if FormData is empty
+      if (!formData.entries().next().value) {
+        setMessage({ type: "error", text: "No valid fields provided for update" });
+        setIsConfirmOpen(false);
+        return;
+      }
 
       const response = await updateSuperAdminInfo(formData).unwrap();
 
@@ -145,6 +197,12 @@ const SuperAdminUpdatePage = () => {
         setLogoPreview(response.data.toolLogo ? `${API_URL}${response.data.toolLogo.replace(/\\/g, "/")}` : null);
         setSettings((prev) => ({ ...prev, password: "" }));
         setLogoFile(null);
+        setLastUpdated(new Date());
+        window.location.reload(true);
+        // Auto-refresh data after successful update
+        setTimeout(() => {
+          fetchSuperAdmin(true);
+        }, 1000);
       } else {
         setMessage({ type: "error", text: response.message || "Failed to update information" });
       }
@@ -159,12 +217,19 @@ const SuperAdminUpdatePage = () => {
   };
 
   const getInitials = (name) => {
-    return name
-      ?.split(" ")
-      .map(word => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "SA";
+    return (
+      name
+        ?.split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2) || "SA"
+    );
+  };
+
+  const formatLastUpdated = (date) => {
+    if (!date) return "Never";
+    return date.toLocaleTimeString() + " " + date.toLocaleDateString();
   };
 
   return (
@@ -182,7 +247,25 @@ const SuperAdminUpdatePage = () => {
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Manage your profile information and platform settings
+            {lastUpdated && (
+              <span className="block text-sm text-green-600 mt-2">
+                Last updated: {formatLastUpdated(lastUpdated)}
+              </span>
+            )}
           </p>
+        </div>
+
+        {/* Refresh Button */}
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            variant="outline"
+            className="flex items-center gap-2 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
         </div>
 
         {/* Main Content Grid */}
@@ -193,10 +276,7 @@ const SuperAdminUpdatePage = () => {
               <div className="text-center space-y-4">
                 <div className="relative inline-block">
                   <Avatar className="h-24 w-24 border-4 border-white shadow-lg mx-auto">
-                    <AvatarImage 
-                      src={logoPreview || null}
-                      alt={settings.name || "Super Admin"}
-                    />
+                    <AvatarImage src={logoPreview || null} alt={settings.name || "Super Admin"} />
                     <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                       {getInitials(settings.name)}
                     </AvatarFallback>
@@ -206,7 +286,7 @@ const SuperAdminUpdatePage = () => {
                     Super Admin
                   </Badge>
                 </div>
-                
+
                 <div className="space-y-2">
                   <h2 className="text-xl font-semibold text-foreground">
                     {settings.name || "Super Administrator"}
@@ -223,7 +303,15 @@ const SuperAdminUpdatePage = () => {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Last Updated:</span>
-                    <span className="font-medium text-foreground">{new Date().toLocaleDateString()}</span>
+                    <span className="font-medium text-foreground">
+                      {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Never'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      Active
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -237,24 +325,21 @@ const SuperAdminUpdatePage = () => {
                 <Settings className="h-6 w-6 text-blue-600" />
                 Platform Configuration
               </CardTitle>
-              <CardDescription>
-                Update your personal information and platform settings
-              </CardDescription>
+              <CardDescription>Update your personal information and platform settings</CardDescription>
             </CardHeader>
             <CardContent>
               {message && (
-                <Alert 
-                  variant={message.type === "error" ? "destructive" : "default"} 
+                <Alert
+                  variant={message.type === "error" ? "destructive" : "default"}
                   className="mb-6 animate-in fade-in duration-300 border"
                 >
                   <div className="flex items-center gap-2">
-                    {message.type === "success" ? 
-                      <CheckCircle2 className="h-4 w-4" /> : 
+                    {message.type === "success" ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
                       <AlertCircle className="h-4 w-4" />
-                    }
-                    <AlertDescription className="font-medium">
-                      {message.text}
-                    </AlertDescription>
+                    )}
+                    <AlertDescription className="font-medium">{message.text}</AlertDescription>
                   </div>
                 </Alert>
               )}
@@ -271,7 +356,12 @@ const SuperAdminUpdatePage = () => {
                   </TabsTrigger>
                 </TabsList>
 
-                <form onSubmit={(e) => { e.preventDefault(); setIsConfirmOpen(true); }}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setIsConfirmOpen(true);
+                  }}
+                >
                   {/* Profile Tab */}
                   <TabsContent value="profile" className="space-y-6 animate-in fade-in">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -310,14 +400,29 @@ const SuperAdminUpdatePage = () => {
                             <Lock className="h-4 w-4 text-blue-600" />
                             New Password
                           </Label>
-                          <Input
-                            id="password"
-                            type="password"
-                            value={settings.password}
-                            onChange={(e) => handleInputChange("password", e.target.value)}
-                            placeholder="Enter new password"
-                            className="h-12 rounded-xl border border-input px-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="password"
+                              type={showPassword ? "text" : "password"}
+                              value={settings.password}
+                              onChange={(e) => handleInputChange("password", e.target.value)}
+                              placeholder="Enter new password"
+                              className="h-12 rounded-xl border border-input px-4 pr-10 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-12 px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
                             Minimum 8 characters required
@@ -361,17 +466,13 @@ const SuperAdminUpdatePage = () => {
                           <Image className="h-4 w-4 text-blue-600" />
                           Platform Logo
                         </Label>
-                        
+
                         <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl border border-input bg-background">
                           <div className="flex-shrink-0">
                             <div className="relative group">
                               <div className="h-24 w-24 rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-800 overflow-hidden bg-white shadow-sm">
                                 {logoPreview ? (
-                                  <img
-                                    src={logoPreview}
-                                    alt="Platform logo"
-                                    className="h-full w-full object-cover"
-                                  />
+                                  <img src={logoPreview} alt="Platform logo" className="h-full w-full object-cover" />
                                 ) : (
                                   <div className="h-full w-full flex items-center justify-center bg-muted/20">
                                     <Building className="h-8 w-8 text-muted-foreground" />
@@ -401,14 +502,14 @@ const SuperAdminUpdatePage = () => {
                                 Choose Logo File
                               </label>
                             </div>
-                            
+
                             {logoFile && (
                               <div className="flex items-center gap-2 text-sm text-green-600">
                                 <CheckCircle2 className="h-4 w-4" />
                                 <span className="font-medium">{logoFile.name}</span>
                               </div>
                             )}
-                            
+
                             <div className="space-y-1 text-xs text-muted-foreground">
                               <p>✓ Supports JPEG, PNG, SVG, WebP</p>
                               <p>✓ Maximum file size: 2MB</p>
@@ -460,15 +561,15 @@ const SuperAdminUpdatePage = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsConfirmOpen(false)}
               className="flex-1 h-11 rounded-xl border-2"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={confirmUpdate} 
+            <Button
+              onClick={confirmUpdate}
               disabled={isUpdating}
               className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold"
             >
