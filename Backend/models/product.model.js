@@ -17,25 +17,12 @@ const ProductSchema = new Schema(
     subCategory: {
       type: String,
     },
-    attribute: {
-      type: [Schema.Types.Mixed],
-      default: [],
-    },
-    customAttributes: [
-      {
-        key: {
-          type: String,
-          trim: true,
-          maxlength: [50, "Custom attribute key cannot exceed 50 characters"],
-        },
-        value: {
-          type: String,
-          trim: true,
-          maxlength: [100, "Custom attribute value cannot exceed 100 characters"],
-        },
-      },
-    ],
     SKU: { type: String, unique: true, required: [true, "SKU is required"] },
+    dynamicAttributes: {
+      type: Map, // or Schema.Types.Mixed
+      of: Schema.Types.Mixed,
+      default: {},
+    },
     quantity: {
       type: Number,
       default: 0,

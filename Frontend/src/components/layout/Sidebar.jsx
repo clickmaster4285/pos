@@ -3,7 +3,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-
+import { useSelector } from 'react-redux';
 import {
   LayoutDashboard,
   Settings,
@@ -53,7 +53,7 @@ function SidebarFooter({ userName, userRole }) {
   return (
     <div className="sticky bottom-0 border-t border-sidebar-border/50 bg-sidebar/95 px-4 py-3 backdrop-blur-lg">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl text-primary flex items-center justify-center ">
+        <div className="h-10 w-10 rounded-xl text-primary flex items-center justify-center">
           <User className="h-5 w-5 text-secoundry" />
         </div>
         <div className="min-w-0 flex-1">
@@ -64,11 +64,8 @@ function SidebarFooter({ userName, userRole }) {
             {userRole || 'unauthenticated'}
           </p>
         </div>
-  
-        {/* {console.log("the userRole:  under sdi: ",userRole)} */}
-        {}
         <Link
-          href={`profile-setting`}
+          href="profile-setting"
           className="flex h-9 w-9 items-center justify-center rounded-xl text-sidebar-accent-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 transition-all duration-200"
           aria-label="Settings"
           title="Settings"
@@ -79,29 +76,6 @@ function SidebarFooter({ userName, userRole }) {
     </div>
   );
 }
-
-// Function to get auth state from session storage
-const getAuthState = () => {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const authState = sessionStorage.getItem('authUser');
-    if (authState) {
-      return JSON.parse(authState);
-    }
-
-    // Alternative: check localStorage if sessionStorage doesn't have it
-    const localAuthState = localStorage.getItem('authUser');
-    if (localAuthState) {
-      return JSON.parse(localAuthState);
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Error reading auth state:', error);
-    return null;
-  }
-};
 
 // ---- Permission helpers ----
 const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
@@ -114,22 +88,20 @@ function buildStaffLinks(user) {
     : '/staff';
 
   const links = [
-    // Compulsory links for ALL staff - always show
     {
       href: `${staffBase}/dashboard`,
       label: 'Dashboard',
       icon: iconMap['Dashboard'],
-      alwaysShow: true
+      alwaysShow: true,
     },
     {
       href: `${staffBase}/profile-setting`,
       label: 'Settings',
       icon: iconMap['Settings'],
-      alwaysShow: true
+      alwaysShow: true,
     },
   ];
 
-  // Product - show based on product permissions
   if (hasAny(user, ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct'])) {
     links.push({
       href: `${staffBase}/product`,
@@ -138,7 +110,6 @@ function buildStaffLinks(user) {
     });
   }
 
-  // Billing - show based on billing permissions
   if (hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling', 'createPayment'])) {
     links.push({
       href: `${staffBase}/billing`,
@@ -147,7 +118,6 @@ function buildStaffLinks(user) {
     });
   }
 
-  // Role-based links for specific subRoles
   if (subRoleLower === 'receptionist' && hasAny(user, ['viewProduct'])) {
     links.push({
       href: `${staffBase}/orders`,
@@ -156,7 +126,6 @@ function buildStaffLinks(user) {
     });
   }
 
-  // Other permission-based links
   if (hasAny(user, ['managePlans'])) {
     links.push({
       href: `${staffBase}/plans`,
@@ -189,15 +158,17 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, [
-    'createPayment',
-    'viewAllStaffSalaries',
-    'updateSalary',
-    'deletePayment',
-    'staffSummary',
-    'viewActiveLog',
-    'viewCompanySummary',
-  ])) {
+  if (
+    hasAny(user, [
+      'createPayment',
+      'viewAllStaffSalaries',
+      'updateSalary',
+      'deletePayment',
+      'staffSummary',
+      'viewActiveLog',
+      'viewCompanySummary',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/staff-salaries`,
       label: 'Payments',
@@ -215,58 +186,55 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const authUser = useSelector((state) => state.auth.user); // Moved useSelector here
 
   const isSettingsMode = pathname?.startsWith('/settings');
 
   const isActive = (href) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
-  // Get user data from session storage on component mount
+  // Get user data from Redux store on component mount
   useEffect(() => {
-    const authState = getAuthState();
-    if (authState) {
-      setUser(authState);
+    if (authUser) {
+      setUser(authUser);
     }
     setLoading(false);
-  }, []);
+  }, [authUser]);
 
   const roleBasedLinks = useMemo(() => {
-    // Compulsory admin links - always show for admin
     const compulsoryAdminLinks = [
       {
         href: '/admin/dashboard',
         label: 'Dashboard',
         icon: iconMap['Dashboard'],
-        compulsory: true
+        compulsory: true,
       },
       {
         href: '/admin/product',
         label: 'Product',
         icon: iconMap['Product'],
-        compulsory: true
+        compulsory: true,
       },
       {
         href: '/admin/billing',
         label: 'Billing',
         icon: iconMap['Billing'],
-        compulsory: true
+        compulsory: true,
       },
       {
         href: '/admin/profile-setting',
         label: 'Setting',
         icon: iconMap['Profile Setting'],
-        compulsory: true
+        compulsory: true,
       },
       {
         href: '/admin/setting',
         label: 'Company Profile',
         icon: iconMap['Settings'],
-        compulsory: true
-
+        compulsory: true,
       },
     ];
 
-    // Optional admin links - show based on extraFeature
     const optionalAdminLinks = [
       {
         href: '/admin/staff',
@@ -293,7 +261,7 @@ export default function Sidebar() {
         extraFeature: 'Category',
       },
       {
-        href: '/admin/warehouse',
+        href: '#',
         label: 'Warehouse',
         icon: iconMap['Warehouse'],
         extraFeature: 'WareHouse',
@@ -322,7 +290,6 @@ export default function Sidebar() {
         icon: iconMap['Couriers'],
         extraFeature: 'Courier & Shipment',
       },
-      
     ];
 
     return {
@@ -338,12 +305,6 @@ export default function Sidebar() {
           label: 'Companies',
           icon: iconMap['Companies'],
         },
-        // { href: '#', label: 'Users', icon: iconMap['Users'] },
-        // {
-        //   href: '#',
-        //   label: 'Payment / Billing',
-        //   icon: iconMap['Payment / Billing'],
-        // },
         { href: '/superadmin/profile-setting', label: 'Settings', icon: iconMap['Settings'] },
         {
           href: '/superadmin/payment-gateway-config',
@@ -362,7 +323,6 @@ export default function Sidebar() {
     };
   }, [user]);
 
-  // Filter links based on extraFeature and permissions
   const mainLinks = useMemo(() => {
     if (loading || !user?.role) return roleBasedLinks.guest;
 
@@ -371,24 +331,20 @@ export default function Sidebar() {
       links = roleBasedLinks.superAdmin;
     } else if (roleBasedLinks[user.role]) {
       links = roleBasedLinks[user.role].filter((link) => {
-        // Always show compulsory links for admin
         if (user.role === 'admin' && link.compulsory) {
           return true;
         }
 
-        // Always show alwaysShow links for staff
         if (user.role === 'staff' && link.alwaysShow) {
           return true;
         }
 
-        // For admin optional links, check extraFeature
         if (user.role === 'admin' && link.extraFeature) {
           return user?.extraFeature?.includes(link.extraFeature);
         }
 
-        // For staff links (except alwaysShow), they're already filtered in buildStaffLinks
         if (user.role === 'staff') {
-          return true; // All staff links are pre-filtered
+          return true;
         }
 
         return true;
@@ -404,7 +360,6 @@ export default function Sidebar() {
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
-      {/* Header */}
       <div className="px-6 py-5 border-b border-sidebar-border/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -459,15 +414,11 @@ export default function Sidebar() {
                               {label}
                             </span>
                           )}
-
-                          {/* Tooltip for collapsed state */}
                           {collapsed && (
                             <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
                               {label}
                             </div>
                           )}
-
-                          {/* Active indicator dot for collapsed state */}
                           {collapsed && active && (
                             <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-secondary-foreground rounded-full"></div>
                           )}

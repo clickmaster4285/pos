@@ -94,7 +94,6 @@ export const addStripeConfig = async (req, res) => {
 export const updateSuperAdminInfo = async (req, res) => {
   try {
     const { name, email, password, toolName } = req.body || {};
-    const userId = req.user.userId;
     const updateData = {};
 
     // Debugging: Log incoming request data
@@ -121,12 +120,6 @@ export const updateSuperAdminInfo = async (req, res) => {
       updateData.email = email.trim();
     }
     if (password && password.trim()) {
-      if (password.trim().length < 8) {
-        return res.status(400).json({
-          success: false,
-          message: "Password must be at least 8 characters",
-        });
-      }
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(password.trim(), salt);
     }
@@ -145,7 +138,7 @@ export const updateSuperAdminInfo = async (req, res) => {
 
     // Update the user
     const updatedUser = await IndexModel.User.findOneAndUpdate(
-      { role: "superAdmin", userId }, // Ensure userId matches for security
+      { role: "superAdmin", }, // Ensure userId matches for security
       { $set: updateData },
       {
         new: true,

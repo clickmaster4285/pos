@@ -7,7 +7,7 @@ import ErrorResponse from "../utils/errorResponse.js";
 import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
 import { generateOTP } from "../utils/generate_verifyOTP.js";
 import sendEmail from "../utils/sendEmail.js";
-import { fetchToolLogoName } from "../utils/fetchToolLogoName.js";
+import { fetchToolLogoName, fetchIndustryName } from "../utils/fetchToolLogoName.js";
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -120,6 +120,7 @@ const login = async (req, res, next) => {
           extraFeature: user.role !== "superAdmin" ? activePlans.limitations.features : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
+          industryName: await fetchIndustryName(user.companyId),
         },
         token: accessToken,
         refreshToken,
@@ -219,6 +220,8 @@ const getme = async (req, res, next) => {
           extraFeature: activePlans?.limitations?.features || [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
+          industryName: await fetchIndustryName(user.companyId),
+
         },
       },
     }))
@@ -264,6 +267,8 @@ const getme = async (req, res, next) => {
           extraFeature: activePlans.limitations.features,
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
+          industryName: await fetchIndustryName(user.companyId),
+
         },
       },
     });

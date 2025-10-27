@@ -20,9 +20,9 @@ import {
 import { Tag, Edit, Trash2, MoreVertical, PackagePlus } from 'lucide-react';
 
 const hasVendorsFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
+  const user = useSelector((state) => state.auth.user);
+  if (user) {
+    const parsedAuthState = JSON.parse(user);
     return parsedAuthState.extraFeature?.includes('Vendors') || false;
   }
   return false;

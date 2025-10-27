@@ -1,12 +1,20 @@
 "use client";
-import { createContext, useEffect, useCallback } from "react";
+
+import React, { createContext, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useRouter, usePathname } from "next/navigation";
 import { createSelector } from "@reduxjs/toolkit";
-import { useGetMeQuery, useRefreshTokenMutation } from "@/features/authApi";
-import { selectIsAuthenticated, selectCurrentUser, setCredentials, clearAuth } from "@/features/authApi";
-import { secureAuth } from "@/utils/auth"; // Import secureAuth for clearing cookies
+import {
+  useGetMeQuery,
+  useRefreshTokenMutation,
+  selectIsAuthenticated,
+  selectCurrentUser,
+  setCredentials,
+  clearAuth,
+} from "@/features/authApi";
+import { secureAuth } from "@/utils/auth"; // for clearing cookies
 
+// 🔹 Memoized selector for authentication state
 const selectAuthState = createSelector(
   [selectIsAuthenticated, selectCurrentUser],
   (isAuthenticated, user) => ({
@@ -22,6 +30,7 @@ export default function SecureAuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user } = useSelector(selectAuthState);
+
   const publicRoutes = [
     "/login",
     "/register",
@@ -31,77 +40,82 @@ export default function SecureAuthProvider({ children }) {
     "/verify-email",
     "/public/landing",
   ];
-  const isPublicRoute = (path) => {
-    return publicRoutes.some((route) => path === route || path.startsWith(route));
-  };
-  const { data, isLoading, error } = useGetMeQuery(undefined, { skip: isAuthenticated || isPublicRoute(pathname) });
+
+  const isPublicRoute = useCallback(
+    (path) => publicRoutes.some((route) => path === route || path.startsWith(route)),
+    [publicRoutes]
+  );
+
+  // 🔹 Fetch authenticated user if not already authenticated and not on a public route
+  const { data, isLoading, error } = useGetMeQuery(undefined, {
+    skip: isAuthenticated || isPublicRoute(pathname),
+  });
+
   const [refreshToken] = useRefreshTokenMutation();
 
+  // 🔹 Restore authentication state from Redux if user already in state
   useEffect(() => {
-    const restoreAuth = () => {
-      const storedUser = sessionStorage.getItem("authUser");
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          dispatch(setCredentials({ user: userData }));
-        } catch (error) {
-          console.error("Invalid stored user data:", error);
-          sessionStorage.removeItem("authUser");
-        }
+    if (user) {
+      try {
+        dispatch(setCredentials({ user }));
+      } catch (error) {
+        console.error("Invalid stored user data:", error);
       }
-    };
+    }
+  }, [dispatch, user]);
 
-    restoreAuth();
-  }, [dispatch]);
-
+  // 🔹 Logout handler
   const handleLogout = useCallback(
     (message = "Logged out") => {
+      console.warn(message);
       dispatch(clearAuth());
-      secureAuth.clearAuthState(); // Clear cookies using SecureAuth
+      secureAuth.clearAuthState(); // Clears cookies/session
       sessionStorage.setItem("explicitLogout", "true");
       router.push("/login");
     },
     [dispatch, router]
   );
 
+  // 🔹 When /me endpoint succeeds, store user in Redux
   useEffect(() => {
-    if (data?.success && data.data.user) {
+    if (data?.success && data.data?.user) {
       dispatch(setCredentials({ user: data.data.user }));
-      sessionStorage.setItem("authUser", JSON.stringify(data.data.user));
     }
   }, [data, dispatch]);
 
+  // 🔹 Handle session expiration (401)
   useEffect(() => {
     if (error?.status === 401 && !isPublicRoute(pathname)) {
       handleLogout("Session expired");
     }
-  }, [error, pathname, handleLogout]);
+  }, [error, pathname, handleLogout, isPublicRoute]);
 
+  // 🔹 Redirect authenticated users away from public routes
   useEffect(() => {
     if (isAuthenticated && isPublicRoute(pathname)) {
-      // console.log("the user are siginging: ", user)
       const dashboardPath = getDashboardPath(user?.role, user?.subRole);
       router.push(dashboardPath);
     }
-  }, [isAuthenticated, pathname, router, user]);
+  }, [isAuthenticated, pathname, router, user, isPublicRoute]);
 
-  const getDashboardPath = (role, subrole) => {
+  // 🔹 Role-based dashboard redirection
+  const getDashboardPath = useCallback((role, subRole) => {
     const r = String(role || "").toLowerCase();
-    console.log("Determining dashboard path for role:", subrole);
     switch (r) {
       case "superadmin":
         return "/superadmin/dashboard";
       case "admin":
         return "/admin/dashboard";
       case "staff":
-        return `/staff/${subrole}/dashboard`;
+        return `/staff/${subRole}/dashboard`;
       case "user":
         return "/user/dashboard";
       default:
-        return "/login"; // Changed from /unauthorized to /login
+        return "/login";
     }
-  };
+  }, []);
 
+  // 🔹 Auth context value
   const value = {
     user,
     isAuthenticated,

@@ -79,7 +79,7 @@ router.use("/product", Product);
 // superAdmin config update
 router.patch(
   "/superadmin/update-super-admin-info-by-super-admin",
-  passport.authenticate("jwt", { session: false }),
+  // passport.authenticate("jwt", { session: false }),
   upload.single("toolLogo"), // Matches Postman field name
   updateSuperAdminInfo
 );

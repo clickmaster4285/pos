@@ -20,17 +20,11 @@ export const authSlice = createSlice({
       state.user = action.payload.user;
       state.isAuthenticated = true;
       state.error = null;
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("authUser", JSON.stringify(action.payload.user));
-      }
     },
     clearAuth: (state) => {
       state.user = null;
       state.isAuthenticated = false;
       state.error = null;
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem("authUser");
-      }
     },
     setLoading: (state, action) => {
       state.loading = action.payload;
@@ -121,7 +115,6 @@ export const authApi = createApi({
         try {
           const { data } = await queryFulfilled;
           if (data.success) {
-            sessionStorage.removeItem("authUser");
             sessionStorage.removeItem("authToken");
             sessionStorage.removeItem("refreshToken");
             dispatch(clearAuth());
