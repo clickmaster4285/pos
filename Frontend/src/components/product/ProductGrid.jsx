@@ -20,18 +20,18 @@ import { Switch } from '@/components/ui/switch';
 import { Tag, Edit, Trash2, Calendar, MoreVertical, PackagePlus } from 'lucide-react';
 
 const hasVendorsFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
+  const user = useSelector((state) => state.auth.user);
+  if (user) {
+    const parsedAuthState = user
     return parsedAuthState.extraFeature?.includes('Vendors') || false;
   }
   return false;
 };
 
 const hasCategoriesFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
+  const user = useSelector((state) => state.auth.user);
+  if (user) {
+    const parsedAuthState = JSON.parse(user);
     return parsedAuthState.extraFeature?.includes('Category') || false;
   }
   return false;

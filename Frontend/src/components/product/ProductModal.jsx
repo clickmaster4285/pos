@@ -36,20 +36,21 @@ const CategoryModal = dynamic(
 );
 
 import { VendorModal } from '@/components/vendors/vendor-modal';
+import { useSelector } from 'react-redux';
 
 const hasVendorsFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
+  const user = useSelector((state) => state.auth.user);
+  if (user) {
+    const parsedAuthState = user
     return parsedAuthState.extraFeature?.includes('Vendors') || false;
   }
   return false;
 };
 
 const hasCategoriesFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
+  const user = useSelector((state) => state.auth.user);
+  if (user) {
+    const parsedAuthState = user
     return parsedAuthState.extraFeature?.includes('Category') || false;
   }
   return false;

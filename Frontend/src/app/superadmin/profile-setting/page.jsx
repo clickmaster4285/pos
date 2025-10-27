@@ -27,6 +27,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useSelector } from "react-redux";
 
 const SuperAdminUpdatePage = () => {
   const [settings, setSettings] = useState({
@@ -50,6 +51,7 @@ const SuperAdminUpdatePage = () => {
 
   const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
+  const user = useSelector((state) => state.auth.user);
   // Fetch super admin data with auto-refresh capability
   const fetchSuperAdmin = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -57,19 +59,17 @@ const SuperAdminUpdatePage = () => {
     }
     
     try {
-      const authState = sessionStorage.getItem("authUser");
-      if (authState) {
-        const parsedUser = JSON.parse(authState);
-        if (parsedUser.role === "superAdmin") {
-          setSuperAdmin(parsedUser);
+      if (user) {
+        if (user.role === "superAdmin") {
+          setSuperAdmin(user);
           setSettings({
-            name: parsedUser.name || "",
-            email: parsedUser.email || "",
+            name: user.name || "",
+            email: user.email || "",
             password: "",
-            toolName: parsedUser.toolName || "",
-            toolLogo: parsedUser.toolLogo || null,
+            toolName: user.toolName || "",
+            toolLogo: user.toolLogo || null,
           });
-          setLogoPreview(parsedUser.toolLogo ? `${API_URL}${parsedUser.toolLogo.replace(/\\/g, "/")}` : null);
+          setLogoPreview(user.toolLogo ? `${API_URL}${user.toolLogo.replace(/\\/g, "/")}` : null);
           setLastUpdated(new Date());
         } else {
           setMessage({ type: "error", text: "Access denied: Not a SuperAdmin" });
@@ -192,7 +192,6 @@ const SuperAdminUpdatePage = () => {
           toolName: response.data.toolName || superAdmin.toolName,
           toolLogo: response.data.toolLogo || superAdmin.toolLogo,
         };
-        sessionStorage.setItem("authUser", JSON.stringify(updatedUser));
         setSuperAdmin(updatedUser);
         setLogoPreview(response.data.toolLogo ? `${API_URL}${response.data.toolLogo.replace(/\\/g, "/")}` : null);
         setSettings((prev) => ({ ...prev, password: "" }));

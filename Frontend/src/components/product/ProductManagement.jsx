@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, LayoutGrid, List, Plus, Search, Filter, Calendar, PackagePlus } from 'lucide-react';
@@ -23,34 +24,16 @@ import {
 import { useGetAllCategoriesQuery } from '@/features/categoryApi';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
 
-const hasVendorsFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
-    return parsedAuthState.extraFeature?.includes('Vendors') || false;
-  }
-  return false;
-};
-
-const hasCategoriesFeature = () => {
-  const authState = sessionStorage.getItem('authUser');
-  if (authState) {
-    const parsedAuthState = JSON.parse(authState);
-    return parsedAuthState.extraFeature?.includes('Category') || false;
-  }
-  return false;
-};
-
 const getId = (p) => String(p?.id ?? p?._id ?? '').trim();
 const norm = (s) => (typeof s === 'string' ? s : '');
 
-function normalizeProduct(p) {
+function normalizeProduct(p, hasCategories, hasVendors) {
   return {
     id: getId(p),
     productName: norm(p?.productName),
-    categoryName: hasCategoriesFeature() ? norm(p?.categoryName) : '',
-    subCategory: hasCategoriesFeature() ? norm(p?.subCategory) : '',
-    vendor: hasVendorsFeature() ? norm(p?.vendor) : '',
+    categoryName: hasCategories ? norm(p?.categoryName) : '',
+    subCategory: hasCategories ? norm(p?.subCategory) : '',
+    vendor: hasVendors ? norm(p?.vendor) : '',
     SKU: norm(p?.SKU),
     sellingPrice: p?.sellingPrice || 0,
     costPrice: p?.costPrice || 0,
@@ -98,6 +81,26 @@ function getProductStatus(p) {
 }
 
 export function ProductManagement() {
+  // Move useSelector inside the component
+  const user = useSelector((state) => state.auth.user);
+
+  // Define feature checks inside the component
+  const hasVendorsFeature = () => {
+    if (user) {
+      const parsedAuthState = user;
+      return parsedAuthState.extraFeature?.includes('Vendors') || false;
+    }
+    return false;
+  };
+
+  const hasCategoriesFeature = () => {
+    if (user) {
+      const parsedAuthState = user;
+      return parsedAuthState.extraFeature?.includes('Category') || false;
+    }
+    return false;
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -123,8 +126,10 @@ export function ProductManagement() {
   const [toggleProductStatus] = useToggleProductStatusMutation();
   const [updateProductStock, { isLoading: updatingStock }] = useUpdateProductStockMutation();
 
+  console.log("the user are: ", user);
+
   const filteredProducts = useMemo(() => {
-    let result = products?.data?.map(normalizeProduct);
+    let result = products?.data?.map((p) => normalizeProduct(p, hasCategoriesFeature(), hasVendorsFeature()));
     const term = searchTerm.toLowerCase().trim();
     if (term) {
       result = result.filter(
