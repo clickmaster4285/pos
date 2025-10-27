@@ -30,16 +30,13 @@ const CompanySchema = new Schema(
         /^[a-zA-Z0-9\s&.,'-]+$/,
         'Company name contains invalid characters',
       ],
-      unique: true,
     },
     companyId: {
       type: String,
-      unique: true,
       required: [true, 'Company ID is required'],
     },
     industryName:{
       type: String,
-      unique: true,
       required: [true, 'Company ID is required'],
     },
     companyLogo: {

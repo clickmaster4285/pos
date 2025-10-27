@@ -78,7 +78,7 @@ const SuperAdminUpdatePage = () => {
         const response = await fetch(`${API_URL}/api/auth/me`, {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
           cache: 'no-cache'
         });

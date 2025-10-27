@@ -5,6 +5,18 @@ import { addToast } from "./toastSlice";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// --- 🔹 Token Getter Helper ---
+const getToken = (getState) =>
+  getState()?.auth?.token ||
+  (typeof window !== "undefined" && sessionStorage.getItem("authToken")) ||
+  (typeof document !== "undefined" &&
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("authToken="))
+      ?.split("=")[1]) ||
+  null;
+
+// --- 🔹 Auth Slice ---
 const initialState = {
   user: null,
   isAuthenticated: false,
@@ -35,22 +47,26 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearAuth, setLoading, setError } = authSlice.actions;
+export const { setCredentials, clearAuth, setLoading, setError } =
+  authSlice.actions;
 
+// --- 🔹 Auth API ---
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_URL}/api/auth`,
     credentials: "include",
-    prepareHeaders: (headers) => {
+    prepareHeaders: (headers, { getState }) => {
+      const token = getToken(getState);
       headers.set("Content-Type", "application/json");
+      if (token) headers.set("Authorization", `Bearer ${token}`); // ✅ send token
       return headers;
     },
     responseHandler: async (response) => {
       const text = await response.text();
       try {
         const parsed = JSON.parse(text);
-        return { ...parsed, status: response.status }; // Include status in response
+        return { ...parsed, status: response.status };
       } catch {
         return {
           status: response.status,
@@ -62,21 +78,12 @@ export const authApi = createApi({
   }),
   tagTypes: ["Auth"],
   endpoints: (builder) => ({
+    // --- Login ---
     login: builder.mutation({
       query: (loginData) => ({
         url: "/login",
         method: "POST",
         body: loginData,
-      }),
-      transformResponse: (res, meta) => {
-        if (res.success) {
-          return { ...res, status: meta?.response?.status || 200 };
-        }
-        throw { message: res.message || "Login failed", status: meta?.response?.status || 400 };
-      },
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
       }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         dispatch(setLoading(true));
@@ -97,19 +104,11 @@ export const authApi = createApi({
       },
     }),
 
+    // --- Logout ---
     logout: builder.mutation({
       query: () => ({
         url: "/logout",
         method: "DELETE",
-        credentials: "include",
-      }),
-      transformResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 200,
-      }),
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
       }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
@@ -125,44 +124,9 @@ export const authApi = createApi({
       },
     }),
 
-    refreshToken: builder.mutation({
-      query: () => ({
-        url: "/refresh",
-        method: "POST",
-      }),
-      transformResponse: (res, meta) => {
-        if (res.success) {
-          return { ...res, status: meta?.response?.status || 200 };
-        }
-        throw { message: res.message || "Token refresh failed", status: meta?.response?.status || 400 };
-      },
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
-      }),
-      async onQueryStarted(args, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          if (data.success && data.data.user) {
-            dispatch(setCredentials({ user: data.data.user }));
-          }
-        } catch (error) {
-          console.error("[authApi] Token refresh failed:", error);
-          dispatch(clearAuth());
-        }
-      },
-    }),
-
+    // --- Get Current User (/me) ---
     getMe: builder.query({
       query: () => "/me",
-      transformResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 200,
-      }),
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
-      }),
       providesTags: ["Auth"],
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
@@ -176,24 +140,16 @@ export const authApi = createApi({
       },
     }),
 
+    // --- Other endpoints (register, verify, refresh...) ---
     registerUser: builder.mutation({
       query: (registerData) => ({
         url: "/register",
         method: "POST",
         body: registerData,
       }),
-      transformResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 201,
-      }),
-      transformErrorResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 400,
-      }),
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         dispatch(setLoading(true));
         dispatch(setError(null));
-
         try {
           const { data } = await queryFulfilled;
           if (data.success && data.data.user) {
@@ -213,10 +169,22 @@ export const authApi = createApi({
         method: "POST",
         body: { email, otp },
       }),
-      transformResponse: (res, meta) => ({
-        ...res,
-        status: meta?.response?.status || 200,
+    }),
+
+    refreshToken: builder.mutation({
+      query: () => ({
+        url: "/refresh",
+        method: "POST",
       }),
+      transformResponse: (res, meta) => {
+        if (res.success) {
+          return { ...res, status: meta?.response?.status || 200 };
+        }
+        throw {
+          message: res.message || "Token refresh failed",
+          status: meta?.response?.status || 400,
+        };
+      },
       transformErrorResponse: (res, meta) => ({
         ...res,
         status: meta?.response?.status || 400,
@@ -224,8 +192,12 @@ export const authApi = createApi({
       async onQueryStarted(args, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
+          if (data.success && data.data.user) {
+            dispatch(setCredentials({ user: data.data.user }));
+          }
         } catch (error) {
-          // Error handling is managed by toastMiddleware
+          console.error("[authApi] Token refresh failed:", error);
+          dispatch(clearAuth());
         }
       },
     }),
@@ -235,10 +207,10 @@ export const authApi = createApi({
 export const {
   useLoginMutation,
   useLogoutMutation,
-  useRefreshTokenMutation,
   useGetMeQuery,
   useRegisterUserMutation,
   useVerifyEmailMutation,
+  useRefreshTokenMutation,
 } = authApi;
 
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;

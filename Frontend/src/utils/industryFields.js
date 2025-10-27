@@ -1,15 +1,10 @@
 // utils/industryFields.js
 
-export const getIndustryFields = (industryName, moduleType) => {
-  switch (moduleType) {
-    case "product":
-      return getProductFields(industryName);
-    case "billing":
-      return getBillingFields(industryName);
-    default:
-      return [];
-  }
-};
+export const Industries =[
+  "Fashion",
+  "Pharmacy",
+  "Restaurant",
+]
 
 // ========== PRODUCT FIELDS ==========
 const getProductFields = (industryName) => {

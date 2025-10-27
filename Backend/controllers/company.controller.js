@@ -58,6 +58,7 @@ const createCompany = async (req, res) => {
       contactEmail: company.contactEmail,
       contactPhone: company.contactPhone,
       address: company.address,
+      industryName: company.industryName,
       plan: {
         planId: await generatePlanId(companyId, userId),
         status: "not started",

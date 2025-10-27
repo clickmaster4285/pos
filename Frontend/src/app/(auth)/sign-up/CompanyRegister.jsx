@@ -5,6 +5,7 @@ import { useCreateCompanyMutation } from '@/features/CompanyApi';
 import { useGetAllPlansQuery } from '@/features/planApi';
 import { useRouter } from 'next/navigation';
 import PlanSelection from '@/components/PaymentGateWay/PlanSelection';
+import {Industries} from '@/utils/industryFields'; 
 
 export default function CompanyRegister({ setStep, setEmailForVerify }) {
   const [companyStep, setCompanyStep] = useState('plan'); // 'plan' | 'company' | 'admin'
@@ -32,6 +33,7 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
 
     setCompanyData({
       name: data.companyName,
+      industryName: data.industryName, // Store selected industry
       contactEmail: data.email,
       contactPhone: String(data.contactPhone || ''),
       address: data.address,
@@ -93,13 +95,6 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
                 Failed to load plans. Please try again.
               </p>
             )}
-            {/* <button
-              type="button"
-              onClick={() => router.push('/#pricing')}
-              className="w-full text-gray-600 hover:underline font-medium mt-4"
-            >
-              See All Plans
-            </button> */}
           </div>
         )}
 
@@ -126,6 +121,26 @@ export default function CompanyRegister({ setStep, setEmailForVerify }) {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Industry
+                </label>
+                <select
+                  name="industryName"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  required
+                >
+                  <option value="" disabled selected>
+                    Select an industry
+                  </option>
+                  {Industries.map((industry) => (
+                    <option key={industry} value={industry}>
+                      {industry}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
