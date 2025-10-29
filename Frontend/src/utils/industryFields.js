@@ -18,6 +18,7 @@ export const getProductFields = (industry) => {
         { name: "sellingPrice", label: "Sell Price", type: "number", min: 1 },
         { name: "vendor", label: "Vendor", type: "select", options: [] },
         { name: "SKU", label: "Sell Price", type: "number", min: 1 },
+        { name: "SKU", label: "Sell Price", type: "number", min: 1 },
 
       ];
     case "pharmacy":
