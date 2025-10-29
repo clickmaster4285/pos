@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,20 +10,27 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/ui/hover-card';
-import { Switch } from '@/components/ui/switch';
-import { Tag, Edit, Trash2, Calendar, MoreVertical, PackagePlus } from 'lucide-react';
-import { useSelector } from 'react-redux';
+} from "@/components/ui/hover-card";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tag,
+  Edit,
+  Trash2,
+  Calendar,
+  MoreVertical,
+  PackagePlus,
+} from "lucide-react";
+import { useSelector } from "react-redux";
 
 const hasVendorsFeature = (user) => {
   if (user) {
     const parsedAuthState = user;
-    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+    return parsedAuthState.extraFeature?.includes("Vendors") || false;
   }
   return false;
 };
@@ -31,17 +38,17 @@ const hasVendorsFeature = (user) => {
 const hasCategoriesFeature = (user) => {
   if (user) {
     const parsedAuthState = user;
-    return parsedAuthState.extraFeature?.includes('Category') || false;
+    return parsedAuthState.extraFeature?.includes("Category") || false;
   }
   return false;
 };
 
-const safe = (v) => (typeof v === 'string' ? v : '');
-const getId = (p) => p?.id ?? p?._id ?? '';
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
+const safe = (v) => (typeof v === "string" ? v : "");
+const getId = (p) => p?.id ?? p?._id ?? "";
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : "—");
 
 function statusVariant(isActive) {
-  return isActive ? 'active' : 'reject';
+  return isActive ? "active" : "reject";
 }
 
 export function ProductGrid({
@@ -68,7 +75,7 @@ export function ProductGrid({
 
   const getVendorName = (vendorId) => {
     const vendor = vendors.find((v) => v._id === vendorId);
-    return vendor?.vendorName || vendorId || '—';
+    return vendor?.vendorName || vendorId || "—";
   };
 
   return (
@@ -93,10 +100,12 @@ export function ProductGrid({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-md text-foreground truncate">
-                      {safe(product.productName) || 'Untitled product'}
+                      {safe(product.productName) || "Untitled product"}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground truncate">
-                      {hasCategoriesFeature(user) ? (product.subCategoryName || 'No subcategory') : '—'}
+                      {hasCategoriesFeature(user)
+                        ? product.subCategoryName || "No subcategory"
+                        : "—"}
                     </p>
                   </div>
 
@@ -105,7 +114,7 @@ export function ProductGrid({
                       variant={statusVariant(product.isActive)}
                       className="h-6 px-2 text-[10px] shrink-0"
                     >
-                      {product.isActive ? 'Active' : 'Inactive'}
+                      {product.isActive ? "Active" : "Inactive"}
                     </Badge>
 
                     <DropdownMenu>
@@ -120,49 +129,86 @@ export function ProductGrid({
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-48"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <HoverCard openDelay={100} closeDelay={100}>
                           <HoverCardTrigger asChild>
-                            <DropdownMenuItem className="cursor-default" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem
+                              className="cursor-default"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               Change Status
                             </DropdownMenuItem>
                           </HoverCardTrigger>
-                          <HoverCardContent side="left" align="start" className="w-64">
+                          <HoverCardContent
+                            side="left"
+                            align="start"
+                            className="w-64"
+                          >
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">Set Active</span>
+                                <span className="text-sm font-medium">
+                                  Set Active
+                                </span>
                                 <Switch
                                   checked={!!product.isActive}
-                                  onCheckedChange={() => handleToggle?.(product)}
+                                  onCheckedChange={() =>
+                                    handleToggle?.(product)
+                                  }
                                   disabled={!!isPending}
                                 />
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Toggle to {product.isActive ? 'deactivate' : 'activate'} this product.
+                                Toggle to{" "}
+                                {product.isActive ? "deactivate" : "activate"}{" "}
+                                this product.
                               </p>
                               <Button
                                 size="sm"
                                 className="w-full"
-                                onClick={(e) => { e.stopPropagation(); handleToggle(product); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggle(product);
+                                }}
                                 disabled={isPending}
                               >
-                                {isPending ? 'Updating…' : product.isActive ? 'Deactivate' : 'Activate'}
+                                {isPending
+                                  ? "Updating…"
+                                  : product.isActive
+                                  ? "Deactivate"
+                                  : "Activate"}
                               </Button>
                             </div>
                           </HoverCardContent>
                         </HoverCard>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(product); }}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(product);
+                          }}
+                        >
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddStock?.(product); }}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddStock?.(product);
+                          }}
+                        >
                           <PackagePlus className="mr-2 h-4 w-4" /> Add Stock
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); onDelete?.(product); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete?.(product);
+                          }}
                         >
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
@@ -176,51 +222,72 @@ export function ProductGrid({
             <div className="space-y-4 mt-3">
               {hasCategoriesFeature(user) && (
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Category</p>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    Category
+                  </p>
                   {/* {console.log("the product: product : ", product)} */}
                   <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
-                    <span className="truncate">{safe(product.categoryName) || '—'}</span>
+                    <span className="truncate">
+                      {safe(product.categoryName) || "—"}
+                    </span>
                   </div>
                 </div>
               )}
 
               {hasVendorsFeature(user) && (
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Vendor</p>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    Vendor
+                  </p>
                   <div className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                    <span className="truncate">{getVendorName(product.vendor)}</span>
+                    <span className="truncate">
+                      {getVendorName(product.vendor)}
+                    </span>
                   </div>
                 </div>
               )}
 
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Ingredients</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  Ingredients
+                </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
                   <span className="truncate">
-                    {product.ingredientNames?.map(i => i.ingredientName).join(', ') || '—'}
+                    {product.ingredientNames
+                      ?.map((i) => i.ingredientName)
+                      .join(", ") || "—"}
                   </span>
                 </div>
               </div>
 
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">SKU</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  SKU
+                </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
-                  <span className="truncate">{safe(product.SKU) || '—'}</span>
+                  <span className="truncate">{safe(product.SKU) || "—"}</span>
                 </div>
               </div>
 
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">Price</p>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  Price
+                </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
-                  <span className="truncate">${product.sellingPrice.toFixed(2)}</span>
+                  <span className="truncate">
+                    ${product.sellingPrice.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="pt-3 border-t border-border flex items-center justify-between">
-              <Badge variant="secondary" className="h-6 px-2 text-[10px]">Product</Badge>
+              <Badge variant="secondary" className="h-6 px-2 text-[10px]">
+                Product
+              </Badge>
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" /> {fmtDate(product.createdAt)}
+                <Calendar className="h-3.5 w-3.5" />{" "}
+                {fmtDate(product.createdAt)}
               </div>
             </div>
           </Card>

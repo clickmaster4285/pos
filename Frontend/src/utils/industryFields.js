@@ -6,20 +6,30 @@ export const getProductFields = (industry) => {
   switch (i) {
     case "restaurant":
       return [
-        { name: "cookingTime", label: "Cooking Time (mins)", type: "number", min: 1 },
-        { name: "servingSize", label: "Serving Size", type: "text" },
+        { name: "sellingPrice", label: "Sell Price", type: "number", min: 1 },
       ];
-    case "fashion":
-      return [
-        { name: "brand", label: "Brand", type: "text" },
-        { name: "color", label: "Color", type: "text" },
-        { name: "material", label: "Material", type: "text" },
+      case "fashion":
+        return [
+          { name: "brand", label: "Brand", type: "text" },
+          { name: "color", label: "Color", type: "text" },
+          { name: "material", label: "Material", type: "text" },
+          { name: "costPrice", label: "Cost Price", type: "number", min: 1 },
+          { name: "quantity", label: "Quantity", type: "number", min: 1 },
+        { name: "sellingPrice", label: "Sell Price", type: "number", min: 1 },
+        { name: "vendor", label: "Vendor", type: "select", options: [] },
+        { name: "SKU", label: "Sell Price", type: "number", min: 1 },
+
       ];
     case "pharmacy":
       return [
         { name: "genericName", label: "Generic Name", type: "text" },
         { name: "dosage", label: "Dosage", type: "text" },
         { name: "batchNo", label: "Batch No", type: "text" },
+        { name: "costPrice", label: "Cost Price", type: "number", min: 1 },
+        { name: "quantity", label: "Quantity", type: "number", min: 1 },
+        { name: "sellingPrice", label: "Sell Price", type: "number", min: 1 },
+        { name: "vendor", label: "Vendor", type: "select", options: [] },
+
       ];
     default:
       return [];
@@ -32,6 +42,7 @@ export const getIngredientFields = (industry) => {
     case "restaurant":
       return [
         { name: "storage", label: "Storage", type: "select", options: ["room", "fridge", "freezer"] },
+
       ];
     case "pharmacy":
       return [

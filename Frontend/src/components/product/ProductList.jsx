@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,31 +11,31 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/ui/hover-card';
-import { Tag, Edit, Trash2, MoreVertical, PackagePlus } from 'lucide-react';
-import { useSelector } from 'react-redux';
+} from "@/components/ui/hover-card";
+import { Tag, Edit, Trash2, MoreVertical, PackagePlus } from "lucide-react";
+import { useSelector } from "react-redux";
 
 const hasVendorsFeature = (user) => {
   if (user) {
     const parsedAuthState = user;
-    return parsedAuthState.extraFeature?.includes('Vendors') || false;
+    return parsedAuthState.extraFeature?.includes("Vendors") || false;
   }
   return false;
 };
 
 function getStatusVariant(status) {
   switch (status) {
-    case 'active':
-      return 'active';
-    case 'inactive':
-      return 'reject';
+    case "active":
+      return "active";
+    case "inactive":
+      return "reject";
     default:
-      return 'default';
+      return "default";
   }
 }
 
@@ -52,7 +52,7 @@ export function ProductList({
   onOpenSheet,
   onAddStock,
 }) {
-const user = useSelector((state) => state.auth.user);
+  const user = useSelector((state) => state.auth.user);
 
   if (!products?.length) {
     return (
@@ -64,12 +64,16 @@ const user = useSelector((state) => state.auth.user);
 
   const getVendorName = (vendorId) => {
     const vendor = vendors.find((v) => v._id === vendorId);
-    return vendor?.vendorName || '—';
+    return vendor?.vendorName || "—";
   };
 
   return (
     <Card className="divide-y border-border p-2">
-      <div className={`grid ${hasVendorsFeature(user) ? 'grid-cols-20' : 'grid-cols-18'} items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}>
+      <div
+        className={`grid ${
+          hasVendorsFeature(user) ? "grid-cols-20" : "grid-cols-18"
+        } items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}
+      >
         <div className="col-span-2">Product</div>
         <div className="col-span-2">Category</div>
         {hasVendorsFeature(user) && <div className="col-span-2">Vendor</div>}
@@ -84,56 +88,100 @@ const user = useSelector((state) => state.auth.user);
 
       {products.map((p) => {
         const isPending = pendingId && pendingId === (p.id ?? p._id);
-        const statusLabel = p.isActive ? 'Active' : 'Inactive';
+        const statusLabel = p.isActive ? "Active" : "Inactive";
 
         return (
           <div
             key={p.id}
-            className={`grid ${hasVendorsFeature(user) ? 'grid-cols-20' : 'grid-cols-18'} items-center px-4 py-3 hover:bg-accent/30 transition-colors`}
+            className={`grid ${
+              hasVendorsFeature(user) ? "grid-cols-20" : "grid-cols-18"
+            } items-center px-4 py-3 hover:bg-accent/30 transition-colors`}
           >
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-primary text-background rounded-lg shrink-0">
                   <Tag className="h-4 w-4" />
                 </div>
-                <p className="text-sm font-medium leading-tight truncate">{p.productName}</p>
+                <p className="text-sm font-medium leading-tight truncate">
+                  {p.productName}
+                </p>
               </div>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">{p.categoryName || '—'}</p>
-            </div>
-
-            {hasVendorsFeature(user) && (
-              <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-                <p className="text-sm text-muted-foreground truncate">{getVendorName(p.vendor)}</p>
-              </div>
-            )}
-
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
               <p className="text-sm text-muted-foreground truncate">
-                {p.ingredientNames?.map(i => i.ingredientName).join(', ') || '—'}
+                {p.categoryName || "—"}
               </p>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">{p.SKU || '—'}</p>
+            {hasVendorsFeature(user) && (
+              <div
+                className="col-span-2 mb-2 sm:mb-0"
+                onClick={() => onOpenSheet(p)}
+              >
+                <p className="text-sm text-muted-foreground truncate">
+                  {getVendorName(p.vendor)}
+                </p>
+              </div>
+            )}
+
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
+              <p className="text-sm text-muted-foreground truncate">
+                {p.ingredientNames?.map((i) => i.ingredientName).join(", ") ||
+                  "—"}
+              </p>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">${p.costPrice.toFixed(2)}</p>
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
+              <p className="text-sm text-muted-foreground truncate">
+                {p.SKU || "—"}
+              </p>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">${p.sellingPrice.toFixed(2)}</p>
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
+              <p className="text-sm text-muted-foreground truncate">
+                ${p.costPrice.toFixed(2)}
+              </p>
             </div>
 
-            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-muted-foreground truncate">{p.quantity}</p>
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
+              <p className="text-sm text-muted-foreground truncate">
+                ${p.sellingPrice.toFixed(2)}
+              </p>
+            </div>
+
+            <div
+              className="col-span-2 mb-2 sm:mb-0"
+              onClick={() => onOpenSheet(p)}
+            >
+              <p className="text-sm text-muted-foreground truncate">
+                {p.quantity}
+              </p>
             </div>
 
             <div className="col-span-2 flex items-center justify-center">
-              <Badge variant={getStatusVariant(statusLabel)} className="h-6 px-2 text-[10px]">
+              <Badge
+                variant={getStatusVariant(statusLabel)}
+                className="h-6 px-2 text-[10px]"
+              >
                 {statusLabel}
               </Badge>
             </div>
@@ -176,12 +224,20 @@ const user = useSelector((state) => state.auth.user);
                     <DropdownMenuSeparator />
                     <HoverCard openDelay={100} closeDelay={100}>
                       <HoverCardTrigger asChild>
-                        <DropdownMenuItem className="cursor-default">Change Status</DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-default">
+                          Change Status
+                        </DropdownMenuItem>
                       </HoverCardTrigger>
-                      <HoverCardContent side="left" align="start" className="w-64">
+                      <HoverCardContent
+                        side="left"
+                        align="start"
+                        className="w-64"
+                      >
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Set Active</span>
+                            <span className="text-sm font-medium">
+                              Set Active
+                            </span>
                             <Switch
                               checked={!!p.isActive}
                               onCheckedChange={() => handleToggle?.(p)}
@@ -189,7 +245,8 @@ const user = useSelector((state) => state.auth.user);
                             />
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Toggle to {p.isActive ? 'deactivate' : 'activate'} this product.
+                            Toggle to {p.isActive ? "deactivate" : "activate"}{" "}
+                            this product.
                           </p>
                           <Button
                             size="sm"
@@ -197,7 +254,11 @@ const user = useSelector((state) => state.auth.user);
                             onClick={() => handleToggle?.(p)}
                             disabled={!!isPending}
                           >
-                            {isPending ? 'Updating…' : p.isActive ? 'Deactivate' : 'Activate'}
+                            {isPending
+                              ? "Updating…"
+                              : p.isActive
+                              ? "Deactivate"
+                              : "Activate"}
                           </Button>
                         </div>
                       </HoverCardContent>
