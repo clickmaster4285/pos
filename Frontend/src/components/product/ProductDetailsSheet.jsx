@@ -28,7 +28,7 @@ const hasVendorsFeature = () => {
 const hasCategoriesFeature = () => {
   const user = useSelector((state) => state.auth.user);
   if (user) {
-    const parsedAuthState = user
+    const parsedAuthState = user;
     return parsedAuthState.extraFeature?.includes('Category') || false;
   }
   return false;
@@ -62,6 +62,7 @@ export function ProductDetailsSheet({
   product,
   categories,
   vendors,
+  ingredients,
   onEdit,
   onDelete,
   onToggle,
@@ -81,7 +82,9 @@ export function ProductDetailsSheet({
   }
 
   const isActive = !!product.isActive;
-  const vendorName = hasVendorsFeature() ? (vendors.find((v) => v._id === product.vendor)?.vendorName || product.vendor || '—') : null;
+  const vendorName = hasVendorsFeature()
+    ? (vendors.find((v) => v._id === product.vendor)?.vendorName || product.vendor || '—')
+    : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -96,7 +99,7 @@ export function ProductDetailsSheet({
                 <div className="min-w-0">
                   <SheetTitle className="truncate text-gray-900 dark:text-white">{product.productName || 'Product'}</SheetTitle>
                   <SheetDescription className="truncate text-gray-600 dark:text-gray-300">
-                    {hasCategoriesFeature() ? (product.subCategory || 'No subcategory') : '—'}
+                    {hasCategoriesFeature() ? (product.subCategoryName || 'No subcategory') : '—'}
                   </SheetDescription>
                 </div>
               </div>
@@ -141,6 +144,21 @@ export function ProductDetailsSheet({
                 </div>
               )}
 
+              {/* Ingredients */}
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
+                  <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-muted-foreground">Ingredients</div>
+                  <div className="text-sm font-medium">
+                    {product.ingredientNames?.length
+                      ? product.ingredientNames.map(i => i.ingredientName).join(', ')
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
                   <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -180,34 +198,6 @@ export function ProductDetailsSheet({
                   <div className="text-sm font-medium">{product.tags?.length ? product.tags.join(', ') : '—'}</div>
                 </div>
               </div>
-
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
-                  <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground">Attributes</div>
-                  <div className="text-sm font-medium">
-                    {product.attribute?.length
-                      ? product.attribute.map((attr) => `${attr.key}: ${attr.value}`).join(', ')
-                      : '—'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
-                  <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground">Custom Attributes</div>
-                  <div className="text-sm font-medium">
-                    {product.customAttributes?.length
-                      ? product.customAttributes.map((attr) => `${attr.key}: ${attr.value}`).join(', ')
-                      : '—'}
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -224,7 +214,7 @@ export function ProductDetailsSheet({
                   </div>
                   <div className="text-sm font-medium">{prettyDate(product.createdAt)}</div>
                 </div>
-                <div className="flex_items-center justify-between">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Last Updated</span>

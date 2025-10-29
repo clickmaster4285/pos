@@ -17,6 +17,7 @@ import PaymentGatway from "./PaymentGatway.route.js";
 import Shippment from "./shipment.routes.js";
 import Category from "./category.route.js";
 import Product from "./product.route.js";
+import Ingredient from "./ingredient.route.js";
 import { updateSuperAdminInfo } from "../config/superAdminConfig.js";
 import { upload } from "../config/multer.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
@@ -75,6 +76,7 @@ router.use("/shippment", Shippment);
 router.use("/strip", PaymentGatway);
 router.use("/category", Category);
 router.use("/product", Product);
+router.use("/ingredient", Ingredient);
 
 // superAdmin config update
 router.patch(

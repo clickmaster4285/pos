@@ -15,6 +15,7 @@ import Shippment from './shipment.controller.js';
 import PaymentGatway from './PaymentGatway.controller.js';
 import Category from './category.controller.js';
 import Product from './product.controller.js';
+import Ingredient from './ingredient.controller.js';
 
 export default {
   Company,
@@ -34,4 +35,5 @@ export default {
   PaymentGatway,
   Category,
   Product,
+  Ingredient,
 };

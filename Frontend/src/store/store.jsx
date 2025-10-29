@@ -21,6 +21,7 @@ import {couriersApi} from '@/features/couriersApi'
 import { paymentGatewayApi } from '@/features/paymentGatewayApi';
 import { categoryApi } from '@/features/categoryApi';
 import { productApi } from '@/features/productApi';
+import { ingredientApi } from '@/features/ingredientApi';
 
 export const store = configureStore({
   reducer: {
@@ -45,7 +46,7 @@ export const store = configureStore({
         [paymentGatewayApi.reducerPath]: paymentGatewayApi.reducer,
 [categoryApi.reducerPath]: categoryApi.reducer,
     [productApi.reducerPath]: productApi.reducer,
-
+[ingredientApi.reducerPath]: ingredientApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -68,7 +69,8 @@ export const store = configureStore({
       couriersApi.middleware,
       paymentGatewayApi.middleware,
       categoryApi.middleware,
-      productApi.middleware
+      productApi.middleware,
+      ingredientApi.middleware,
     ),
 });
 

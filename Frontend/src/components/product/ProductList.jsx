@@ -18,11 +18,11 @@ import {
   HoverCardContent,
 } from '@/components/ui/hover-card';
 import { Tag, Edit, Trash2, MoreVertical, PackagePlus } from 'lucide-react';
+import { useSelector } from 'react-redux';
 
-const hasVendorsFeature = () => {
-  const user = useSelector((state) => state.auth.user);
+const hasVendorsFeature = (user) => {
   if (user) {
-    const parsedAuthState = JSON.parse(user);
+    const parsedAuthState = user;
     return parsedAuthState.extraFeature?.includes('Vendors') || false;
   }
   return false;
@@ -43,6 +43,7 @@ export function ProductList({
   products,
   categories,
   vendors,
+  ingredients,
   onView,
   onEdit,
   onDelete,
@@ -51,6 +52,8 @@ export function ProductList({
   onOpenSheet,
   onAddStock,
 }) {
+const user = useSelector((state) => state.auth.user);
+
   if (!products?.length) {
     return (
       <p className="text-center text-muted-foreground py-6">
@@ -61,15 +64,16 @@ export function ProductList({
 
   const getVendorName = (vendorId) => {
     const vendor = vendors.find((v) => v._id === vendorId);
-    return vendor?.name || '—';
+    return vendor?.vendorName || '—';
   };
 
   return (
     <Card className="divide-y border-border p-2">
-      <div className={`grid ${hasVendorsFeature() ? 'grid-cols-18' : 'grid-cols-16'} items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}>
+      <div className={`grid ${hasVendorsFeature(user) ? 'grid-cols-20' : 'grid-cols-18'} items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground`}>
         <div className="col-span-2">Product</div>
         <div className="col-span-2">Category</div>
-        {hasVendorsFeature() && <div className="col-span-2">Vendor</div>}
+        {hasVendorsFeature(user) && <div className="col-span-2">Vendor</div>}
+        <div className="col-span-2">Ingredients</div>
         <div className="col-span-2">SKU</div>
         <div className="col-span-2">Cost Price</div>
         <div className="col-span-2">Selling Price</div>
@@ -85,7 +89,7 @@ export function ProductList({
         return (
           <div
             key={p.id}
-            className={`grid ${hasVendorsFeature() ? 'grid-cols-18' : 'grid-cols-16'} items-center px-4 py-3 hover:bg-accent/30 transition-colors`}
+            className={`grid ${hasVendorsFeature(user) ? 'grid-cols-20' : 'grid-cols-18'} items-center px-4 py-3 hover:bg-accent/30 transition-colors`}
           >
             <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
               <div className="flex items-center gap-2">
@@ -100,11 +104,17 @@ export function ProductList({
               <p className="text-sm text-muted-foreground truncate">{p.categoryName || '—'}</p>
             </div>
 
-            {hasVendorsFeature() && (
+            {hasVendorsFeature(user) && (
               <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
                 <p className="text-sm text-muted-foreground truncate">{getVendorName(p.vendor)}</p>
               </div>
             )}
+
+            <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
+              <p className="text-sm text-muted-foreground truncate">
+                {p.ingredientNames?.map(i => i.ingredientName).join(', ') || '—'}
+              </p>
+            </div>
 
             <div className="col-span-2 mb-2 sm:mb-0" onClick={() => onOpenSheet(p)}>
               <p className="text-sm text-muted-foreground truncate">{p.SKU || '—'}</p>

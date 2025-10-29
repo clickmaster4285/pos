@@ -1,68 +1,44 @@
 // utils/industryFields.js
+export const Industries = ["Restaurant", "Fashion", "Pharmacy", "Electronics", "General"];
 
-export const Industries =[
-  "Fashion",
-  "Pharmacy",
-  "Restaurant",
-]
-
-// ========== PRODUCT FIELDS ==========
-const getProductFields = (industryName) => {
-  switch (industryName?.toLowerCase()) {
-    case "food":
+export const getProductFields = (industry) => {
+  const i = industry?.toLowerCase();
+  switch (i) {
     case "restaurant":
       return [
-        { name: "size", label: "Size (Small/Medium/Large)", type: "text" },
-        { name: "addons", label: "Add-ons (comma separated)", type: "text" },
+        { name: "cookingTime", label: "Cooking Time (mins)", type: "number", min: 1 },
+        { name: "servingSize", label: "Serving Size", type: "text" },
       ];
-
     case "fashion":
-    case "clothing":
       return [
         { name: "brand", label: "Brand", type: "text" },
-        { name: "size", label: "Size", type: "text" },
         { name: "color", label: "Color", type: "text" },
+        { name: "material", label: "Material", type: "text" },
       ];
-
     case "pharmacy":
-    case "medical":
       return [
         { name: "genericName", label: "Generic Name", type: "text" },
+        { name: "dosage", label: "Dosage", type: "text" },
         { name: "batchNo", label: "Batch No", type: "text" },
-        { name: "expiryDate", label: "Expiry Date", type: "date" },
-        { name: "manufacturer", label: "Manufacturer", type: "text" },
       ];
-
     default:
-      return [
-      ];
+      return [];
   }
 };
 
-// ========== BILLING FIELDS ==========
-const getBillingFields = (industryName) => {
-  switch (industryName?.toLowerCase()) {
-    case "food":
+export const getIngredientFields = (industry) => {
+  const i = industry?.toLowerCase();
+  switch (i) {
     case "restaurant":
       return [
-        { name: "tableNo", label: "Table No", type: "text" },
-        { name: "waiterName", label: "Waiter", type: "text" },
-        { name: "orderType", label: "Order Type", type: "select", options: ["Dine-In", "Takeaway", "Delivery"] },
-          ];
-
-    case "fashion":
-    case "clothing":
-      return [
+        { name: "storage", label: "Storage", type: "select", options: ["room", "fridge", "freezer"] },
       ];
-
     case "pharmacy":
-    case "medical":
       return [
-        { name: "doctorName", label: "Doctor Name", type: "text" },
+        { name: "activeIngredient", label: "Active Ingredient", type: "text" },
+        { name: "purity", label: "Purity %", type: "number", min: 0, max: 100 },
       ];
-
     default:
-      return [
-      ];
+      return [];
   }
 };

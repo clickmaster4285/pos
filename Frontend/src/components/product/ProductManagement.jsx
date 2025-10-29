@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
 } from '@/features/productApi';
 import { useGetAllCategoriesQuery } from '@/features/categoryApi';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
+import { useGetAllIngredientsQuery } from '@/features/ingredientApi';
 
 const getId = (p) => String(p?.id ?? p?._id ?? '').trim();
 const norm = (s) => (typeof s === 'string' ? s : '');
@@ -31,22 +32,21 @@ function normalizeProduct(p, hasCategories, hasVendors) {
   return {
     id: getId(p),
     productName: norm(p?.productName),
-    categoryName: hasCategories ? norm(p?.categoryName) : '',
-    subCategory: hasCategories ? norm(p?.subCategory) : '',
+    categoryName: hasCategories ? norm(p?.category) : '',
+    subCategoryName: hasCategories ? norm(p?.subCategoryName) : '',
     vendor: hasVendors ? norm(p?.vendor) : '',
     SKU: norm(p?.SKU),
     sellingPrice: p?.sellingPrice || 0,
     costPrice: p?.costPrice || 0,
     quantity: p?.quantity || 0,
-    location: norm(p?.location),
-    condition: norm(p?.condition),
-    attribute: Array.isArray(p?.attribute) ? p.attribute : [],
-    customAttributes: Array.isArray(p?.customAttributes) ? p.customAttributes : [],
     description: norm(p?.description),
     tags: Array.isArray(p?.tags) ? p.tags : [],
     isActive: !!p?.isActive,
     createdAt: p?.createdAt || null,
     updatedAt: p?.updatedAt || null,
+    ingredientNames: Array.isArray(p?.ingredient)
+      ? p.ingredient.map(i => ({ ingredientName: norm(i.name) }))
+      : [],
   };
 }
 
@@ -73,33 +73,11 @@ function getProductDate(p) {
   return raw ? new Date(raw) : null;
 }
 
-function getProductStatus(p) {
-  const s = (p?.status || '').toLowerCase();
-  if (s === 'active' || p?.isActive) return 'active';
-  if (s === 'inactive' || p?.isActive === false) return 'inactive';
-  return 'inactive';
-}
-
 export function ProductManagement() {
-  // Move useSelector inside the component
   const user = useSelector((state) => state.auth.user);
 
-  // Define feature checks inside the component
-  const hasVendorsFeature = () => {
-    if (user) {
-      const parsedAuthState = user;
-      return parsedAuthState.extraFeature?.includes('Vendors') || false;
-    }
-    return false;
-  };
-
-  const hasCategoriesFeature = () => {
-    if (user) {
-      const parsedAuthState = user;
-      return parsedAuthState.extraFeature?.includes('Category') || false;
-    }
-    return false;
-  };
+  const hasVendorsFeature = () => user?.extraFeature?.includes('Vendors') || false;
+  const hasCategoriesFeature = () => user?.extraFeature?.includes('Category') || false;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -109,7 +87,7 @@ export function ProductManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalMode, setModalMode] = useState('create');
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, productId: null });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, productId: null, productName: '' });
   const [pendingId, setPendingId] = useState(null);
   const [view, setView] = useState('grid');
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -117,90 +95,90 @@ export function ProductManagement() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockProduct, setStockProduct] = useState(null);
 
-  const { data: products = [], isLoading: productsLoading } = useGetAllProductsQuery();
-  const { data: categories = [], isLoading: categoriesLoading } = hasCategoriesFeature() ? useGetAllCategoriesQuery() : { data: [], isLoading: false };
-  const { data: vendors = [], isLoading: vendorsLoading } = hasVendorsFeature() ? useGetAllVendorsQuery() : { data: [], isLoading: false };
+  // === RTK QUERY HOOKS ===
+  const {
+    data: productsResponse,
+    isLoading: productsLoading,
+    isError: productsError,
+    error: productsErrorData,
+  } = useGetAllProductsQuery();
+
+  const { data: categories = [], isLoading: categoriesLoading } = hasCategoriesFeature()
+    ? useGetAllCategoriesQuery()
+    : { data: [], isLoading: false };
+
+  const { data: vendors = [], isLoading: vendorsLoading } = hasVendorsFeature()
+    ? useGetAllVendorsQuery()
+    : { data: [], isLoading: false };
+
+  const { data: ingredientsData } = useGetAllIngredientsQuery({ limit: 1000 });
+  const ingredients = ingredientsData?.data || [];
+
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: deleting }] = useDeleteProductMutation();
   const [toggleProductStatus] = useToggleProductStatusMutation();
   const [updateProductStock, { isLoading: updatingStock }] = useUpdateProductStockMutation();
 
-  console.log("the user are: ", user);
-
+  // === NORMALIZE & FILTER ===
   const filteredProducts = useMemo(() => {
-    let result = products?.data?.map((p) => normalizeProduct(p, hasCategoriesFeature(), hasVendorsFeature()));
+    if (!productsResponse?.data) return [];
+
+    let result = productsResponse.data.map((p) =>
+      normalizeProduct(p, hasCategoriesFeature(), hasVendorsFeature())
+    );
+
     const term = searchTerm.toLowerCase().trim();
     if (term) {
       result = result.filter(
         (p) =>
           p.productName.toLowerCase().includes(term) ||
           p.SKU.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term)
+          p.tags.some(t => t.toLowerCase().includes(term))
       );
     }
+
     if (statusFilter !== 'all') {
-      result = result.filter((p) => getProductStatus(p) === statusFilter);
+      const isActive = statusFilter === 'active';
+      result = result.filter(p => p.isActive === isActive);
     }
+
     if (quickRange !== 'all') {
-      const { fromDate, toDate } = (() => {
-        const now = new Date();
-        const todayStart = startOfDay(now);
-        const todayEnd = endOfDay(now);
-        switch (quickRange) {
-          case 'today':
-            return { fromDate: todayStart, toDate: todayEnd };
-          case 'yesterday':
-            const y = addDays(todayStart, -1);
-            return { fromDate: startOfDay(y), toDate: endOfDay(y) };
-          case 'last7':
-            return { fromDate: startOfDay(addDays(todayStart, -6)), toDate: todayEnd };
-          case 'last30':
-            return { fromDate: startOfDay(addDays(todayStart, -29)), toDate: todayEnd };
-          default:
-            return { fromDate: null, toDate: null };
-        }
-      })();
-      if (fromDate && toDate) {
-        result = result.filter((p) => {
+      const now = new Date();
+      let start;
+      switch (quickRange) {
+        case 'today': start = startOfDay(now); break;
+        case 'yesterday': start = startOfDay(addDays(now, -1)); break;
+        case 'last7': start = startOfDay(addDays(now, -7)); break;
+        case 'last30': start = startOfDay(addDays(now, -30)); break;
+        default: start = null;
+      }
+      if (start) {
+        result = result.filter(p => {
           const date = getProductDate(p);
-          return date && date >= fromDate && date <= toDate;
+          return date && date >= start;
         });
       }
     }
-    return result;
-  }, [products, searchTerm, statusFilter, quickRange]);
 
-  const total = filteredProducts?.length;
-  const paginatedProducts = filteredProducts?.slice((page - 1) * pageSize, page * pageSize);
+    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [productsResponse, searchTerm, statusFilter, quickRange]);
 
-  const handleSaveProduct = async (formData) => {
+  const total = filteredProducts.length;
+  const paginatedProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
+
+  // === HANDLERS ===
+  const handleSaveProduct = async (data) => {
     try {
-      const payload = {
-        productName: formData.productName,
-        categoryName: hasCategoriesFeature() ? formData.categoryName : '',
-        subCategory: hasCategoriesFeature() ? formData.subCategory : '',
-        vendor: hasVendorsFeature() ? formData.vendor : '',
-        SKU: formData.SKU,
-        sellingPrice: Number(formData.sellingPrice),
-        costPrice: Number(formData.costPrice),
-        quantity: Number(formData.quantity),
-        location: formData.location,
-        condition: formData.condition,
-        attribute: formData.attribute,
-        customAttributes: formData.customAttributes,
-        description: formData.description,
-        tags: formData.tags,
-      };
       if (modalMode === 'create') {
-        await createProduct(payload).unwrap();
+        await createProduct(data).unwrap();
       } else {
-        await updateProduct({ id: formData.id, ...payload }).unwrap();
+        await updateProduct({ id: selectedProduct.id, ...data }).unwrap();
       }
       setIsModalOpen(false);
       setSelectedProduct(null);
-    } catch (error) {
-      console.error('Failed to save product:', error);
+    } catch (err) {
+      console.error('Save failed:', err);
     }
   };
 
@@ -211,33 +189,27 @@ export function ProductManagement() {
   };
 
   const handleDeleteProduct = (product) => {
-    setDeleteDialog({ open: true, productId: getId(product), productName: product.productName });
+    setDeleteDialog({ open: true, productId: product.id, productName: product.productName });
   };
 
   const confirmDelete = async () => {
     try {
       await deleteProduct(deleteDialog.productId).unwrap();
-      setDeleteDialog({ open: false, productId: null });
-    } catch (error) {
-      console.error('Failed to delete product:', error);
+      setDeleteDialog({ open: false });
+    } catch (err) {
+      console.error('Delete failed:', err);
     }
   };
 
   const handleToggle = async (product) => {
+    setPendingId(product.id);
     try {
-      setPendingId(getId(product));
-      await toggleProductStatus(getId(product)).unwrap();
-    } catch (error) {
-      console.error('Failed to toggle product status:', error);
+      await toggleProductStatus(product.id).unwrap();
+    } catch (err) {
+      console.error('Toggle failed:', err);
     } finally {
       setPendingId(null);
     }
-  };
-
-  const handleViewProduct = (product) => {
-    setSelectedProduct(product);
-    setModalMode('view');
-    setIsModalOpen(true);
   };
 
   const openProductDetailsSheet = (product) => {
@@ -252,66 +224,51 @@ export function ProductManagement() {
 
   const handleSaveStock = async (stockData) => {
     try {
-      await updateProductStock(stockData).unwrap();
+      await updateProductStock({ stockData }).unwrap();
       setIsStockModalOpen(false);
       setStockProduct(null);
-    } catch (error) {
-      console.error('Failed to update stock:', error);
+    } catch (err) {
+      console.error('Stock update failed:', err);
     }
   };
 
+  // === RENDER ===
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-semibold text-foreground">Products</h1>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => {
-              setModalMode('create');
-              setSelectedProduct(null);
-              setIsModalOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" /> Add Product
-          </Button>
-          <Button
-            onClick={() => handleAddStock(null)}
-            className="gap-2"
-          >
-            <PackagePlus className="h-4 w-4" /> Add Stock
-          </Button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <p className="text-sm text-muted-foreground">Manage your product inventory</p>
         </div>
+        <Button onClick={() => { setModalMode('create'); setIsModalOpen(true); }} className="gap-2">
+          <Plus className="h-4 w-4" /> Add Product
+        </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 border-border"
+            className="pl-10 border-border"
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" /> Filter
+                <Filter className="h-4 w-4" /> Status: {statusFilter}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
-                All Statuses
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('active')}>
-                Active
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>
-                Inactive
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('active')}>Active</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>Inactive</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -322,53 +279,39 @@ export function ProductManagement() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setQuickRange('all')}>
-                All Time
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('today')}>
-                Today
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('yesterday')}>
-                Yesterday
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('last7')}>
-                Last 7 Days
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('last30')}>
-                Last 30 Days
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('all')}>All Time</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('today')}>Today</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('yesterday')}>Yesterday</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('last7')}>Last 7 Days</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setQuickRange('last30')}>Last 30 Days</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            variant={view === 'grid' ? 'default' : 'outline'}
-            onClick={() => setView('grid')}
-            className="gap-2"
-          >
-            <LayoutGrid className="h-4 w-4" />
-            <span className="hidden sm:inline">Grid</span>
+          <Button variant={view === 'grid' ? 'default' : 'outline'} onClick={() => setView('grid')} className="gap-2">
+            <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Grid</span>
           </Button>
-          <Button
-            variant={view === 'list' ? 'default' : 'outline'}
-            onClick={() => setView('list')}
-            className="gap-2"
-          >
-            <List className="h-4 w-4" />
-            <span className="hidden sm:inline">List</span>
+          <Button variant={view === 'list' ? 'default' : 'outline'} onClick={() => setView('list')} className="gap-2">
+            <List className="h-4 w-4" /><span className="hidden sm:inline">List</span>
           </Button>
         </div>
       </div>
 
+      {/* Loading / Error / Data */}
       {productsLoading || categoriesLoading || vendorsLoading ? (
         <p className="text-center text-muted-foreground py-6">Loading...</p>
+      ) : productsError ? (
+        <div className="text-red-500 bg-red-50 p-4 rounded">
+          <p>Failed to load products:</p>
+          <pre>{JSON.stringify(productsErrorData, null, 2)}</pre>
+        </div>
       ) : (
         <>
           {view === 'grid' ? (
             <ProductGrid
               products={paginatedProducts}
-              categories={hasCategoriesFeature() ? categories : []}
-              vendors={hasVendorsFeature() ? vendors : []}
-              onView={handleViewProduct}
+              categories={categories}
+              vendors={vendors}
+              ingredients={ingredients}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
               handleToggle={handleToggle}
@@ -379,9 +322,9 @@ export function ProductManagement() {
           ) : (
             <ProductList
               products={paginatedProducts}
-              categories={hasCategoriesFeature() ? categories : []}
-              vendors={hasVendorsFeature() ? vendors : []}
-              onView={handleViewProduct}
+              categories={categories}
+              vendors={vendors}
+              ingredients={ingredients}
               onEdit={handleEditProduct}
               onDelete={handleDeleteProduct}
               handleToggle={handleToggle}
@@ -393,8 +336,7 @@ export function ProductManagement() {
 
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Showing {(page - 1) * pageSize + 1} to{' '}
-              {Math.min(page * pageSize, total)} of {total} products
+              Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} products
             </div>
             <Pagination
               page={page}
@@ -407,17 +349,16 @@ export function ProductManagement() {
         </>
       )}
 
+      {/* Modals */}
       <ProductModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedProduct(null);
-        }}
+        onClose={() => { setIsModalOpen(false); setSelectedProduct(null); }}
         onSave={handleSaveProduct}
         product={selectedProduct}
         mode={modalMode}
         categories={hasCategoriesFeature() ? categories : []}
         vendors={hasVendorsFeature() ? vendors : []}
+        ingredients={ingredients}
       />
 
       <DeleteConfirmDialog
@@ -434,21 +375,18 @@ export function ProductManagement() {
         product={detailsProduct}
         categories={hasCategoriesFeature() ? categories : []}
         vendors={hasVendorsFeature() ? vendors : []}
+        ingredients={ingredients}
         onEdit={handleEditProduct}
         onDelete={handleDeleteProduct}
         onToggle={handleToggle}
-        onAddStock={handleAddStock}
         pending={pendingId === getId(detailsProduct)}
       />
 
       <AddStockModal
         isOpen={isStockModalOpen}
-        onClose={() => {
-          setIsStockModalOpen(false);
-          setStockProduct(null);
-        }}
+        onClose={() => { setIsStockModalOpen(false); setStockProduct(null); }}
         onSave={handleSaveStock}
-        products={products.data}
+        products={productsResponse?.data || []}
         selectedProduct={stockProduct}
         isLoading={updatingStock}
       />

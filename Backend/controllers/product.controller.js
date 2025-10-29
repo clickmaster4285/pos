@@ -1,281 +1,166 @@
-import IndexModel from '../models/indexModel.js';
+// controllers/product.controller.js
+import Product from '../models/product.model.js'
+import Category from '../models/category.model.js';
+import Ingredient from '../models/ingredient.model.js';
+import Vendor from '../models/vendor.model.js';
+import Company from '../models/company.model.js';
 import { generateSKU } from '../utils/generateUniqueSKU.js';
 import mongoose from 'mongoose';
-import sanitize from 'sanitize-html';
+import sanitizeHtml from 'sanitize-html';
 
-const sanitizeInput = (input) => {
-  if (typeof input === 'string') {
-    return sanitize(input, {
-      allowedTags: [],
-      allowedAttributes: {},
-    }).trim();
-  }
-  return input;
+const sanitize = (input) => {
+  if (typeof input !== 'string') return input;
+  return sanitizeHtml(input, { allowedTags: [], allowedAttributes: {} }).trim();
 };
 
-const hasVendorsFeature = (activePlansFeature) => {
-  return activePlansFeature?.limitations?.features?.includes('Vendors') || false;
-};
-
-const hasCategoriesFeature = (activePlansFeature) => {
-  return activePlansFeature?.limitations?.features?.includes('Category') || false;
+const getFeatures = async (companyId) => {
+  const company = await Company.findOne({ companyId, isActive: true, deleted: false }).lean();
+  if (!company) throw new Error('Company not found');
+  const plan = company.plan?.find(p => p.isActive);
+  return {
+    hasVendors: plan?.limitations?.features?.includes('Vendors') || false,
+    hasCategories: plan?.limitations?.features?.includes('Category') || false,
+  };
 };
 
 const createProduct = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
+    const features = await getFeatures(companyId);
+
     const {
       productName,
-      categoryName,
-      subCategory,
-      description,
-      tags,
+      category,
+      subCategoryName,
       vendor,
+      sellingPrice,
+      costPrice = 0,
+      quantity = 0,
+      description,
+      tags = [],
+      SKU,
+      ingredient = [], // Added
+    } = req.body;
+
+    if (!productName || !sellingPrice ) {
+      return res.status(400).json({ success: false, message: 'productName, sellingPrice are required' });
+    }
+
+    const cleanName = sanitize(productName);
+    const cleanDesc = sanitize(description);
+    const cleanTags = Array.isArray(tags) ? tags.map(sanitize) : [];
+
+    // Validate category
+    let categoryDoc = null;
+    if (features.hasCategories && category) {
+      categoryDoc = await Category.findOne({ _id: category, companyId, deleted: false });
+      if (!categoryDoc) return res.status(400).json({ success: false, message: 'Invalid category' });
+      if (subCategoryName && !categoryDoc.subCategory.includes(subCategoryName)) {
+        return res.status(400).json({ success: false, message: 'Invalid subCategoryName' });
+      }
+    }
+
+    // Validate vendor (optional)
+    if (features.hasVendors && vendor) {
+      const ven = await Vendor.findOne({ _id: vendor, companyId, deleted: false });
+      if (!ven) return res.status(400).json({ success: false, message: 'Invalid vendor' });
+    }
+
+    // Validate ingredients
+    if (ingredient.length > 0) {
+      const validIngredients = await Ingredient.find({ _id: { $in: ingredient }, companyId, deleted: false });
+      if (validIngredients.length !== ingredient.length) {
+        return res.status(400).json({ success: false, message: 'One or more ingredients are invalid' });
+      }
+    }
+
+    // SKU
+    let finalSKU = SKU ? sanitize(SKU).toUpperCase() : null;
+    if (!finalSKU) {
+      [finalSKU] = await generateSKU('PROD', companyId, 1);
+    } else {
+      const exists = await Product.findOne({ SKU: finalSKU, companyId, deleted: false });
+      if (exists) return res.status(400).json({ success: false, message: 'SKU already in use' });
+    }
+    const product = new Product({
+      companyId,
+      productName: cleanName,
+      SKU: finalSKU,
+      description: cleanDesc,
+      tags: cleanTags,
+      category: features.hasCategories ? categoryDoc.categoryName : null,
+      subCategoryName: subCategoryName || null,
+      vendor: features.hasVendors ? vendor : null,
+      ingredient: ingredient || [],
       sellingPrice,
       costPrice,
       quantity,
-      location,
-      condition,
-      attribute,
-      customAttributes,
-      SKU,
-    } = req.body;
-
-    // --- Sanitize ---
-    const sanitize = (v) => (typeof v === 'string' ? v.trim() : v);
-    const sanitizedProductName = sanitize(productName);
-    const sanitizedCategoryName = sanitize(categoryName);
-    const sanitizedSubCategory = sanitize(subCategory);
-    const sanitizedDescription = sanitize(description);
-    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitize) : [];
-    const sanitizedSKU = sanitize(SKU);
-
-    // --- Validate company ---
-    const companyFeature = await IndexModel.Company.findOne({
-      companyId,
-      deleted: false,
-      isActive: true,
-    }).lean();
-    if (!companyFeature) {
-      return res.status(404).json({
-        success: false,
-        message: 'You are not Authorized: the company was not found',
-      });
-    }
-
-    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
-
-    // --- Validate required ---
-    if (!sanitizedProductName || !companyId || !userId || !sellingPrice) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product name, company ID, creator ID, and selling price are required',
-      });
-    }
-
-    // --- Validate vendor ---
-    let vendorRecord = null;
-    if (hasVendorsFeature(activePlansFeature) && vendor) {
-      vendorRecord = await IndexModel.Vendor.findOne({
-        _id: vendor,
-        companyId,
-        deleted: false,
-        isActive: true,
-      });
-      if (!vendorRecord) {
-        return res.status(400).json({
-          success: false,
-          message: 'Vendor not found or inactive',
-        });
-      }
-    }
-
-    // --- Check duplicates ---
-    const existingProduct = await IndexModel.Product.findOne({
-      productName: sanitizedProductName,
-      companyId,
-      deleted: false,
-    });
-    if (existingProduct) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product with this name already exists',
-      });
-    }
-
-    // --- Validate category ---
-    let category = null;
-    if (hasCategoriesFeature(activePlansFeature) && sanitizedCategoryName) {
-      category = await IndexModel.Category.findOne({
-        categoryName: sanitizedCategoryName,
-        companyId: req.user.companyId,
-        deleted: false,
-        isActive: true,
-      });
-      if (!category) {
-        return res.status(400).json({
-          success: false,
-          message: 'Active category not found',
-        });
-      }
-
-      if (sanitizedSubCategory) {
-        if (!category.subCategory.includes(sanitizedSubCategory)) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid subcategory: ${sanitizedSubCategory}`,
-          });
-        }
-      }
-    }
-
-    // --- Handle SKU ---
-    let finalSKU = sanitizedSKU;
-    if (!finalSKU || finalSKU.trim() === '') {
-      const [generatedSKU] = await generateSKU('PRODUCT', companyId, 1);
-      finalSKU = generatedSKU;
-    } else {
-      const existingSKU = await IndexModel.Product.findOne({
-        SKU: finalSKU,
-        companyId,
-        deleted: false,
-      });
-      if (existingSKU) {
-        return res.status(400).json({
-          success: false,
-          message: 'Provided SKU already in use',
-        });
-      }
-    }
-
-    // --- Create and save product ---
-    const product = new IndexModel.Product({
-      productName: sanitizedProductName,
-      categoryName: hasCategoriesFeature(activePlansFeature) ? sanitizedCategoryName || '' : '',
-      subCategory: hasCategoriesFeature(activePlansFeature) ? sanitizedSubCategory || '' : '',
-      companyId,
-      description: sanitizedDescription,
-      tags: sanitizedTags,
-      vendor: hasVendorsFeature(activePlansFeature) ? vendor || '' : '',
-      SKU: finalSKU,
-      sellingPrice,
-      costPrice: costPrice || 0,
-      quantity: quantity || 0,
-      location,
-      condition,
-      attribute: attribute || [],
-      customAttributes: customAttributes || [],
-      isActive: true,
       createdBy: userId,
-      history: [
-        {
-          action: 'CREATED',
-          performedBy: userId,
-          details: `Product created by ${userId}`,
-        },
-      ],
+      history: [{ action: 'CREATED', performedBy: userId, details: `Created by ${userId}` }],
     });
 
-    const savedProduct = await product.save();
-
-    // --- Try updating company ---
-    const company = await IndexModel.Company.findOneAndUpdate(
-      { companyId },
-      {
-        $inc: { 'gain.product': 1 },
-        $push: {
-          history: {
-            action: `Product created ${savedProduct._id}`,
-            performedBy: userId,
-            createdAt: new Date(),
-          },
-        },
-        updatedAt: new Date(),
-      },
-      { new: true }
-    );
-
-    // --- If company update fails, rollback product ---
-    if (!company) {
-      await IndexModel.Product.deleteOne({ _id: savedProduct._id });
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to update company after creating product',
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: 'Product created successfully',
-      data: savedProduct,
-    });
-  } catch (error) {
-    console.error('Error creating product:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error creating product',
-      error: error.message,
-    });
+    await product.save();
+    const populated = await Product.findById(product._id)
+      .populate('ingredient', 'ingredientName')
+      .lean();
+    res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    console.error('createProduct error:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const getAllProducts = async (req, res) => {
   try {
     const { companyId } = req.user;
-    const products = await IndexModel.Product.find({ companyId, deleted: false })
+
+    const products = await Product.find({ companyId, deleted: false })
       .sort({ createdAt: -1 })
       .lean();
 
-    return res.status(200).json({
-      success: true,
-      data: products,
-    });
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching products',
-      error: error.message,
-    });
+    // Collect all ingredient IDs across products
+    const allIngredientIds = [
+      ...new Set(products.flatMap((p) => p.ingredient || [])),
+    ];
+
+    // Fetch ingredient names
+    const ingredients = await Ingredient.find({ _id: { $in: allIngredientIds } })
+      .select("name")
+      .lean();
+
+    const ingredientMap = Object.fromEntries(
+      ingredients.map((ing) => [ing._id.toString(), ing.name])
+    );
+
+    // Replace ingredient IDs with names
+    const populatedProducts = products.map((p) => ({
+      ...p,
+      ingredient: (p.ingredient || []).map((id) => ({
+        // _id: id,
+        name: ingredientMap[id] || "Unknown",
+      })),
+    }));
+// console.log("the populatedProducts: ",JSON.stringify(populatedProducts))
+    res.status(200).json({ success: true, data: populatedProducts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 const getProductById = async (req, res) => {
   try {
     const { companyId } = req.user;
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid product ID',
-      });
-    }
+    const product = await Product.findOne({ _id: id, companyId, deleted: false })
+      .lean();
 
-    const product = await IndexModel.Product.findOne({
-      _id: id,
-      companyId,
-      deleted: false,
-    }).lean();
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: product,
-    });
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error fetching product',
-      error: error.message,
-    });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.status(200).json({ success: true, data: product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -283,185 +168,53 @@ const updateProduct = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
-    const {
-      productName,
-      categoryName,
-      subCategory,
-      description,
-      tags,
-      vendor,
-      sellingPrice,
-      costPrice,
-      quantity,
-      location,
-      condition,
-      attribute,
-      customAttributes,
-      SKU,
-    } = req.body;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid product ID',
-      });
+    const features = await getFeatures(companyId);
+    const updates = req.body;
+
+    const product = await Product.findOne({ _id: id, companyId, deleted: false });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    // Validate category
+    if (features.hasCategories && updates.category) {
+      const cat = await Category.findOne({ _id: updates.category, companyId, deleted: false });
+      if (!cat) return res.status(400).json({ success: false, message: 'Invalid category' });
+      if (updates.subCategoryName && !cat.subCategory.includes(updates.subCategoryName)) {
+        return res.status(400).json({ success: false, message: 'Invalid subCategoryName' });
+      }
     }
 
-    // --- Sanitize ---
-    const sanitize = (v) => (typeof v === 'string' ? v.trim() : v);
-    const sanitizedProductName = sanitize(productName);
-    const sanitizedCategoryName = sanitize(categoryName);
-    const sanitizedSubCategory = sanitize(subCategory);
-    const sanitizedDescription = sanitize(description);
-    const sanitizedTags = Array.isArray(tags) ? tags.map(sanitize) : [];
-    const sanitizedSKU = sanitize(SKU);
-
-    // --- Validate company ---
-    const companyFeature = await IndexModel.Company.findOne({
-      companyId,
-      deleted: false,
-      isActive: true,
-    }).lean();
-    if (!companyFeature) {
-      return res.status(404).json({
-        success: false,
-        message: 'You are not Authorized: the company was not found',
-      });
+    // Validate vendor (optional)
+    if (features.hasVendors && updates.vendor) {
+      const ven = await Vendor.findOne({ _id: updates.vendor, companyId, deleted: false });
+      if (!ven) return res.status(400).json({ success: false, message: 'Invalid vendor' });
     }
 
-    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
-
-    // --- Validate required ---
-    if (!sanitizedProductName || !sellingPrice) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product name and selling price are required',
-      });
+    // Validate ingredients
+    if (updates.ingredient && updates.ingredient.length > 0) {
+      const validIngredients = await Ingredient.find({ _id: { $in: updates.ingredient }, companyId, deleted: false });
+      if (validIngredients.length !== updates.ingredient.length) {
+        return res.status(400).json({ success: false, message: 'One or more ingredients are invalid' });
+      }
     }
 
-    // --- Find product ---
-    const product = await IndexModel.Product.findOne({
-      _id: id,
-      companyId,
-      deleted: false,
+    Object.keys(updates).forEach(key => {
+      if (key === 'tags') product[key] = Array.isArray(updates[key]) ? updates[key].map(sanitize) : [];
+      else if (['productName', 'description', 'subCategoryName'].includes(key)) product[key] = sanitize(updates[key]);
+      else if (!['companyId', 'createdBy', 'history', 'deleted'].includes(key)) product[key] = updates[key];
     });
 
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
-    }
-
-    // --- Validate vendor ---
-    let vendorRecord = null;
-    if (hasVendorsFeature(activePlansFeature) && vendor) {
-      vendorRecord = await IndexModel.Vendor.findOne({
-        _id: vendor,
-        companyId,
-        deleted: false,
-        isActive: true,
-      });
-      if (!vendorRecord) {
-        return res.status(400).json({
-          success: false,
-          message: 'Vendor not found or inactive',
-        });
-      }
-    }
-
-    // --- Check duplicate product name ---
-    const existingProduct = await IndexModel.Product.findOne({
-      productName: sanitizedProductName,
-      companyId,
-      deleted: false,
-      _id: { $ne: id },
-    });
-    if (existingProduct) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product with this name already exists',
-      });
-    }
-
-    // --- Validate category ---
-    let category = null;
-    if (hasCategoriesFeature(activePlansFeature) && sanitizedCategoryName) {
-      category = await IndexModel.Category.findOne({
-        categoryName: sanitizedCategoryName,
-        companyId,
-        deleted: false,
-        isActive: true,
-      });
-      if (!category) {
-        return res.status(400).json({
-          success: false,
-          message: 'Active category not found',
-        });
-      }
-
-      if (sanitizedSubCategory) {
-        if (!category.subCategory.includes(sanitizedSubCategory)) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid subcategory: ${sanitizedSubCategory}`,
-          });
-        }
-      }
-    }
-
-    // --- Validate SKU ---
-    if (sanitizedSKU && sanitizedSKU.trim() !== '') {
-      const existingSKU = await IndexModel.Product.findOne({
-        SKU: sanitizedSKU,
-        companyId,
-        deleted: false,
-        _id: { $ne: id },
-      });
-      if (existingSKU) {
-        return res.status(400).json({
-          success: false,
-          message: 'Provided SKU already in use',
-        });
-      }
-    }
-
-    // --- Update product ---
-    product.productName = sanitizedProductName;
-    product.categoryName = hasCategoriesFeature(activePlansFeature) ? sanitizedCategoryName || '' : '';
-    product.subCategory = hasCategoriesFeature(activePlansFeature) ? sanitizedSubCategory || '' : '';
-    product.description = sanitizedDescription;
-    product.tags = sanitizedTags;
-    product.vendor = hasVendorsFeature(activePlansFeature) ? vendor || '' : '';
-    product.SKU = sanitizedSKU || product.SKU;
-    product.sellingPrice = sellingPrice;
-    product.costPrice = costPrice || 0;
-    product.quantity = quantity || 0;
-    product.location = location;
-    product.condition = condition;
-    product.attribute = attribute || [];
-    product.customAttributes = customAttributes || [];
+    product.history.push({ action: 'UPDATED', performedBy: userId, details: `Updated by ${userId}` });
     product.updatedAt = new Date();
-    product.history.push({
-      action: 'UPDATED',
-      performedBy: userId,
-      details: `Product updated by ${userId}`,
-    });
 
-    const updatedProduct = await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Product updated successfully',
-      data: updatedProduct,
-    });
-  } catch (error) {
-    console.error('Error updating product:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error updating product',
-      error: error.message,
-    });
+    await product.save();
+    const populated = await Product.findById(product._id)
+      .populate('ingredient', 'ingredientName')
+      .lean();
+    res.status(200).json({ success: true, data: populated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -469,48 +222,18 @@ const deleteProduct = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid product ID',
-      });
-    }
-
-    const product = await IndexModel.Product.findOne({
-      _id: id,
-      companyId,
-      deleted: false,
-    });
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
-    }
+    const product = await Product.findOne({ _id: id, companyId, deleted: false });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     product.deleted = true;
-    product.updatedAt = new Date();
-    product.history.push({
-      action: 'DELETED',
-      performedBy: userId,
-      details: `Product deleted by ${userId}`,
-    });
-
+    product.history.push({ action: 'DELETED', performedBy: userId });
     await product.save();
 
-    return res.status(200).json({
-      success: true,
-      message: 'Product deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting product:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error deleting product',
-      error: error.message,
-    });
+    res.status(200).json({ success: true, message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -518,49 +241,21 @@ const toggleProductStatus = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
 
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid product ID',
-      });
-    }
-
-    const product = await IndexModel.Product.findOne({
-      _id: id,
-      companyId,
-      deleted: false,
-    });
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found',
-      });
-    }
+    const product = await Product.findOne({ _id: id, companyId, deleted: false });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
 
     product.isActive = !product.isActive;
-    product.updatedAt = new Date();
     product.history.push({
       action: product.isActive ? 'ACTIVATED' : 'DEACTIVATED',
       performedBy: userId,
-      details: `Product ${product.isActive ? 'activated' : 'deactivated'} by ${userId}`,
     });
+    await product.save();
 
-    const updatedProduct = await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message: `Product ${product.isActive ? 'activated' : 'deactivated'} successfully`,
-      data: updatedProduct,
-    });
-  } catch (error) {
-    console.error('Error toggling product status:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error toggling product status',
-      error: error.message,
-    });
+    res.status(200).json({ success: true, data: product });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -570,82 +265,29 @@ const updateProductStock = async (req, res) => {
     const { stockData } = req.body;
 
     if (!Array.isArray(stockData) || stockData.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Stock data must be a non-empty array of { productId, quantity } objects',
-      });
+      return res.status(400).json({ success: false, message: 'stockData must be non-empty array' });
     }
 
-    // Validate each stock entry
-    for (const item of stockData) {
-      if (!mongoose.isValidObjectId(item.productId) || !Number.isInteger(item.quantity)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Each stock entry must have a valid productId and integer quantity',
-        });
+    const results = [];
+    for (const { productId, quantity } of stockData) {
+      if (!mongoose.isValidObjectId(productId) || !Number.isInteger(quantity)) {
+        return res.status(400).json({ success: false, message: 'Invalid productId or quantity' });
       }
 
-      const product = await IndexModel.Product.findOne({
-        _id: item.productId,
-        companyId,
-        deleted: false,
-      });
+      const product = await Product.findOne({ _id: productId, companyId, deleted: false });
+      if (!product) return res.status(404).json({ success: false, message: `Product ${productId} not found` });
 
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product with ID ${item.productId} not found or does not belong to the company`,
-        });
-      }
+      if (!product.isActive) return res.status(400).json({ success: false, message: 'Cannot update inactive product' });
 
-      if (!product.isActive) {
-        return res.status(400).json({
-          success: false,
-          message: `Product with ID ${item.productId} is inactive. Activate it before updating stock.`,
-        });
-      }
-
-      if ((product.quantity || 0) + item.quantity < 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot reduce stock below 0 for product ${item.productId}`,
-        });
-      }
+      product.quantity = Math.max(0, (product.quantity || 0) + quantity);
+      product.history.push({ action: 'STOCK_UPDATED', performedBy: userId, details: `+${quantity}` });
+      await product.save();
+      results.push(product);
     }
 
-    // Update stock for each product
-    const updatedProducts = [];
-    for (const item of stockData) {
-      const product = await IndexModel.Product.findOne({
-        _id: item.productId,
-        companyId,
-        deleted: false,
-      });
-
-      product.quantity = (product.quantity || 0) + item.quantity;
-      product.updatedAt = new Date();
-      product.history.push({
-        action: 'STOCK_UPDATED',
-        performedBy: userId,
-        details: `Added ${item.quantity} to stock by ${userId}`,
-      });
-
-      const updatedProduct = await product.save();
-      updatedProducts.push(updatedProduct);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Product stock updated successfully',
-      data: updatedProducts,
-    });
-  } catch (error) {
-    console.error('Error updating product stock:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error updating product stock',
-      error: error.message,
-    });
+    res.status(200).json({ success: true, data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -654,92 +296,42 @@ const searchProducts = async (req, res) => {
     const { companyId } = req.user;
     const { query, page = 1, limit = 10 } = req.query;
 
-    if (!query || typeof query !== 'string' || query.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Query must be a string with at least 2 characters',
-      });
+    if (!query || query.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Query too short' });
     }
 
-    // --- Validate company ---
-    const companyFeature = await IndexModel.Company.findOne({
+    const sanitized = sanitize(query);
+    const skip = (page - 1) * limit;
+
+    const search = {
       companyId,
       deleted: false,
-      isActive: true,
-    }).lean();
-    if (!companyFeature) {
-      return res.status(404).json({
-        success: false,
-        message: 'You are not Authorized: the company was not found',
-      });
-    }
-
-    const activePlansFeature = companyFeature.plan.find((plan) => plan.isActive === true);
-
-    const sanitizedQuery = sanitizeInput(query);
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 10;
-    const skip = (pageNum - 1) * limitNum;
-
-    // Build search query
-    const searchQuery = {
-      companyId,
-      deleted: false,
-      isActive: true,
       $or: [
-        { productName: { $regex: sanitizedQuery, $options: 'i' } },
-        { SKU: { $regex: sanitizedQuery, $options: 'i' } },
-        ...(hasCategoriesFeature(activePlansFeature)
-          ? [
-              { categoryName: { $regex: sanitizedQuery, $options: 'i' } },
-              { subCategory: { $regex: sanitizedQuery, $options: 'i' } },
-            ]
-          : []),
-        { tags: { $regex: sanitizedQuery, $options: 'i' } },
+        { productName: { $regex: sanitized, $options: 'i' } },
+        { SKU: { $regex: sanitized, $options: 'i' } },
+        { tags: { $regex: sanitized, $options: 'i' } },
       ],
     };
 
-    const [products, total] = await Promise.all([
-      IndexModel.Product.find(searchQuery)
-        .sort({ productName: 1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      IndexModel.Product.countDocuments(searchQuery),
+    const [data, total] = await Promise.all([
+      Product.find(search).skip(skip).limit(+limit).lean(),
+      Product.countDocuments(search),
     ]);
 
-    const totalPages = Math.ceil(total / limitNum);
-
-    if (!products || products.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No products found matching the query',
-      });
-    }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      data: products,
-      pagination: {
-        page: pageNum,
-        totalPages,
-        total,
-      },
+      data,
+      pagination: { page: +page, limit: +limit, total, pages: Math.ceil(total / limit) },
     });
-  } catch (error) {
-    console.error('Error searching products:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error searching products',
-      error: error.message,
-    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
 export default {
   createProduct,
   getAllProducts,
-  getProductById,
+  getProductById, 
   updateProduct,
   deleteProduct,
   toggleProductStatus,

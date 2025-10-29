@@ -264,7 +264,7 @@ const getme = async (req, res, next) => {
           department: user.department,
           permissions: user.permissions,
           isActive: user.isActive,
-          extraFeature: activePlans.limitations.features,
+          extraFeature: activePlans?.limitations.features || [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),

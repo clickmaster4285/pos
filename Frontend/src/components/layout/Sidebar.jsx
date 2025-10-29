@@ -186,7 +186,7 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const authUser = useSelector((state) => state.auth.user); // Moved useSelector here
+  const authUser = useSelector((state) => state.auth.user);
 
   const isSettingsMode = pathname?.startsWith('/settings');
 
@@ -230,6 +230,12 @@ export default function Sidebar() {
       {
         href: '/admin/setting',
         label: 'Company Profile',
+        icon: iconMap['Settings'],
+        compulsory: true,
+      },
+      {
+        href: '/admin/ingredient',
+        label: 'ingredient',
         icon: iconMap['Settings'],
         compulsory: true,
       },

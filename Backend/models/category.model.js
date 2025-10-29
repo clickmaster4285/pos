@@ -13,7 +13,6 @@ const CategorySchema = new Schema(
     }],
     companyId: {
       type: String,
-      unique: true,
       trim: true,
     },
     description: {
