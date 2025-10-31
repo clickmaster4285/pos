@@ -83,6 +83,11 @@ const createCompany = async (req, res) => {
       userId,
       address: admin.address,
       Phone: admin.phone,
+      status: {
+        isaccepted: availablePlan.price === 0 ? "true" : "false",
+        performedBy: "free plan",
+        updatedAt: new Date(),
+      },
       permissions: {
         approveRequests: true,
         assignTasks: true,
@@ -381,7 +386,7 @@ const updateCompanySettings = async (req, res) => {
     // Handle logo (optional upload)
     let logoUrl = updateData.companySettings?.logoPreview || "";
     if (req.file) {
-      logoUrl = `/uploads/company/${req.file.filename}`;
+      logoUrl = `/Uploads/company/${req.file.filename}`;
     }
 
     // Update company

@@ -1,5 +1,5 @@
 // controllers/product.controller.js
-import Product from '../models/product.model.js'
+import Product from '../models/product.model.js';
 import Category from '../models/category.model.js';
 import Ingredient from '../models/ingredient.model.js';
 import Vendor from '../models/vendor.model.js';
@@ -7,6 +7,8 @@ import Company from '../models/company.model.js';
 import { generateSKU } from '../utils/generateUniqueSKU.js';
 import mongoose from 'mongoose';
 import sanitizeHtml from 'sanitize-html';
+import path from 'path';
+import fs from 'fs';
 
 const sanitize = (input) => {
   if (typeof input !== 'string') return input;
@@ -23,34 +25,116 @@ const getFeatures = async (companyId) => {
   };
 };
 
+const getImageUrl = (filename) => {
+  return filename ? `/Uploads/products/${filename}` : null;
+};
+
+const processIngredients = async (ingredients, companyId) => {
+  if (!Array.isArray(ingredients) || ingredients.length === 0) return [];
+
+  const ingredientIds = ingredients
+    .map(ing => ing.ingredientId)
+    .filter(id => mongoose.isValidObjectId(id));
+
+  const validIngredients = await Ingredient.find({
+    _id: { $in: ingredientIds },
+    companyId,
+    deleted: false
+  }).lean();
+
+  const ingredientMap = new Map(validIngredients.map(ing => [ing._id.toString(), ing]));
+
+  return ingredients.map(ing => {
+    const validIng = ingredientMap.get(ing.ingredientId);
+    if (!validIng) {
+      throw new Error(`Invalid ingredient ID: ${ing.ingredientId}`);
+    }
+    return {
+      ingredientId: validIng._id,
+      ingredientName: validIng.ingredientName || ing.ingredientName,
+      quantity: sanitize(ing.quantity || ''),
+      unit: sanitize(ing.unit || 'unit') // default fallback
+    };
+  });
+};
+
+/* ------------------------------------------------------------------ */
 const createProduct = async (req, res) => {
+  console.log("the req.body: ", req.body);
   try {
     const { companyId, userId } = req.user;
     const features = await getFeatures(companyId);
 
+    // ----- Parse tags (stringified array) -----
+    let tags = [];
+    try {
+      tags = req.body.tags ? JSON.parse(req.body.tags) : [];
+      if (!Array.isArray(tags)) tags = [];
+    } catch (e) {
+      console.log("Tags parse error:", e);
+      return res.status(400).json({ success: false, message: 'Invalid tags format' });
+    }
+
+    // ----- Parse ingredients (array of JSON strings) -----
+    let ingredients = [];
+    if (Array.isArray(req.body.ingredients)) {
+      for (const ingStr of req.body.ingredients) {
+        if (typeof ingStr !== 'string' || !ingStr.trim()) continue;
+        try {
+          const parsed = JSON.parse(ingStr);
+          if (Array.isArray(parsed)) {
+            ingredients.push(...parsed);
+          } else if (parsed && typeof parsed === 'object') {
+            ingredients.push(parsed);
+          }
+        } catch (e) {
+          console.log("Invalid ingredient JSON:", ingStr);
+          return res.status(400).json({
+            success: false,
+            message: `Invalid ingredient JSON format: ${ingStr.substring(0, 50)}...`
+          });
+        }
+      }
+    } else if (typeof req.body.ingredients === 'string' && req.body.ingredients.trim()) {
+      try {
+        const parsed = JSON.parse(req.body.ingredients);
+        ingredients = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        return res.status(400).json({ success: false, message: 'Invalid ingredients JSON string' });
+      }
+    }
+
     const {
-      productName,
+      productName = '',
       category,
       subCategoryName,
       vendor,
-      sellingPrice,
+      sellingPrice = 0,
       costPrice = 0,
       quantity = 0,
-      description,
-      tags = [],
+      description = '',
       SKU,
-      ingredient = [], // Added
     } = req.body;
 
-    if (!productName || !sellingPrice ) {
-      return res.status(400).json({ success: false, message: 'productName, sellingPrice are required' });
+    // ----- Core required fields -----
+    if (!productName.trim()) {
+      return res.status(400).json({ success: false, message: 'productName is required' });
+    }
+    if (!sellingPrice || isNaN(sellingPrice)) {
+      return res.status(400).json({ success: false, message: 'sellingPrice is required and must be a number' });
+    }
+
+    // ----- Image handling -----
+    let imgUrl = [];
+    if (req.files && req.files.length > 0) {
+      imgUrl = req.files.map(file => getImageUrl(file.filename));
     }
 
     const cleanName = sanitize(productName);
     const cleanDesc = sanitize(description);
-    const cleanTags = Array.isArray(tags) ? tags.map(sanitize) : [];
+    const cleanTags = tags.map(sanitize);
 
-    // Validate category
+    // ----- Category validation -----
     let categoryDoc = null;
     if (features.hasCategories && category) {
       categoryDoc = await Category.findOne({ _id: category, companyId, deleted: false });
@@ -60,21 +144,17 @@ const createProduct = async (req, res) => {
       }
     }
 
-    // Validate vendor (optional)
+    // ----- Vendor validation -----
     if (features.hasVendors && vendor) {
       const ven = await Vendor.findOne({ _id: vendor, companyId, deleted: false });
       if (!ven) return res.status(400).json({ success: false, message: 'Invalid vendor' });
     }
 
-    // Validate ingredients
-    if (ingredient.length > 0) {
-      const validIngredients = await Ingredient.find({ _id: { $in: ingredient }, companyId, deleted: false });
-      if (validIngredients.length !== ingredient.length) {
-        return res.status(400).json({ success: false, message: 'One or more ingredients are invalid' });
-      }
-    }
+    // ----- Process ingredients (with unit) -----
+    const processedIngredients = await processIngredients(ingredients, companyId);
+    // console.log("processedIngredients: ", processedIngredients);
 
-    // SKU
+    // ----- SKU handling -----
     let finalSKU = SKU ? sanitize(SKU).toUpperCase() : null;
     if (!finalSKU) {
       [finalSKU] = await generateSKU('PROD', companyId, 1);
@@ -82,27 +162,46 @@ const createProduct = async (req, res) => {
       const exists = await Product.findOne({ SKU: finalSKU, companyId, deleted: false });
       if (exists) return res.status(400).json({ success: false, message: 'SKU already in use' });
     }
+
+    // ----- Collect unknown fields into metaData -----
+    const knownFields = new Set([
+      'productName', 'category', 'subCategoryName', 'vendor',
+      'sellingPrice', 'costPrice', 'quantity', 'description',
+      'tags', 'SKU', 'ingredients', 'productImage', 'imgUrl'
+    ]);
+
+    const metaData = {};
+    Object.keys(req.body).forEach(key => {
+      if (!knownFields.has(key) && req.body[key] !== undefined && req.body[key] !== '' && req.body[key] !== null) {
+        metaData[key] = req.body[key];
+      }
+    });
+
+    // ----- Create product -----
     const product = new Product({
       companyId,
       productName: cleanName,
       SKU: finalSKU,
       description: cleanDesc,
       tags: cleanTags,
-      category: features.hasCategories ? categoryDoc.categoryName : null,
+      imgUrl,
+      category: categoryDoc?._id || null,
       subCategoryName: subCategoryName || null,
-      vendor: features.hasVendors ? vendor : null,
-      ingredient: ingredient || [],
-      sellingPrice,
-      costPrice,
-      quantity,
+      vendor: vendor || null,
+      ingredient: processedIngredients,
+      metaData,
+      sellingPrice: Number(sellingPrice),
+      costPrice: Number(costPrice),
+      quantity: Number(quantity),
       createdBy: userId,
-      history: [{ action: 'CREATED', performedBy: userId, details: `Created by ${userId}` }],
     });
 
     await product.save();
+
     const populated = await Product.findById(product._id)
-      .populate('ingredient', 'ingredientName')
+      .populate('ingredient.ingredientId', 'ingredientName')
       .lean();
+
     res.status(201).json({ success: true, data: populated });
   } catch (err) {
     console.error('createProduct error:', err);
@@ -168,52 +267,142 @@ const updateProduct = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
-
     const features = await getFeatures(companyId);
-    const updates = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid ID' });
+    }
 
     const product = await Product.findOne({ _id: id, companyId, deleted: false });
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
 
-    // Validate category
-    if (features.hasCategories && updates.category) {
-      const cat = await Category.findOne({ _id: updates.category, companyId, deleted: false });
-      if (!cat) return res.status(400).json({ success: false, message: 'Invalid category' });
-      if (updates.subCategoryName && !cat.subCategory.includes(updates.subCategoryName)) {
-        return res.status(400).json({ success: false, message: 'Invalid subCategoryName' });
+    // Handle image replacement
+    if (req.files && req.files.length > 0) {
+      if (product.imgUrl && product.imgUrl.length > 0) {
+        product.imgUrl.forEach(url => {
+          const oldImagePath = path.join(process.cwd(), 'Uploads', 'products', path.basename(url));
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        });
       }
+      product.imgUrl = req.files.map(file => getImageUrl(file.filename));
     }
 
-    // Validate vendor (optional)
-    if (features.hasVendors && updates.vendor) {
-      const ven = await Vendor.findOne({ _id: updates.vendor, companyId, deleted: false });
-      if (!ven) return res.status(400).json({ success: false, message: 'Invalid vendor' });
-    }
+    const {
+      productName,
+      category,
+      subCategoryName,
+      vendor,
+      sellingPrice,
+      costPrice,
+      quantity: stockQuantity,
+      description,
+      tags,
+      ingredients: rawIngredients,
+      ...otherUpdates
+    } = req.body;
 
-    // Validate ingredients
-    if (updates.ingredient && updates.ingredient.length > 0) {
-      const validIngredients = await Ingredient.find({ _id: { $in: updates.ingredient }, companyId, deleted: false });
-      if (validIngredients.length !== updates.ingredient.length) {
-        return res.status(400).json({ success: false, message: 'One or more ingredients are invalid' });
+    // === UPDATE metaData WITH UNKNOWN FIELDS ===
+    const knownFields = new Set([
+      'productName', 'category', 'subCategoryName', 'vendor',
+      'sellingPrice', 'costPrice', 'quantity', 'description',
+      'tags', 'ingredients', 'imgUrl', 'productImage'
+    ]);
+
+    Object.keys(otherUpdates).forEach(key => {
+      if (!knownFields.has(key)) {
+        if (otherUpdates[key] === '' || otherUpdates[key] === null || otherUpdates[key] === undefined) {
+          delete product.metaData[key];
+        } else {
+          product.metaData[key] = otherUpdates[key];
+        }
       }
-    }
-
-    Object.keys(updates).forEach(key => {
-      if (key === 'tags') product[key] = Array.isArray(updates[key]) ? updates[key].map(sanitize) : [];
-      else if (['productName', 'description', 'subCategoryName'].includes(key)) product[key] = sanitize(updates[key]);
-      else if (!['companyId', 'createdBy', 'history', 'deleted'].includes(key)) product[key] = updates[key];
     });
 
-    product.history.push({ action: 'UPDATED', performedBy: userId, details: `Updated by ${userId}` });
-    product.updatedAt = new Date();
+    // === PARSE INGREDIENTS (array of JSON strings) ===
+    let ingredients = [];
+    if (rawIngredients !== undefined) {
+      if (Array.isArray(rawIngredients)) {
+        for (const ingStr of rawIngredients) {
+          if (typeof ingStr !== 'string' || !ingStr.trim()) continue;
+          try {
+            const parsed = JSON.parse(ingStr);
+            if (Array.isArray(parsed)) {
+              ingredients.push(...parsed);
+            } else if (parsed && typeof parsed === 'object') {
+              ingredients.push(parsed);
+            }
+          } catch (e) {
+            return res.status(400).json({
+              success: false,
+              message: `Invalid ingredient JSON: ${ingStr.substring(0, 50)}...`
+            });
+          }
+        }
+      } else if (typeof rawIngredients === 'string' && rawIngredients.trim()) {
+        try {
+          const parsed = JSON.parse(rawIngredients);
+          ingredients = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+          return res.status(400).json({ success: false, message: 'Invalid ingredients JSON string' });
+        }
+      }
 
+      if (ingredients.length > 0) {
+        product.ingredient = await processIngredients(ingredients, companyId);
+      }
+    }
+
+    // === PARSE TAGS ===
+    if (tags !== undefined) {
+      try {
+        const parsed = typeof tags === 'string' ? JSON.parse(tags) : tags;
+        product.tags = Array.isArray(parsed) ? parsed.map(sanitize) : [];
+      } catch (e) {
+        return res.status(400).json({ success: false, message: 'Invalid tags format' });
+      }
+    }
+
+    // Validate category
+    if (features.hasCategories && category !== undefined && category !== (product.category || '').toString()) {
+      const categoryDoc = await Category.findOne({ _id: category, companyId, deleted: false });
+      if (!categoryDoc) return res.status(400).json({ success: false, message: 'Invalid category' });
+      if (subCategoryName && !categoryDoc.subCategory.includes(subCategoryName)) {
+        return res.status(400).json({ success: false, message: 'Invalid subCategoryName' });
+      }
+      product.category = category;
+      product.subCategoryName = subCategoryName || null;
+    } else if (subCategoryName !== undefined) {
+      product.subCategoryName = subCategoryName || null;
+    }
+
+    // Validate vendor
+    if (features.hasVendors && vendor !== undefined && vendor !== product.vendor) {
+      const ven = await Vendor.findOne({ _id: vendor, companyId, deleted: false });
+      if (!ven) return res.status(400).json({ success: false, message: 'Invalid vendor' });
+      product.vendor = vendor;
+    }
+
+    // Apply scalar updates
+    if (productName !== undefined) product.productName = sanitize(productName);
+    if (description !== undefined) product.description = sanitize(description || '');
+    if (sellingPrice !== undefined) product.sellingPrice = Number(sellingPrice);
+    if (costPrice !== undefined) product.costPrice = Number(costPrice);
+    if (stockQuantity !== undefined) product.quantity = Number(stockQuantity);
+
+    product.history.push({ action: 'UPDATED', performedBy: userId, details: `Updated by ${userId}` });
     await product.save();
+
     const populated = await Product.findById(product._id)
-      .populate('ingredient', 'ingredientName')
+      .populate('ingredient.ingredientId', 'ingredientName')
       .lean();
+
     res.status(200).json({ success: true, data: populated });
   } catch (err) {
+    console.error('updateProduct error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

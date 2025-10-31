@@ -86,9 +86,13 @@ export function ProductDetailsSheet({
     ? (vendors.find((v) => v._id === product.vendor)?.vendorName || product.vendor || '—')
     : null;
 
+  // Extract dynamic fields from metaData (brand, size, spiceLevel, etc.)
+  const metaFields = product.metaData ? Object.entries(product.metaData) : [];
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="md:max-w-lg p-0">
+      <SheetContent side="right" className="md:max-w-lg p-0 overflow-y-auto">
+        {/* Header */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 p-6">
           <SheetHeader className="space-y-4">
             <div className="flex items-center justify-between">
@@ -97,7 +101,9 @@ export function ProductDetailsSheet({
                   {initials(product.productName)}
                 </div>
                 <div className="min-w-0">
-                  <SheetTitle className="truncate text-gray-900 dark:text-white">{product.productName || 'Product'}</SheetTitle>
+                  <SheetTitle className="truncate text-gray-900 dark:text-white">
+                    {product.productName || 'Product'}
+                  </SheetTitle>
                   <SheetDescription className="truncate text-gray-600 dark:text-gray-300">
                     {hasCategoriesFeature() ? (product.subCategoryName || 'No subcategory') : '—'}
                   </SheetDescription>
@@ -108,18 +114,28 @@ export function ProductDetailsSheet({
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
-                className={`px-2 py-1 text-xs font-medium ${isActive ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300' : ''}`}
+                className={`px-2 py-1 text-xs font-medium ${
+                  isActive
+                    ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300'
+                    : ''
+                }`}
               >
-                <div className={`w-2 h-2 rounded-full mr-1.5 ${isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                <div
+                  className={`w-2 h-2 rounded-full mr-1.5 ${
+                    isActive ? 'bg-green-500' : 'bg-gray-400'
+                  }`}
+                />
                 {isActive ? 'Active' : 'Inactive'}
               </Badge>
             </div>
           </SheetHeader>
         </div>
 
+        {/* Body */}
         <div className="p-6 space-y-6">
           <Card>
             <CardContent className="p-4 space-y-4">
+              {/* Category */}
               {hasCategoriesFeature() && (
                 <div className="flex items-start gap-3">
                   <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
@@ -127,11 +143,12 @@ export function ProductDetailsSheet({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs text-muted-foreground">Category</div>
-                    <div className="text-sm font-medium">{product.categoryName || '—'}</div>
+                    <div className="text-sm font-medium">{product.category || '—'}</div>
                   </div>
                 </div>
               )}
 
+              {/* Vendor */}
               {hasVendorsFeature() && (
                 <div className="flex items-start gap-3">
                   <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
@@ -152,13 +169,16 @@ export function ProductDetailsSheet({
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Ingredients</div>
                   <div className="text-sm font-medium">
-                    {product.ingredientNames?.length
-                      ? product.ingredientNames.map(i => i.ingredientName).join(', ')
+                    {product.ingredient?.length
+                      ? product.ingredient
+                          .map((i) => `${i.ingredientName} (${i.quantity})`)
+                          .join(', ')
                       : '—'}
                   </div>
                 </div>
               </div>
 
+              {/* SKU */}
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
                   <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -169,16 +189,18 @@ export function ProductDetailsSheet({
                 </div>
               </div>
 
+              {/* Price */}
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
                   <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Price</div>
-                  <div className="text-sm font-medium">${product.sellingPrice.toFixed(2)}</div>
+                  <div className="text-sm font-medium">${product.sellingPrice?.toFixed(2) || '0.00'}</div>
                 </div>
               </div>
 
+              {/* Description */}
               <div className="flex items-start gap-3">
                 <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mt-0.5">
                   <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -189,18 +211,48 @@ export function ProductDetailsSheet({
                 </div>
               </div>
 
+              {/* Tags */}
               <div className="flex items-start gap-3">
                 <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg mt-0.5">
                   <Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Tags</div>
-                  <div className="text-sm font-medium">{product.tags?.length ? product.tags.join(', ') : '—'}</div>
+                  <div className="text-sm font-medium">
+                    {product.tags?.length ? product.tags.join(', ') : '—'}
+                  </div>
                 </div>
               </div>
+
+              {/* DYNAMIC FIELDS FROM metaData */}
+              {metaFields.length > 0 && (
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Additional Details</h4>
+                  {metaFields.map(([key, value]) => (
+                    <div key={key} className="flex items-start gap-3">
+                      <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg mt-0.5">
+                        <Tag className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs text-muted-foreground capitalize">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </div>
+                        <div className="text-sm font-medium">
+                          {Array.isArray(value)
+                            ? value.join(', ')
+                            : typeof value === 'boolean'
+                            ? value ? 'Yes' : 'No'
+                            : String(value) || '—'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Timeline */}
           <Card>
             <CardContent className="p-4 space-y-3">
               <h3 className="font-semibold text-sm text-gray-900 dark:text-white flex items-center gap-2">
@@ -226,6 +278,7 @@ export function ProductDetailsSheet({
           </Card>
         </div>
 
+        {/* Footer */}
         <div className="border-t p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex gap-2 flex-1">
@@ -263,7 +316,9 @@ export function ProductDetailsSheet({
                 </Button>
               )}
               <SheetClose asChild>
-                <Button type="button" variant="outline" className="gap-2">Close</Button>
+                <Button type="button" variant="outline" className="gap-2">
+                  Close
+                </Button>
               </SheetClose>
             </div>
           </div>
