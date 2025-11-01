@@ -2,12 +2,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, List, Clock, Search } from 'lucide-react';
+import { LayoutGrid, List, Clock, Search, Plus } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CompanyGrid } from '@/components/company/CompanyGrid';
 import { CompanyList } from '@/components/company/CompanyList';
 import { UnverifiedCompanies } from '@/components/company/UnverifiedCompanies';
 import { CompanyDetailsSheet } from '@/components/company/CompanyDetailsSheet';
+import { CreateCompanyForm } from '@/components/company/CreateCompanyForm';
 import {
   useGetAllCompaniesQuery,
   useToggleCompanyStatusMutation,
@@ -55,6 +56,7 @@ export default function CompaniesPage() {
   const [showUnverified, setShowUnverified] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const pageSize = 10;
 
   const {
@@ -250,6 +252,15 @@ export default function CompaniesPage() {
               )}
             </Button>
 
+            {/* Create Company Button */}
+            <Button
+              onClick={() => setCreateModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Company
+            </Button>
+
             <div className="flex items-center border rounded-lg">
               <Button
                 variant={view === 'grid' ? "default" : "ghost"}
@@ -404,6 +415,17 @@ export default function CompaniesPage() {
           }}
           onToggle={handleToggle}
           pending={pendingId === selectedCompany?.id}
+        />
+
+        {/* Create Company Modal */}
+        <CreateCompanyForm
+          open={createModalOpen}
+          onOpenChange={setCreateModalOpen}
+          onSuccess={() => {
+            refetch();
+            setPage(1);
+            setShowUnverified(false);
+          }}
         />
       </div>
     </main>

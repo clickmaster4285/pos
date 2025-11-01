@@ -22,6 +22,8 @@ import { paymentGatewayApi } from '@/features/paymentGatewayApi';
 import { categoryApi } from '@/features/categoryApi';
 import { productApi } from '@/features/productApi';
 import { ingredientApi } from '@/features/ingredientApi';
+import { superAdminApi } from '@/features/superAdminApi';
+
 
 export const store = configureStore({
   reducer: {
@@ -47,6 +49,7 @@ export const store = configureStore({
 [categoryApi.reducerPath]: categoryApi.reducer,
     [productApi.reducerPath]: productApi.reducer,
 [ingredientApi.reducerPath]: ingredientApi.reducer,
+[superAdminApi.reducerPath]: superAdminApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -71,6 +74,7 @@ export const store = configureStore({
       categoryApi.middleware,
       productApi.middleware,
       ingredientApi.middleware,
+      superAdminApi.middleware,
     ),
 });
 

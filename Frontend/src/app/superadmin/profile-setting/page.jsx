@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useUpdateSuperAdminInfoMutation } from "@/features/userApi";
+import { useUpdateSuperAdminInfoMutation } from "@/features/superAdminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

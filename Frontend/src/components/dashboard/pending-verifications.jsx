@@ -38,7 +38,6 @@ export function PendingVerifications() {
       price: fmtPrice(p0?.price),
     };
   };
-console.log('Pending verifications users data:', users);
   const pendingUsers = (Array.isArray(users) ? users : []).filter(
     (u) => u?.status?.isaccepted !== 'true' && u?.isactive !== 'true'
   );

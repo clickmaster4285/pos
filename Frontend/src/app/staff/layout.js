@@ -49,9 +49,9 @@ export default function Layout({ children }) {
     );
 
     if (activePlan?.isActive === true) {
-      if (activePlan.price === 0) {
+      if (userSub || activePlan.status === 'in progress') {
         authorized = true;
-      } else if (userSub && activePlan.status === 'in progress') {
+      } else if (activePlan.price === 0) {
         authorized = true;
       }
     }

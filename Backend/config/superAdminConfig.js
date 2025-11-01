@@ -4,6 +4,9 @@ import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcrypt";
+import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
+import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
+
 
 const createSuperAdmin = async () => {
   try {
@@ -95,11 +98,6 @@ export const updateSuperAdminInfo = async (req, res) => {
   try {
     const { name, email, password, toolName } = req.body || {};
     const updateData = {};
-
-    // Debugging: Log incoming request data
-    console.log("Received request body:", req.body);
-    console.log("Received file:", req.file);
-    console.log("Authenticated user:", req.user);
 
     // Validate and process fields
     if (name && name.trim()) {
@@ -193,4 +191,198 @@ export const updateSuperAdminInfo = async (req, res) => {
   }
 };
 
+export const createCompanybySuperAdmin = async (req, res) => {
+  try {
+    const {userId, role} = req.user;
+    if (role !== "superAdmin") {
+      return res.status(403).json({
+        success: false,
+        error: "Unauthorized: Only super admins can create companies",
+      });
+    }
+    const { company, admin } = req.body;
+
+    // Validate required fields
+    if (!company || !company.name || !company.contactEmail || !company.plan) {
+      return res.status(400).json({
+        success: false,
+        error: "Company name, contact email, and plan are required",
+      });
+    }
+
+    if (!admin || !admin.name || !admin.email || !admin.password) {
+      return res.status(400).json({
+        success: false,
+        error: "Admin name, email, and password are required",
+      });
+    }
+    // console.log("the logs is : io am her")
+
+    // console.log("the availablePlan", company.plan)
+    const availablePlan = await IndexModel.Plan.findById(company.plan);
+    // console.log("the availablePlan", availablePlan)
+    if (
+      !availablePlan ||
+      availablePlan.deleted === true ||
+      availablePlan.isActive === false
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "plan does not exist or deactivated: contact support",
+      });
+    }
+    if (company.plan !== availablePlan.id) {
+      return res.status(400).json({
+        success: false,
+        error: "plan does not exist or deactivated: contact support",
+      });
+    }
+    // Generate unique companyId
+    const companyId = await generateUniqueCompanyId(company.name);
+
+    const user_Id = await generateUniqueUserId(admin.name);
+    console.log("thecompanyId was that: ", companyId, user_Id)
+    // Create company
+    const newCompany = new IndexModel.Company({
+      name: company.name,
+      companyId,
+      contactEmail: company.contactEmail,
+      contactPhone: company.contactPhone,
+      address: company.address,
+      industryName: company.industryName,
+      isActive: true,
+      plan: {
+        planId: await generatePlanId(companyId, user_Id),
+        status: "in progress",
+        ...availablePlan,
+        isActive: true,
+      },
+      history: [
+        {
+          action: `Super Company created ${userId}`,
+          performedBy: userId,
+        },
+      ],
+      isActive: true,
+      owner: user_Id, // to be set after admin user creation
+    });
+    // Create admin user
+    const adminUser = new IndexModel.User({
+      name: admin.name,
+      email: admin.email,
+      password: admin.password,
+      role: "admin",
+      companyId: newCompany.companyId,
+      userId: user_Id,
+      address: admin.address,
+      Phone: admin.phone,
+      status: {
+        isaccepted: "true",
+        performedBy: `Super Admin created ${userId}`,
+        updatedAt: new Date(),
+      },
+      isActive: true,
+      permissions: {
+        approveRequests: true,
+        assignTasks: true,
+        manageAppointments: true,
+        createProduct: true,
+        updateProduct: true,
+        viewProduct: true,
+        deleteProduct: true,
+        managePlans: true,
+        manageTeams: true,
+        createVendors: true,
+        updateVendors: true,
+        deleteVendors: true,
+        viewVendors: true,
+        staffCreate: true,
+        staffDelete: true,
+        staffUpdate: true,
+        viewReports: true,
+        viewallstaff: true,
+        editBilling: true,
+        deleteBilling: true,
+        addBilling: true,
+        viewBilling: true,
+        createPayment: true,
+        viewAllStaffSalaries: true,
+        updateSalary: true,
+        deletePayment: true,
+        staffSummary: true,
+        viewActiveLog: true,
+        viewCompanySummary: true,
+        companyprofileupdate: true,
+      },
+      history: [
+        {
+          action: "Admin created by SuperAdmin",
+          performedBy: userId,
+        },
+      ],
+      verified: true,
+    });
+    
+    console.log("the newCompany is : ", adminUser, newCompany.owner)
+    // Set company owner to admin user's userId
+    newCompany.owner = adminUser.userId;
+
+    // Save company first
+    await newCompany.save();
+
+    try {
+      // Try to save admin
+      await adminUser.save();
+    } catch (adminError) {
+      // If admin creation fails, delete the created company
+      await IndexModel.Company.findByIdAndDelete(newCompany._id);
+      return res.status(400).json({
+        success: false,
+        error: "Failed to create admin, company creation rolled back",
+        details: adminError.message,
+      });
+    }
+
+    // Return response with populated data
+    const populatedCompany = await IndexModel.Company.findById(newCompany._id)
+      .populate("owner", "name email userId")
+      .populate("plan");
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        companyId: populatedCompany,
+        admin: {
+          userId: adminUser.userId,
+          name: adminUser.name,
+          email: adminUser.email,
+          role: adminUser.role,
+        },
+      },
+      message:
+        "Company and admin created. Please verify via the OTP sent to your email within 1 minute.",
+    });
+  } catch (error) {
+    // Handle specific errors
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        error: Object.values(error.errors).map((err) => err.message),
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        error: "Company name, company ID, or admin email already exists",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "Server error while creating company and admin",
+      details: error.message,
+    });
+  }
+};
 export default createSuperAdmin;

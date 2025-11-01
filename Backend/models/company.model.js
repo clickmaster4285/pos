@@ -37,7 +37,7 @@ const CompanySchema = new Schema(
     },
     industryName:{
       type: String,
-      required: [true, 'Company ID is required'],
+      required: [true, 'industryName is required'],
     },
     companyLogo: {
       type: String,

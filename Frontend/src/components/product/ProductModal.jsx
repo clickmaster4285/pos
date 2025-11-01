@@ -835,7 +835,7 @@ export const ProductModal = memo(function ProductModal({
               <Textarea
                 value={formData.description}
                 onChange={(e) => handleChange("description", e.target.value)}
-                required
+                // required
                 disabled={isReadOnly}
                 className="min-h-32"
               />

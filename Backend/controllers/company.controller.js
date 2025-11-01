@@ -477,7 +477,7 @@ const getAllCompany = async (req, res) => {
     }
 
     // Fetch all companies
-    const companies = await IndexModel.Company.find();
+    const companies = await IndexModel.Company.find().sort({ createdAt: -1 });
 
     if (!companies || companies.length === 0) {
       return res.status(404).json({
@@ -493,7 +493,6 @@ const getAllCompany = async (req, res) => {
           { userId: company.owner },
         );
 
-        console.log("the company is :", owner);
         return {
           ...company.toObject(),
           ownerDetails: owner || null,
