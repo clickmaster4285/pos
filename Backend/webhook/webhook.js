@@ -1,9 +1,11 @@
 import Stripe from "stripe";
-import IndexModel from '../models/indexModel.js';
-
+import IndexModel from "../models/indexModel.js";
 
 const stripWebhook = async (req, res) => {
-  const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
+  const adminUser = await IndexModel.User.findOne({
+    role: "superAdmin",
+    deleted: false,
+  }).lean();
   const stripe = new Stripe(adminUser.stripeConfig.secretKey, {
     apiVersion: "2023-10-16",
   });
@@ -37,17 +39,17 @@ const stripWebhook = async (req, res) => {
 
         // Update company plan isActive status
         await IndexModel.Company.updateOne(
-          { companyId, 'plan.planId': planId },
+          { companyId, "plan.planId": planId },
           {
             $set: {
-              'plan.$.isActive': true,
-              'plan.$.updatedAt': new Date(),
-              'plan.$.status': "in progress",
+              "plan.$.isActive": true,
+              "plan.$.updatedAt": new Date(),
+              "plan.$.status": "in progress",
             },
             $push: {
               subscription: {
                 planId,
-                status: 'complete',
+                status: "complete",
                 paymentIntentId: paymentIntent.id,
                 companyId,
                 createdby: userId,
@@ -57,9 +59,23 @@ const stripWebhook = async (req, res) => {
             },
           }
         );
+
+        await IndexModel.User.updateOne(
+          { companyId, role: "admin" },
+          {
+            $set: {
+              "status.isaccepted": "true", // or "false" / "pending"
+              "status.performedBy": "Card Payment strip", // some string value
+              "status.updatedAt": new Date(), // current date/time
+            },
+          }
+        );
         console.log(`Activated plan ${planId} for company ${companyId}`);
       } catch (error) {
-        console.error("❌ Error updating subscription or company plan:", error.message);
+        console.error(
+          "❌ Error updating subscription or company plan:",
+          error.message
+        );
       }
       break;
     case "payment_intent.payment_failed":

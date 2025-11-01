@@ -1,23 +1,24 @@
-// page.jsx
+// src/app/companies/page.jsx
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, List, Clock, Search, Filter } from 'lucide-react';
+import { LayoutGrid, List, Clock, Search } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CompanyGrid } from '@/components/company/CompanyGrid';
 import { CompanyList } from '@/components/company/CompanyList';
 import { UnverifiedCompanies } from '@/components/company/UnverifiedCompanies';
+import { CompanyDetailsSheet } from '@/components/company/CompanyDetailsSheet';
 import {
   useGetAllCompaniesQuery,
   useToggleCompanyStatusMutation,
-  useVerifyCompanyAdminMutation, // Add this import
+  useVerifyCompanyAdminMutation,
 } from '@/features/CompanyApi';
 
 function mapCompany(c) {
   return {
     id: String(c._id || c.id || c.companyId),
     name: c.name || '—',
-    industry: c.industry || '—',
+    industry: c.industryName || '—',
     status: c.isActive ? 'Active' : 'Inactive',
     isActive: c.isActive,
     contactEmail: c.contactEmail || '—',
@@ -31,6 +32,9 @@ function mapCompany(c) {
       ? c.usersCount
       : 0,
     createdAt: c.createdAt || new Date().toISOString(),
+    ownerDetails: c.ownerDetails || {},
+    invoiceSettings: c.invoiceSettings || {},
+    subscription: c.subscription || [],
   };
 }
 
@@ -49,6 +53,8 @@ export default function CompaniesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [showUnverified, setShowUnverified] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const pageSize = 10;
 
   const {
@@ -56,33 +62,28 @@ export default function CompaniesPage() {
     isLoading,
     isError,
     error,
-    refetch, // Add refetch to refresh data after verification
+    refetch,
   } = useGetAllCompaniesQuery();
 
   const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
-  const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation(); // Add verification mutation
+  const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation();
   const [pendingId, setPendingId] = useState(null);
-  // Separate verified and unverified companies
+
   const { verifiedCompanies, unverifiedCompanies } = useMemo(() => {
-    
     const mapped = Array.isArray(companies.data) && companies.data.length
-    ? companies.data.map(mapCompany)
-    : [];
-    
-    
+      ? companies.data.map(mapCompany)
+      : [];
+
     return {
       verifiedCompanies: mapped.filter(c => c.isActive),
       unverifiedCompanies: mapped.filter(c => !c.isActive),
     };
   }, [companies]);
-  
-  // console.log('unverifiedCompanies data:', unverifiedCompanies.length);
-  // Use appropriate data based on view mode
+
   const dataToUse = showUnverified ? unverifiedCompanies : verifiedCompanies;
 
   const filtered = useMemo(() => {
     let result = dataToUse;
-
     const q = query.trim().toLowerCase();
     if (q) {
       result = result.filter((c) =>
@@ -155,9 +156,28 @@ export default function CompaniesPage() {
   const handleVerify = async (id, action) => {
     try {
       await verifyCompany({ id, action }).unwrap();
-      refetch(); // Refresh data after verification
+      refetch();
     } catch (e) {
       console.error('Verification error:', e);
+    }
+  };
+
+  const openCompanyDetail = (company) => {
+    setSelectedCompany(company);
+    setSheetOpen(true);
+  };
+
+  const handleToggle = async (company) => {
+    try {
+      setPendingId(company.id);
+      await toggleStatus(company.id).unwrap();
+      if (selectedCompany?.id === company.id) {
+        setSelectedCompany({ ...selectedCompany, isActive: !company.isActive });
+      }
+    } catch (err) {
+      console.error('Failed to toggle status:', err);
+    } finally {
+      setPendingId(null);
     }
   };
 
@@ -182,15 +202,12 @@ export default function CompaniesPage() {
       <div className="min-h-screen bg-background p-6">
         <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
           <div className="text-destructive font-semibold mb-2">
-            Failed to load companies
+            Failed to load...
           </div>
-          <div className="text-sm text-muted-foreground">
-            {error?.data?.error ? error.data.error : 'Please try again later.'}
-          </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
             className="mt-4"
-            onClick={() => window.location.reload()}
           >
             Retry
           </Button>
@@ -209,13 +226,12 @@ export default function CompaniesPage() {
               Companies Management
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
-              {showUnverified 
+              {showUnverified
                 ? `Manage unverified company applications (${unverifiedCompanies.length} pending)`
-                : 'End-to-end company management for superadmins'
-              }
+                : 'End-to-end company management for superadmins'}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <Button
               variant={showUnverified ? "default" : "outline"}
@@ -233,7 +249,7 @@ export default function CompaniesPage() {
                 </span>
               )}
             </Button>
-            
+
             <div className="flex items-center border rounded-lg">
               <Button
                 variant={view === 'grid' ? "default" : "ghost"}
@@ -267,7 +283,7 @@ export default function CompaniesPage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            
+
             <div className="flex gap-2">
               <select
                 className="h-11 px-3 rounded-lg border bg-background text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-colors"
@@ -278,7 +294,7 @@ export default function CompaniesPage() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
-              
+
               <select
                 className="h-11 px-3 rounded-lg border bg-background text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 transition-colors"
                 value={dateFilter}
@@ -297,34 +313,41 @@ export default function CompaniesPage() {
         {/* Content */}
         <div>
           {showUnverified ? (
-            <UnverifiedCompanies unverifiedCompanie={unverifiedCompanies}/>
+            <UnverifiedCompanies
+              unverifiedCompanie={unverifiedCompanies}
+              onDetail={openCompanyDetail}
+              handleVerify={handleVerify}
+              isVerifying={isVerifying}
+            />
           ) : view === 'grid' ? (
             <CompanyGrid
               items={current}
               handleToggle={handleToggle}
-              handleVerify={handleVerify} // Pass handleVerify
+              handleVerify={handleVerify}
               pendingId={pendingId}
               showUnverified={showUnverified}
-              isVerifying={isVerifying} // Pass isVerifying
+              isVerifying={isVerifying}
+              onDetail={openCompanyDetail}
             />
           ) : (
             <CompanyList
               items={current}
               handleToggle={handleToggle}
-              handleVerify={handleVerify} // Pass handleVerify
+              handleVerify={handleVerify}
               pendingId={pendingId}
               showUnverified={showUnverified}
-              isVerifying={isVerifying} // Pass isVerifying
+              isVerifying={isVerifying}
+              onDetail={openCompanyDetail}
             />
           )}
 
           {/* Pagination */}
-          {total > 0 && (
+          {total > 0 && !showUnverified && (
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
                 Showing {start + 1}-{Math.min(start + pageSize, total)} of {total} companies
               </p>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -334,13 +357,13 @@ export default function CompaniesPage() {
                 >
                   Previous
                 </Button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
                     const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
                     const pageNumber = windowStart + i;
                     if (pageNumber > totalPages) return null;
-                    
+
                     return (
                       <Button
                         key={pageNumber}
@@ -354,7 +377,7 @@ export default function CompaniesPage() {
                     );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -367,18 +390,22 @@ export default function CompaniesPage() {
             </div>
           )}
         </div>
+
+        {/* Company Details Sheet */}
+        <CompanyDetailsSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          company={selectedCompany}
+          onEdit={(c) => {
+            console.log('Edit company:', c);
+          }}
+          onDelete={(c) => {
+            console.log('Delete company:', c);
+          }}
+          onToggle={handleToggle}
+          pending={pendingId === selectedCompany?.id}
+        />
       </div>
     </main>
   );
-
-  async function handleToggle(company) {
-    try {
-      setPendingId(company.id);
-      await toggleStatus(company.id).unwrap();
-    } catch (err) {
-      console.error('Failed to toggle status:', err);
-    } finally {
-      setPendingId(null);
-    }
-  }
-}
+} 

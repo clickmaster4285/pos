@@ -1,11 +1,11 @@
-// CompanyList.jsx
+// src/components/company/CompanyList.jsx
 'use client';
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, XCircle } from 'lucide-react'; // Add icons for Approve/Reject
+import { CheckCircle, XCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,10 +42,11 @@ function statusVariant(isActive) {
 export function CompanyList({
   items = [],
   handleToggle,
-  handleVerify, // Add handleVerify prop
+  handleVerify,
   pendingId,
   showUnverified = false,
-  isVerifying, // Add isVerifying prop
+  isVerifying,
+  onDetail,
 }) {
   if (!items?.length) {
     return (
@@ -95,8 +96,11 @@ export function CompanyList({
               key={id}
               className="grid grid-cols-12 items-center px-6 py-4 hover:bg-muted/20 transition-colors group"
             >
-              {/* Company */}
-              <div className="col-span-4">
+              {/* Company — CLICKABLE */}
+              <div
+                className="col-span-4 cursor-pointer"
+                onClick={() => onDetail?.(c)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
                     <Building2 className="h-5 w-5" />
@@ -185,7 +189,6 @@ export function CompanyList({
                   </Badge>
                   
                   {showUnverified ? (
-                    // Show Approve/Reject buttons for unverified companies
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
@@ -207,7 +210,6 @@ export function CompanyList({
                       </Button>
                     </div>
                   ) : (
-                    // Show existing toggle for verified companies
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

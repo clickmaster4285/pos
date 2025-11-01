@@ -6,7 +6,7 @@ import { generateOTP } from "../utils/generate_verifyOTP.js";
 import bcrypt from "bcrypt";
 import { upload } from "../config/multer.js";
 import path from "path";
-import {generatePlanId} from "../utils/generatePlanIdPurchased.js"
+import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 
 const createCompany = async (req, res) => {
   try {
@@ -84,8 +84,8 @@ const createCompany = async (req, res) => {
       address: admin.address,
       Phone: admin.phone,
       status: {
-        isaccepted: availablePlan.price === 0 ? "true" : "false",
-        performedBy: "free plan",
+        isaccepted: availablePlan.price === 0 ? "true" : "pending",
+        performedBy: availablePlan.price === 0 ? "free plan" : "",
         updatedAt: new Date(),
       },
       permissions: {
@@ -272,13 +272,18 @@ const verifyCompany_Admin = async (req, res) => {
     );
     // Update user to set status.isaccepted and status.isactive
     const updatedUser = await IndexModel.User.findOneAndUpdate(
-      { userId: company.owner, deleted: false, isActive: false, verified: true },
+      {
+        userId: company.owner,
+        deleted: false,
+        isActive: false,
+        verified: true,
+      },
       {
         $set: {
           "status.isaccepted": isActive,
           "status.performedBy": performedBy,
           "status.updatedAt": new Date(),
-          isActive:true,
+          isActive: true,
         },
         $push: {
           history: {
@@ -434,12 +439,12 @@ const getCompany = async (req, res) => {
     if (req.user.role === "superAdmin") {
       company = await IndexModel.Company.findOne({ _id: id });
     }
-    
+
     company = await IndexModel.Company.findOne({
       companyId: req.user.companyId,
       deleted: false,
     });
-    
+
     if (!company) {
       return res.status(404).json({
         success: false,
@@ -463,29 +468,49 @@ const getCompany = async (req, res) => {
 // Get all company
 const getAllCompany = async (req, res) => {
   try {
+    // Only allow superAdmin access
     if (req.user.role !== "superAdmin") {
       return res.status(401).json({
         success: false,
-        error: "Unauthorized: you cann't access it",
+        error: "Unauthorized: you cannot access it",
       });
     }
-    const company = await IndexModel.Company.find();
 
-    if (!company) {
+    // Fetch all companies
+    const companies = await IndexModel.Company.find();
+
+    if (!companies || companies.length === 0) {
       return res.status(404).json({
         success: false,
-        error: "Company not available",
+        error: "No companies found",
       });
     }
+
+    // Map each company to include its admin (owner) details
+    const companiesWithOwner = await Promise.all(
+      companies.map(async (company) => {
+        const owner = await IndexModel.User.findOne(
+          { userId: company.owner },
+        );
+
+        console.log("the company is :", owner);
+        return {
+          ...company.toObject(),
+          ownerDetails: owner || null,
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
-      data: company,
+      count: companiesWithOwner.length,
+      data: companiesWithOwner,
     });
   } catch (error) {
+    console.error("Error fetching companies:", error);
     return res.status(500).json({
       success: false,
-      error: "Server error while fetching company",
+      error: "Server error while fetching companies",
       details: error.message,
     });
   }
@@ -551,7 +576,7 @@ export const initiateCompanyEmailChange = async (req, res) => {
     if (!currentEmail || !newEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Both currentEmail and newEmail are required',
+        message: "Both currentEmail and newEmail are required",
       });
     }
 
@@ -568,14 +593,14 @@ export const initiateCompanyEmailChange = async (req, res) => {
     if (!company) {
       return res
         .status(404)
-        .json({ success: false, message: 'Company not found with that email' });
+        .json({ success: false, message: "Company not found with that email" });
     }
 
     // Check if same email
     if (curr === next) {
       return res.status(400).json({
         success: false,
-        message: 'New email must be different from current email',
+        message: "New email must be different from current email",
       });
     }
 
@@ -590,7 +615,7 @@ export const initiateCompanyEmailChange = async (req, res) => {
     if (exists) {
       return res
         .status(409)
-        .json({ success: false, message: 'New email already exists' });
+        .json({ success: false, message: "New email already exists" });
     }
 
     // Generate OTP
@@ -605,38 +630,38 @@ export const initiateCompanyEmailChange = async (req, res) => {
       createdAt: new Date(),
     };
 
-    company.markModified('security');
+    company.markModified("security");
     await company.save();
 
     // Send verification email to current email
     try {
       await sendEmail({
         email: company.contactEmail,
-        subject: 'Company Email Change Verification',
-        template: 'emailVerification',
-        data: { name: company.name || 'there', otp },
+        subject: "Company Email Change Verification",
+        template: "emailVerification",
+        data: { name: company.name || "there", otp },
       });
     } catch (e) {
       // Rollback pending email change on failure
       company.security.emailChange = undefined;
-      company.markModified('security');
+      company.markModified("security");
       await company.save();
 
       return res.status(500).json({
         success: false,
-        message: 'Failed to send verification email',
+        message: "Failed to send verification email",
         error: e.message,
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'OTP sent to current company email.',
+      message: "OTP sent to current company email.",
     });
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: 'Server error',
+      message: "Server error",
       error: err.message,
     });
   }
@@ -651,7 +676,7 @@ export const verifyCompanyEmailChange = async (req, res) => {
     if (!code || !currentEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Both code and currentEmail are required',
+        message: "Both code and currentEmail are required",
       });
     }
 
@@ -665,31 +690,31 @@ export const verifyCompanyEmailChange = async (req, res) => {
     if (!company) {
       return res
         .status(404)
-        .json({ success: false, message: 'Company not found with that email' });
+        .json({ success: false, message: "Company not found with that email" });
     }
 
     const pending = company?.security?.emailChange;
     if (!pending) {
       return res
         .status(400)
-        .json({ success: false, message: 'No pending email change' });
+        .json({ success: false, message: "No pending email change" });
     }
 
     // Check expiry
     if (Date.now() > pending.expiresAt) {
       company.security.emailChange = undefined;
-      company.markModified('security');
+      company.markModified("security");
       await company.save();
-      return res.status(400).json({ success: false, message: 'OTP expired' });
+      return res.status(400).json({ success: false, message: "OTP expired" });
     }
 
     // Compare OTP
-    const ok = await bcrypt.compare(String(code), pending.codeHash || '');
+    const ok = await bcrypt.compare(String(code), pending.codeHash || "");
     if (!ok) {
       company.security.emailChange.attempts = (pending.attempts || 0) + 1;
-      company.markModified('security');
+      company.markModified("security");
       await company.save();
-      return res.status(400).json({ success: false, message: 'Invalid code' });
+      return res.status(400).json({ success: false, message: "Invalid code" });
     }
 
     // Success — update contactEmail
@@ -700,17 +725,17 @@ export const verifyCompanyEmailChange = async (req, res) => {
     // Log history
     company.history = company.history || [];
     company.history.push({
-      action: 'EMAIL_UPDATED',
-      performedBy: 'system',
+      action: "EMAIL_UPDATED",
+      performedBy: "system",
       createdAt: new Date(),
     });
 
-    company.markModified('security');
+    company.markModified("security");
     await company.save();
 
     return res.status(200).json({
       success: true,
-      message: 'Company email updated successfully',
+      message: "Company email updated successfully",
       data: {
         id: company._id,
         oldEmail,
@@ -718,16 +743,14 @@ export const verifyCompanyEmailChange = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('verifyCompanyEmailChange error:', err);
+    console.error("verifyCompanyEmailChange error:", err);
     return res.status(500).json({
       success: false,
-      message: 'Server error',
+      message: "Server error",
       error: err.message,
     });
   }
 };
-
-
 
 export default {
   createCompany,
