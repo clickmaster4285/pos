@@ -7,7 +7,10 @@ import ErrorResponse from "../utils/errorResponse.js";
 import { generateUniqueUserId } from "../utils/generateUniqueUserId.js";
 import { generateOTP } from "../utils/generate_verifyOTP.js";
 import sendEmail from "../utils/sendEmail.js";
-import { fetchToolLogoName, fetchIndustryName } from "../utils/fetchToolLogoName.js";
+import {
+  fetchToolLogoName,
+  fetchIndustryName,
+} from "../utils/fetchToolLogoName.js";
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -54,11 +57,26 @@ const login = async (req, res, next) => {
       return next(new ErrorResponse("Please provide email and password", 400));
     }
 
-    const user = await User.findOne({ email, deleted: false }).select(
+    let user = await User.findOne({ email, deleted: false }).select(
       "+password"
     );
     if (!user) {
-      return next(new ErrorResponse("Invalid credentials", 401));
+      user = await IndexModel.Company.findOne({
+        contactEmail: email,
+        deleted: false,
+      }).select("+password");
+      if (!user) {
+        return next(new ErrorResponse("Invalid credentials", 401));
+      }
+      let companyAdmin = await User.findOne({ userId:user.owner, deleted: false }).select(
+      "+password"
+    );
+
+    if (!companyAdmin) {
+        return next(new ErrorResponse("Company exist but Company Admin not found", 401));
+      }
+    user = companyAdmin;
+
     }
     // console.log("User found:", user.isActive);
     if (user.isActive === false) {
@@ -75,7 +93,7 @@ const login = async (req, res, next) => {
 
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
-    const toolNameLogo = await fetchToolLogoName()
+    const toolNameLogo = await fetchToolLogoName();
 
     const { accessToken, refreshToken } = await generateTokens(user);
     setTokens(res, accessToken, refreshToken);
@@ -94,15 +112,19 @@ const login = async (req, res, next) => {
           )
         );
       }
-    // console.log("the user: ", user)
+      // console.log("the user: ", user)
 
       activePlans = company.plan.find((plan) => plan.isActive === true);
       if (!activePlans) {
-        activePlans = company.plan.find((plan) => plan.isActive === false && (plan.status === "not started" || plan.status === "rejected"));
+        activePlans = company.plan.find(
+          (plan) =>
+            plan.isActive === false &&
+            (plan.status === "not started" || plan.status === "rejected")
+        );
       }
     }
 
-// console.log("the activePlans: ", activePlans)
+    // console.log("the activePlans: ", activePlans)
     res.status(200).json({
       success: true,
       status: 200,
@@ -117,7 +139,8 @@ const login = async (req, res, next) => {
           department: user.department,
           permissions: user.permissions,
           isActive: user.isActive,
-          extraFeature: user.role !== "superAdmin" ? activePlans.limitations.features : [],
+          extraFeature:
+            user.role !== "superAdmin" ? activePlans.limitations.features : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
@@ -200,31 +223,29 @@ const getme = async (req, res, next) => {
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
-    const toolNameLogo = await fetchToolLogoName()
+    const toolNameLogo = await fetchToolLogoName();
     let activePlans;
-    if(user.role === "superAdmin"){
-      return(
-      res.status(200).json({
-      success: true,
-      data: {
-        user: {
-          id: user.userId,
-          name: user.name,
-          email: user.email,
-          companyId: user.companyId,
-          role: user.role,
-          subRole: user.subRole,
-          department: user.department,
-          permissions: user.permissions,
-          isActive: user.isActive,
-          extraFeature: activePlans?.limitations?.features || [],
-          toolName: toolNameLogo.toolName,
-          toolLogo: toolNameLogo.toolLogo,
-          industryName: await fetchIndustryName(user.companyId),
-
+    if (user.role === "superAdmin") {
+      return res.status(200).json({
+        success: true,
+        data: {
+          user: {
+            id: user.userId,
+            name: user.name,
+            email: user.email,
+            companyId: user.companyId,
+            role: user.role,
+            subRole: user.subRole,
+            department: user.department,
+            permissions: user.permissions,
+            isActive: user.isActive,
+            extraFeature: activePlans?.limitations?.features || [],
+            toolName: toolNameLogo.toolName,
+            toolLogo: toolNameLogo.toolLogo,
+            industryName: await fetchIndustryName(user.companyId),
+          },
         },
-      },
-    }))
+      });
     }
 
     const company = await IndexModel.Company.findOne({
@@ -268,7 +289,6 @@ const getme = async (req, res, next) => {
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
-
         },
       },
     });

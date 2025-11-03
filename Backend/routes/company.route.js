@@ -5,12 +5,22 @@ import { checkplan } from '../middleware/authMiddleware.js';
 import ErrorResponse from '../utils/errorResponse.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { upload } from '../config/multer.js';
+import {fetchToolLogoName} from "../utils/fetchToolLogoName.js";
 
 const router = express.Router();
 
+router.get('/get-tool-name-logo', async (req, res) => {
+  try {
+    const data = await fetchToolLogoName(); // call your controller function
+    res.json(data); // send it as response
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.post(
   '/create-company',
-  // passport.authenticate("jwt", { session: false }),
   Indexcontroller.Company.createCompany
 );
 router.get(

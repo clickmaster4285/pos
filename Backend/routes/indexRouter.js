@@ -19,6 +19,7 @@ import Category from "./category.route.js";
 import Product from "./product.route.js";
 import Ingredient from "./ingredient.route.js";
 import SuperAdmin from "./superAdmin.route.js";
+import Landing from "./landing.route.js";
 
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import passport from "../middleware/passportAuth.middleware.js";
@@ -77,6 +78,7 @@ router.use("/strip", PaymentGatway);
 router.use("/category", Category);
 router.use("/product", Product);
 router.use("/ingredient", Ingredient);
+router.use("/landing", Landing);
 
 // superAdmin config route
 router.use("/superadmin",SuperAdmin);

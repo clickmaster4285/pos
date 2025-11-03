@@ -138,7 +138,7 @@ const createCompany = async (req, res) => {
     // Generate OTP
     const { otp, hashedOTP } = await generateOTP();
     adminUser.verificationOTP = hashedOTP;
-    adminUser.verificationExpiry = Date.now() + 60 * 1000; // 1 minute
+    adminUser.verificationExpiry = Date.now() + 5 * 60 * 1000; // 5 minute
 
     try {
       // Try to save admin

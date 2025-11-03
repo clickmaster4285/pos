@@ -1,20 +1,21 @@
 // src/components/company/CreateCompanyForm.jsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { useCreateCompanyMutation } from '@/features/superAdminApi';
-import { Industries } from '@/utils/industryFields';
-import { useGetAllPlansQuery } from '@/features/planApi';
+} from "@/components/ui/dialog";
+import { useCreateCompanyMutation } from "@/features/superAdminApi";
+import { Industries } from "@/utils/industryFields";
+import { useGetAllPlansQuery } from "@/features/planApi";
+import { Eye, EyeOff } from "lucide-react";
 
 export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
   const [createCompany, { isLoading }] = useCreateCompanyMutation();
@@ -23,24 +24,25 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
     isLoading: isPlansLoading,
     error: plansError,
   } = useGetAllPlansQuery();
+  const [showPassword, setShowPassword] = useState(false);
 
   // -----------------------------------------------------------------
   // Form state
   // -----------------------------------------------------------------
   const [formData, setFormData] = useState({
     // ----- company -----
-    companyName: '',
-    contactEmail: '',
-    contactPhone: '',
-    address: '',
-    plan: '',
-    industryName: '',
+    companyName: "",
+    contactEmail: "",
+    contactPhone: "",
+    address: "",
+    plan: "",
+    industryName: "",
     // ----- admin -----
-    adminName: '',
-    adminEmail: '',
-    adminPhone: '',
-    adminAddress: '',
-    password: '',
+    adminName: "",
+    adminEmail: "",
+    adminPhone: "",
+    adminAddress: "",
+    password: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -51,7 +53,7 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
@@ -59,34 +61,32 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
 
     // ----- company -----
     if (!formData.companyName?.trim())
-      newErrors.companyName = 'Company name must be at least 2 characters';
+      newErrors.companyName = "Company name must be at least 2 characters";
 
     if (!formData.industryName?.trim())
-      newErrors.industryName = 'Please select an industry';
+      newErrors.industryName = "Please select an industry";
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.contactEmail || !emailRegex.test(formData.contactEmail))
-      newErrors.contactEmail = 'Invalid company email';
+      newErrors.contactEmail = "Invalid company email";
 
     if (!formData.address?.trim())
-      newErrors.address = 'Address must be at least 5 characters';
+      newErrors.address = "Address must be at least 5 characters";
 
-    if (!formData.plan?.trim())
-      newErrors.plan = 'Please select a plan';
+    if (!formData.plan?.trim()) newErrors.plan = "Please select a plan";
 
     // ----- admin -----
     if (!formData.adminName?.trim())
-      newErrors.adminName = 'Owner name is required';
+      newErrors.adminName = "Owner name is required";
 
     if (!formData.adminEmail || !emailRegex.test(formData.adminEmail))
-      newErrors.adminEmail = 'Invalid owner email';
-
+      newErrors.adminEmail = "Invalid owner email";
 
     if (!formData.adminAddress?.trim())
-      newErrors.adminAddress = 'Owner address must be at least 5 characters';
+      newErrors.adminAddress = "Owner address must be at least 5 characters";
 
     if (!formData.password)
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = "Password must be at least 6 characters";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -119,23 +119,23 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
 
       // Reset form
       setFormData({
-        companyName: '',
-        contactEmail: '',
-        contactPhone: '',
-        address: '',
-        plan: '',
-        industryName: '',
-        adminName: '',
-        adminEmail: '',
-        adminPhone: '',
-        adminAddress: '',
-        password: '',
+        companyName: "",
+        contactEmail: "",
+        contactPhone: "",
+        address: "",
+        plan: "",
+        industryName: "",
+        adminName: "",
+        adminEmail: "",
+        adminPhone: "",
+        adminAddress: "",
+        password: "",
       });
 
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
-      console.error('Failed to create company:', error);
+      console.error("Failed to create company:", error);
     }
   };
 
@@ -175,9 +175,7 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
 
             {/* Industry */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Industry
-              </label>
+              <label className="block text-sm font-medium mb-1">Industry</label>
               <select
                 name="industryName"
                 value={formData.industryName}
@@ -241,9 +239,7 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
 
             {/* Address */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Address
-              </label>
+              <label className="block text-sm font-medium mb-1">Address</label>
               <Textarea
                 name="address"
                 placeholder="123 Business St, Suite 100, City, Country"
@@ -273,20 +269,17 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">
-                  {isPlansLoading ? 'Loading plans...' : 'Select a plan'}
+                  {isPlansLoading ? "Loading plans..." : "Select a plan"}
                 </option>
                 {plans.map((plan) => (
                   <option key={plan._id} value={plan._id}>
-                    {plan.name}{' '}
-                    ({plan.price === 0 ? 'Free' : `$${plan.price}`}) –{' '}
-                    {plan.validateDays} days
+                    {plan.name} ({plan.price === 0 ? "Free" : `$${plan.price}`})
+                    – {plan.validateDays} days
                   </option>
                 ))}
               </select>
               {errors.plan && (
-                <p className="text-sm text-destructive mt-1">
-                  {errors.plan}
-                </p>
+                <p className="text-sm text-destructive mt-1">{errors.plan}</p>
               )}
               {plansError && (
                 <p className="text-sm text-destructive mt-1">
@@ -298,9 +291,7 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
 
           {/* ==================== ADMIN SECTION ==================== */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">
-              Company Owner (Admin)
-            </h3>
+            <h3 className="text-lg font-semibold">Company Owner (Admin)</h3>
 
             {/* Owner Name */}
             <div>
@@ -383,18 +374,24 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
             </div>
 
             {/* Password */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Password
-              </label>
+            <div className="relative">
               <Input
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••"
                 value={formData.password}
                 onChange={handleChange}
                 disabled={isLoading}
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </Button>
               {errors.password && (
                 <p className="text-sm text-destructive mt-1">
                   {errors.password}
@@ -414,11 +411,11 @@ export function CreateCompanyForm({ open, onOpenChange, onSuccess }) {
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Company'}
+              {isLoading ? "Creating..." : "Create Company"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-}   
+}

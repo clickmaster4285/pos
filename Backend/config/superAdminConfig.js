@@ -32,6 +32,7 @@ const createSuperAdmin = async () => {
       verified: true,
       mfaEnabled: false,
       permissions: ["full-access"],
+      toolName: "SmartPOS",
       status: {
         isaccepted: true,
         performedBy: "superAdmin",
