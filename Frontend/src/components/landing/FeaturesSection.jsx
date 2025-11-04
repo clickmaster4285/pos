@@ -1,138 +1,138 @@
+// In FeaturesSection.jsx - Better color contrast
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Users, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
+import { BarChart3, Users, CreditCard, Smartphone, Cloud, Shield, Zap, Clock } from 'lucide-react';
 
-const adminFeatures = [
+const features = [
   {
-    title: "Vendor & Product Management",
-    description: "Complete control over suppliers and inventory"
+    icon: BarChart3,
+    title: "Advanced Analytics",
+    description: "Real-time insights and performance metrics to drive your business decisions",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30"
   },
   {
-    title: "Staff Management & Attendance",
-    description: "Track team performance and work hours with integrated attendance machines"
+    icon: Users,
+    title: "Customer Management",
+    description: "Complete CRM with loyalty programs and customer behavior tracking",
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/30"
   },
   {
-    title: "Warehouse Operations",
-    description: "Multi-location inventory with automated stock transfers"
+    icon: CreditCard,
+    title: "Multi-Payment Support",
+    description: "Accept all payment methods with secure, instant processing",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30"
   },
   {
-    title: "Financial Reports & Analytics",
-    description: "Real-time insights with customizable dashboards and export capabilities"
+    icon: Smartphone,
+    title: "Mobile Ready",
+    description: "Full functionality on any device with our responsive design",
+    color: "text-orange-600 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/30"
   },
   {
-    title: "Company Settings & Branding",
-    description: "Customize receipts, invoices, and system appearance"
+    icon: Cloud,
+    title: "Cloud Backup",
+    description: "Automatic cloud synchronization and data protection",
+    color: "text-cyan-600 dark:text-cyan-400",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/30"
   },
   {
-    title: "Salary & Payroll Management",
-    description: "Automated salary calculations with attendance integration"
-  },
-  {
-    title: "Courier & Delivery Management",
-    description: "Track deliveries and manage multiple courier services"
-  },
-  {
-    title: "Multi-location Support",
-    description: "Centralized control across unlimited business locations"
+    icon: Shield,
+    title: "Enterprise Security",
+    description: "Bank-level encryption and compliance with industry standards",
+    color: "text-red-600 dark:text-red-400",
+    bgColor: "bg-red-100 dark:bg-red-900/30"
   }
 ];
 
-const staffFeatures = [
-  {
-    title: "Point of Sale Interface",
-    description: "Fast, intuitive checkout with barcode scanning"
-  },
-  {
-    title: "Inventory Lookup",
-    description: "Real-time stock availability with location tracking"
-  },
-  {
-    title: "Customer Management",
-    description: "Build relationships with customer profiles and purchase history"
-  },
-  {
-    title: "Order Processing",
-    description: "Seamless order handling from creation to fulfillment"
-  },
-  {
-    title: "Sales Reports",
-    description: "Personal performance metrics and daily summaries"
-  },
-  {
-    title: "Profile Settings",
-    description: "Mandatory access for all staff to manage personal information"
-  }
+const stats = [
+  { icon: Zap, value: "2x", label: "Faster Checkout" },
+  { icon: Users, value: "40%", label: "Sales Growth" },
+  { icon: Clock, value: "60%", label: "Time Saved" },
 ];
 
 export const FeaturesSection = () => {
   return (
-    <section id="features" className="py-20">
+    <section id="features" className="py-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features for Every Role</h2>
-          <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-            Complete control for admins with role-based access, streamlined tools for staff. Every feature is controlled by the company owner to ensure perfect workflow alignment.
+        <motion.div 
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <Badge variant="outline" className="mb-4 text-primary border-primary/30">
+            Powerful Features
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Everything You Need to Succeed
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Comprehensive tools designed to streamline operations, boost sales, and enhance customer experience.
           </p>
+        </motion.div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+          {features.map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              viewport={{ once: true }}
+            >
+              <Card className="h-full border-2 hover:border-primary/50 transition-all duration-300 bg-background/50 backdrop-blur-sm group">
+                <CardHeader>
+                  <div className={`p-3 rounded-2xl ${feature.bgColor} w-fit mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className={`h-8 w-8 ${feature.color}`} />
+                  </div>
+                  <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors duration-300">
+                    {feature.title}
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed mt-2">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Admin */}
-          <Card className="border-2 hover:border-primary/50 transition-all bg-gradient-card animate-slide-up group">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-primary/10 rounded-lg group-hover:scale-110 transition-transform">
-                  <Settings className="h-6 w-6 text-primary" />
+        {/* Stats Section */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          viewport={{ once: true }}
+        >
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              className="text-center p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/50 backdrop-blur-sm"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-2xl bg-primary/10">
+                  <stat.icon className="h-8 w-8 text-primary" />
                 </div>
-                <CardTitle className="text-2xl">Admin & Owner</CardTitle>
               </div>
-              <CardDescription>Complete business management and control</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                {adminFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                    <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold text-sm">{f.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{f.description}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Staff */}
-          <Card className="border-2 hover:border-accent/50 transition-all bg-gradient-card animate-slide-up group" style={{ animationDelay: '0.1s' }}>
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-accent/10 rounded-lg group-hover:scale-110 transition-transform">
-                  <Users className="h-6 w-6 text-accent" />
-                </div>
-                <CardTitle className="text-2xl">Staff</CardTitle>
+              <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+                {stat.value}
               </div>
-              <CardDescription>Efficient daily operations with controlled access</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                {staffFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                    <Check className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-                    <div>
-                      <div className="font-semibold text-sm">{f.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{f.description}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 p-3 bg-muted/50 rounded-lg border">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Note:</strong> Staff access is fully controlled by the company owner. Profile settings and dashboard are mandatory for all staff, while additional features can be enabled based on your business needs.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="text-muted-foreground font-medium">{stat.label}</div>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );

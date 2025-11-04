@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useGetAllPlansQuery } from '@/features/planApi';
 import { useCreateCompanyMutation } from '@/features/CompanyApi';
 import { Zap, Building2, Sparkles, Loader2 } from "lucide-react";
@@ -23,8 +23,49 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: plans = [], isLoading: isPlansLoading } = useGetAllPlansQuery();
   const [createCompany] = useCreateCompanyMutation();
+
+  // -----------------------------------------------------------------
+  //  READ QUERY PARAMS ON MOUNT → auto-advance to step 2 + pre-select
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const stepParam = searchParams.get("step");
+    const planParam = searchParams.get("plan");
+    const industryParam = searchParams.get("industry");
+
+    if (stepParam) {
+      const parsedStep = parseInt(stepParam, 10);
+      if (!isNaN(parsedStep) && parsedStep >= 1 && parsedStep <= 3) {
+        setStep(parsedStep);
+      }
+    }
+    if (planParam) {
+      setSelectedPlan(planParam);
+    }
+    if (industryParam) {
+      setSelectedIndustry(industryParam);
+      // Also sync to formData if needed (name would need mapping, but id is sufficient for selection)
+    }
+  }, [searchParams]);
+
+  // -----------------------------------------------------------------
+  //  UPDATE URL PARAMS WHEN STEP, PLAN, OR INDUSTRY CHANGES
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set('step', step.toString());
+
+    if (selectedPlan && step >= 2) {
+      params.set('plan', selectedPlan);
+    }
+    if (selectedIndustry && step >= 3) {
+      params.set('industry', selectedIndustry);
+    }
+
+    router.replace(`/sign-up?${params.toString()}`, { shallow: true });
+  }, [step, selectedPlan, selectedIndustry, router]);
 
   const normalizedPlans = plans.map(plan => ({
     _id: plan._id,
