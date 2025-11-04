@@ -30,29 +30,40 @@ export default function SecureAuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user } = useSelector(selectAuthState);
+  
+const publicRoutes = [
+  "/login",
+  "/sign-up",
+  "/forgot-password",
+  "/verify-email",
+  "/public/landing",
+];
 
-  const publicRoutes = [
-    "/login",
-    "/register",
-    "/sign-up",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-    "/public/landing",
-  ];
+// 👇 Add "/" to redirect automatically to /public/landing
+const isPublicRoute = useCallback(
+  (path) => {
+    // If empty route, redirect to /public/landing
+    if (path === "/") {
+      if (typeof window !== "undefined") {
+        window.location.replace("/public/landing");
+      }
+      return true; // treat it as public
+    }
 
-  const isPublicRoute = useCallback(
-    (path) => publicRoutes.some((route) => path === route || path.startsWith(route)),
-    [publicRoutes]
-  );
+    return publicRoutes.some(
+      (route) => path === route || path.startsWith(route)
+    );
+  },
+  [publicRoutes]
+);
 
+  
   // 🔹 Fetch authenticated user if not already authenticated and not on a public route
   const { data, isLoading, error } = useGetMeQuery(undefined, {
     skip: isAuthenticated || isPublicRoute(pathname),
   });
 
   const [refreshToken] = useRefreshTokenMutation();
-
   // 🔹 Restore authentication state from Redux if user already in state
   useEffect(() => {
     if (user) {
@@ -75,7 +86,7 @@ export default function SecureAuthProvider({ children }) {
     },
     [dispatch, router]
   );
-
+  
   // 🔹 When /me endpoint succeeds, store user in Redux
   useEffect(() => {
     if (data?.success && data.data?.user) {
@@ -97,7 +108,7 @@ export default function SecureAuthProvider({ children }) {
       router.push(dashboardPath);
     }
   }, [isAuthenticated, pathname, router, user, isPublicRoute]);
-
+  
   // 🔹 Role-based dashboard redirection
   const getDashboardPath = useCallback((role, subRole) => {
     const r = String(role || "").toLowerCase();
@@ -106,12 +117,12 @@ export default function SecureAuthProvider({ children }) {
         return "/superadmin/dashboard";
       case "admin":
         return "/admin/dashboard";
-      case "staff":
-        return `/staff/${subRole}/dashboard`;
-      case "user":
-        return "/user/dashboard";
-      default:
-        return "/login";
+        case "staff":
+          return `/staff/${subRole}/dashboard`;
+          case "user":
+            return "/user/dashboard";
+            default:
+        return "/public/landing";
     }
   }, []);
 

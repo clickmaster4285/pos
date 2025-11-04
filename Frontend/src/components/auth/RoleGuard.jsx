@@ -14,7 +14,6 @@ export function RoleGuard({
   if (isLoading) {
     return <div>Loading...</div>;
   }
-
   if (!isAuthenticated || !user) {
     logout(); // Trigger logout instead of redirect
     router.push('/login');

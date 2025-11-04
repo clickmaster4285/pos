@@ -32,8 +32,6 @@ export default function SignInPage() {
 
     try {
       await login({ email, password }).unwrap();
-      // ... existing auth logic
-      // router.replace('/dashboard');
     } catch (error) {
       setError(error?.data?.message || error?.message || 'An error occurred. Please try again later.');
     }
