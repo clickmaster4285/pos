@@ -70,7 +70,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
+app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
 app.use("/api", apiRouter);
 
 // Automatically start real-time listeners for all devices

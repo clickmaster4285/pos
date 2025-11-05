@@ -1,33 +1,24 @@
-import Navbar from './Navbar';
-import Hero from './Hero';
-import StandOutSection from './StandOut';
-import SocialMarketing from './SocialMarketing';
-import Analytics from './analytics';
-import Testimonials from './Testimonial';
-import Playbook from './Playbook';
-import PricingPlan from './PricingPlan';
-import Blog from './Blogs';
-import FAQSection from './Faq';
-import Footer from './Footer';
-const LandingPage = () => {
-  return (
-    <div>
-      <Navbar />
-      <Hero />
-      <StandOutSection />
-      <SocialMarketing />
-      <Analytics />
-      <Testimonials />
-      <Playbook />
+// app/landing/page.jsx (Updated)
+"use client";
 
-      <section id="pricing" className="scroll-mt-24">
-        <PricingPlan />
-      </section>
-      <Blog />
-      <FAQSection />
+import { Navigation } from "@/components/landing/Navigation";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { FeaturesSection } from "@/components/landing/FeaturesSection";
+import { IndustriesSection } from "@/components/landing/IndustriesSection";
+import { PricingSection } from "@/components/landing/PricingSection";
+import { Footer } from "@/components/landing/Footer";
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <Navigation />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <IndustriesSection />
+        <PricingSection />
+      </main>
       <Footer />
     </div>
   );
-};
-
-export default LandingPage;
+}

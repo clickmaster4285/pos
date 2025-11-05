@@ -3,6 +3,7 @@ import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { fetchToolLogoName, fetchIndustryName } from "../utils/fetchToolLogoName.js";
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -45,9 +46,10 @@ const sendEmail = async (options) => {
       const template = loadTemplate(options.template);
       html = template(options.data || {});
     }
-
+    const toolNameLogo = await fetchToolLogoName()
+    // toolName: toolNameLogo.toolName,
     const mailOptions = {
-      from: `${process.env.APP_NAME || "Buffer Social"} <${process.env.EMAIL_FROM}>`,
+      from: `${toolNameLogo.toolName} <${process.env.EMAIL_FROM}>`,
       to: options.email,
       subject: options.subject,
       html,
@@ -61,6 +63,32 @@ const sendEmail = async (options) => {
     console.error("Email sending failed:", error);
     throw error;
   }
+};
+
+export const resendOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, error: "Email required" });
+
+  const user = await IndexModel.User.findOne({ email, deleted: false })
+    .select("+verificationOTP +verificationExpiry");
+
+  if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+  // Optional: rate-limit (e.g. max 3 per hour) – omitted for brevity
+
+  const { otp, hashedOTP } = await generateOTP(6);
+  user.verificationOTP = hashedOTP;
+  user.verificationExpiry = Date.now() + 5 * 60 * 1000;
+  await user.save();
+
+  await sendEmail({
+    email,
+    subject: "Your New Verification Code",
+    template: "emailVerification",
+    data: { name: user.name, otp, expiresIn: "5 minutes" },
+  });
+
+  res.json({ success: true, message: "New OTP sent" });
 };
 
 export default sendEmail;

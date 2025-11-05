@@ -1,3 +1,4 @@
+// config/multer.js
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -11,23 +12,34 @@ const createUploadDir = (dir) => {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath;
-
     if (file.fieldname === "toolLogo") {
       uploadPath = path.join(process.cwd(), "Uploads", "tool");
     } else if (file.fieldname === "companyLogo") {
       uploadPath = path.join(process.cwd(), "Uploads", "company");
     } else if (file.fieldname === "staff") {
       uploadPath = path.join(process.cwd(), "Uploads", "staff");
+    } else if (file.fieldname === "productImage") { // Add product image handling
+      uploadPath = path.join(process.cwd(), "Uploads", "products");
     } else {
       uploadPath = path.join(process.cwd(), "Uploads", "misc");
     }
-
+    
     createUploadDir(uploadPath);
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `toolLogo-${uniqueSuffix}${path.extname(file.originalname)}`);
+    let fileName;
+    
+    if (file.fieldname === "productImage") {
+      fileName = `product-${uniqueSuffix}${path.extname(file.originalname)}`;
+    } else if (file.fieldname === "toolLogo") {
+      fileName = `toolLogo-${uniqueSuffix}${path.extname(file.originalname)}`;
+    } else {
+      fileName = `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`;
+    }
+    
+    cb(null, fileName);
   },
 });
 

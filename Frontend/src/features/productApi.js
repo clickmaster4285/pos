@@ -1,10 +1,8 @@
 // src/features/productApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-// === CONFIG ===
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
-// === TOKEN HELPER ===
 const getToken = (getState) => {
   const token =
     getState()?.auth?.token ||
@@ -19,13 +17,11 @@ const getToken = (getState) => {
   return token;
 };
 
-// === BASE QUERY WITH LOGGING ===
 const baseQuery = fetchBaseQuery({
   baseUrl: `${API_URL}/api/product`,
   credentials: 'include',
   prepareHeaders: (headers, { getState }) => {
     const token = getToken(getState);
-    headers.set('Content-Type', 'application/json');
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
@@ -33,25 +29,35 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
-// === API DEFINITION ===
 export const productApi = createApi({
   reducerPath: 'productApi',
-  baseQuery, 
+  baseQuery,
   tagTypes: ['Product'],
   endpoints: (builder) => ({
     createProduct: builder.mutation({
-      query: (body) => ({ url: '/create-product', method: 'POST', body }),
+      query: (formData) => {
+        const isFormData = formData instanceof FormData;
+        console.log(
+  "formData JSON string:",
+  JSON.stringify(Object.fromEntries(formData.entries()), null, 2)
+);
+
+        return {
+          url: '/create-product',
+          method: 'POST',
+          body: formData,
+          headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+        };
+      },
       invalidatesTags: [{ type: 'Product', id: 'LIST' }],
     }),
 
     getAllProducts: builder.query({
       query: () => '/get-all-product',
-      transformResponse: (res) => {
-        return {
-          data: Array.isArray(res.data) ? res.data : [],
-          pagination: res.pagination || { page: 1, totalPages: 1, total: 0 },
-        };
-      },
+      transformResponse: (res) => ({
+        data: Array.isArray(res.data) ? res.data : [],
+        pagination: res.pagination || { page: 1, totalPages: 1, total: 0 },
+      }),
       providesTags: (result) =>
         result?.data
           ? [
@@ -67,11 +73,15 @@ export const productApi = createApi({
     }),
 
     updateProduct: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/update-product/${id}`,
-        method: 'PATCH',
-        body,
-      }),
+      query: ({ id, formData }) => {
+        const isFormData = formData instanceof FormData;
+        return {
+          url: `/update-product/${id}`,
+          method: 'PATCH',
+          body: formData,
+          headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+        };
+      },
       invalidatesTags: (result, error, { id }) => [
         { type: 'Product', id },
         { type: 'Product', id: 'LIST' },
@@ -88,7 +98,10 @@ export const productApi = createApi({
 
     toggleProductStatus: builder.mutation({
       query: (id) => ({ url: `/status-update-product/${id}`, method: 'PATCH' }),
-      invalidatesTags: (result, error, id) => [{ type: 'Product', id }, { type: 'Product', id: 'LIST' }],
+      invalidatesTags: (result, error, id) => [
+        { type: 'Product', id },
+        { type: 'Product', id: 'LIST' },
+      ],
     }),
 
     updateProductStock: builder.mutation({

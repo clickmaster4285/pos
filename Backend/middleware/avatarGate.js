@@ -12,7 +12,7 @@ const avatarsDir = ensure(path.join(uploadsRoot, 'avatars'));
 
 const publicUrlFromAbsPath = (absPath) => {
   const rel = absPath.split(uploadsRoot)[1].replace(/\\/g, '/'); // '/posts/abc.jpg'
-  return `/uploads${rel}`; // → '/uploads/posts/abc.jpg' (or '/uploads/avatars/...')
+  return `/uploads${rel}`; // → '/Uploads/posts/abc.jpg' (or '/Uploads/avatars/...')
 };
 
 export function avatarGate(moveToAvatars = true) {
@@ -34,14 +34,14 @@ export function avatarGate(moveToAvatars = true) {
       return res.status(400).json({ success: false, message: why });
     }
 
-    // Optional: move file from /uploads/posts → /uploads/avatars using the same multer file
+    // Optional: move file from /Uploads/posts → /Uploads/avatars using the same multer file
     if (moveToAvatars) {
       const newPath = path.join(avatarsDir, path.basename(req.file.path));
       try {
         await fs.promises.rename(req.file.path, newPath);
         req.file.path = newPath;
       } catch (e) {
-        // If moving fails, keep original path under /uploads/posts
+        // If moving fails, keep original path under /Uploads/posts
       }
     }
 

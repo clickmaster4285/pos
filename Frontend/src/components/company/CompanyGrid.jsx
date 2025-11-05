@@ -1,4 +1,4 @@
-// CompanyGrid.jsx
+// src/components/company/CompanyGrid.jsx
 'use client';
 
 import { Card } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import {
   HoverCardContent,
 } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, XCircle } from 'lucide-react'; // Add icons for Approve/Reject
+import { CheckCircle, XCircle } from 'lucide-react';
 import {
   Building2,
   Mail,
@@ -43,10 +43,11 @@ function statusVariant(isActive) {
 export function CompanyGrid({
   items = [],
   handleToggle,
-  handleVerify, // Add handleVerify prop
+  handleVerify,
   pendingId,
   showUnverified = false,
-  isVerifying, // Add isVerifying prop
+  isVerifying,
+  onDetail,
 }) {
   if (!items?.length) {
     return (
@@ -85,7 +86,8 @@ export function CompanyGrid({
         return (
           <Card
             key={id}
-            className="group relative overflow-hidden border-border/60 bg-card rounded-xl transition-all duration-300 hover:shadow-lg hover:border-border/80"
+            className="group relative overflow-hidden border-border/60 bg-card rounded-xl transition-all duration-300 hover:shadow-lg hover:border-border/80 cursor-pointer"
+            onClick={() => onDetail?.(company)}
           >
             {/* Header */}
             <div className="p-5 pb-4 border-b border-border/50">
@@ -114,13 +116,12 @@ export function CompanyGrid({
                       </Badge>
 
                       {showUnverified ? (
-                        // Show Approve/Reject buttons for unverified companies
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => handleVerify(id, 'reject')}
+                            onClick={(e) => { e.stopPropagation(); handleVerify(id, 'reject'); }}
                             disabled={isVerifying || isPending}
                           >
                             <XCircle className="h-4 w-4 mr-1" />
@@ -128,7 +129,7 @@ export function CompanyGrid({
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleVerify(id, 'approve')}
+                            onClick={(e) => { e.stopPropagation(); handleVerify(id, 'approve'); }}
                             disabled={isVerifying || isPending}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
@@ -136,7 +137,6 @@ export function CompanyGrid({
                           </Button>
                         </div>
                       ) : (
-                        // Show existing toggle for verified companies
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

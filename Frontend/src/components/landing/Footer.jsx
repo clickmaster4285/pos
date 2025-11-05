@@ -1,156 +1,151 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import landingPageImages from '@/public/images/landingPageImages';
+// In Footer.jsx - Improved contrast and readability
+"use client";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Mail, Phone, MapPin, Twitter, Facebook, Instagram, Linkedin, ArrowUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function Footer() {
+export const Footer = () => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <footer className="bg-[#f7f3f1] py-12 text-gray-800">
-      <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-24">
-        <div className="flex flex-col sm:flex-row justify-between space-y-6 sm:space-y-0">
-          {/* Left section */}
-          <div className="flex flex-col space-y-4 sm:w-1/3">
-            <Image
-              src={landingPageImages.FooterLogo}
-              alt="Logo"
-              width={128}
-              height={32}
-              className="w-32 h-auto"
-            />
-            <p className="text-sm text-gray-600">
-              Alpha AutoMotive – Top Digital Marketing Agency in Pakistan
-              provides a complete range of digital marketing services to drive
-              your business growth.
+    <footer className="bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-background border-t border-gray-200 dark:border-gray-800">
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {/* Company Info */}
+          <motion.div 
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+          >
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              SmartPOS
+            </h3>
+            <p className="text-muted-foreground leading-relaxed">
+              Revolutionizing business operations with intelligent POS solutions. Trusted by thousands of businesses worldwide.
             </p>
-            <div className="flex space-x-4">
-              <Link href="#" className="text-orange-500 hover:text-gray-700">
-                Facebook
-              </Link>
-              <Link href="#" className="text-orange-500 hover:text-gray-700">
-                Instagram
-              </Link>
-              <Link href="#" className="text-orange-500 hover:text-gray-700">
-                Pinterest
-              </Link>
-              <Link href="#" className="text-orange-500 hover:text-gray-700">
-                YouTube
-              </Link>
+            <div className="flex gap-4">
+              {[Twitter, Facebook, Instagram, Linkedin].map((Icon, index) => (
+                <motion.button
+                  key={index}
+                  className="p-2 rounded-lg bg-white hover:bg-blue-600 hover:text-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-blue-600 transition-all duration-300 shadow-sm"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <Icon className="h-5 w-5" />
+                </motion.button>
+              ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Centered section */}
-          <div className="flex flex-col sm:flex-row space-x-8 mt-6 sm:mt-0 sm:w-2/3">
-            <div className="flex flex-col space-y-4">
-              <h4 className="font-semibold text-gray-700">Quick Links</h4>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                SEO Services
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                PPC Marketing
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Social Media Marketing
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Web Development
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Email Marketing
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Graphic Designing
-              </Link>
+          {/* Quick Links */}
+          <motion.div 
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            viewport={{ once: true }}
+          >
+            <h4 className="text-lg font-semibold">Quick Links</h4>
+            <div className="space-y-2">
+              {['Features', 'Industries', 'Pricing', 'About Us', 'Contact'].map((link) => (
+                <a
+                  key={link}
+                  href={`#${link.toLowerCase().replace(' ', '-')}`}
+                  className="block text-muted-foreground hover:text-primary transition-colors duration-300 hover:translate-x-2 transform"
+                >
+                  {link}
+                </a>
+              ))}
             </div>
+          </motion.div>
 
-            <div className="flex flex-col space-y-4 mt-6 sm:mt-0">
-              <h4 className="font-semibold text-gray-700">Useful Links</h4>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Free Consultation
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Customer Support
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Jobs
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                FAQs
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Terms and Conditions
-              </Link>
-              <Link
-                href="#"
-                className="text-sm text-gray-600 hover:text-orange-500"
-              >
-                Privacy Policy
-              </Link>
+          {/* Contact Info */}
+          <motion.div 
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            <h4 className="text-lg font-semibold">Contact Us</h4>
+            <div className="space-y-3">
+              {[
+                { icon: Phone, text: '+1 (555) 123-4567' },
+                { icon: Mail, text: 'hello@smartpos.com' },
+                { icon: MapPin, text: '123 Business Ave, Suite 100, New York, NY 10001' }
+              ].map((item, index) => (
+                <div key={index} className="flex items-center gap-3 text-muted-foreground">
+                  <item.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span className="text-sm">{item.text}</span>
+                </div>
+              ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right section */}
-          <div className="flex flex-col space-y-4 mt-6 sm:mt-0 sm:w-1/3">
-            <h4 className="font-semibold text-gray-700">Contact</h4>
-            <p className="text-sm text-gray-600">
-              Main PWD Rd, PWD Housing Society Sector A, PWD Society, Islamabad,
-              Punjab 45700, Pakistan
+          {/* Newsletter */}
+          <motion.div 
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            viewport={{ once: true }}
+          >
+            <h4 className="text-lg font-semibold">Stay Updated</h4>
+            <p className="text-muted-foreground text-sm">
+              Subscribe to get updates on new features and industry insights.
             </p>
-            <p className="text-sm text-gray-600">Consultation: 0333-1116842</p>
-            <p className="text-sm text-gray-600">
-              Customer Support: 0332-5394285
-            </p>
-            <p className="text-sm text-gray-600">
-              Email:{' '}
-              <a
-                href="mailto:marketing@clickmasters.pk"
-                className="text-orange-500 hover:text-gray-700"
-              >
-                marketing@clickmasters.pk
-              </a>
-            </p>
-          </div>
+            <div className="space-y-3">
+              <Input 
+                type="email" 
+                placeholder="Enter your email" 
+                className="bg-white border-gray-300 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:focus:border-blue-400 transition-colors duration-300 shadow-sm"
+              />
+              <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:scale-105 transition-all duration-300 text-white shadow-md">
+                Subscribe
+              </Button>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Footer bottom */}
-        <div className="mt-12 border-t pt-4 text-center text-sm text-gray-500">
-          <p>
-            &#169; 2025 All Rights Reserved: Alpha AutoMotive Digital Marketing
-            Agency
+        {/* Bottom Bar */}
+        <motion.div 
+          className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          viewport={{ once: true }}
+        >
+          <p className="text-muted-foreground text-sm">
+            © 2024 SmartPOS. All rights reserved.
           </p>
-        </div>
+          
+          <div className="flex gap-6 text-sm text-muted-foreground">
+            {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item) => (
+              <a
+                key={item}
+                href="#"
+                className="hover:text-primary transition-colors duration-300"
+              >
+                {item}
+              </a>
+            ))}
+          </div>
+
+          <motion.button
+            onClick={scrollToTop}
+            className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
+            whileHover={{ scale: 1.1, y: -2 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <ArrowUp className="h-5 w-5" />
+          </motion.button>
+        </motion.div>
       </div>
     </footer>
   );
-}
+};

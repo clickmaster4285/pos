@@ -4,21 +4,20 @@ import { LRUCache } from "lru-cache";
 
 const publicPaths = new Set([
   "/login",
-  "/register",
   "/sign-up",
   "/forgot-password",
-  "/reset-password",
   "/verify-email",
   "/public/landing",
 ]);
 
 function isPublic(pathname) {
   if (publicPaths.has(pathname)) return true;
-  if (pathname.startsWith("/public/")) return true;
   if (pathname === "/verify-email" || pathname.startsWith("/verify-email/"))
     return true;
+  if (pathname.startsWith("/")) return true;
   return false;
 }
+    console.log("middleware redite :")
 
 const tokenCache = new LRUCache({ max: 1000, ttl: 60 * 60 * 1000 }); // 1h cache
 

@@ -1,187 +1,221 @@
-  'use client';
-
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useGetAllPlansQuery } from '@/features/planApi';
+import { useCreateCompanyMutation } from '@/features/CompanyApi';
+import { Zap, Building2, Sparkles, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
-import CompanyRegister from './CompanyRegister';
-import UserRegister from './UserRegister';
-import { useRouter } from 'next/navigation';
-import { useVerifyEmailMutation } from '@/features/authApi';
+
+import RegisterLayout from './RegisterLayout';
+import StepIndicator from './StepIndicator';
+import PlanStep from './PlanStep';
+import IndustryStep from './IndustryStep';
+import DetailsStep from './DetailsStep';
 
 export default function RegisterPage() {
-  const [registerType, setRegisterType] = useState('company'); // 'company' | 'user'
-  const [step, setStep] = useState('register'); // 'register' | 'verify' | 'verified'
-  const [emailForVerify, setEmailForVerify] = useState('');
-  const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation();
+  const [step, setStep] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedIndustry, setSelectedIndustry] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: plans = [], isLoading: isPlansLoading } = useGetAllPlansQuery();
+  const [createCompany] = useCreateCompanyMutation();
 
-  // Handle Verification
-  const handleVerify = async (e) => {
+  // -----------------------------------------------------------------
+  //  READ QUERY PARAMS ON MOUNT → auto-advance to step 2 + pre-select
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const stepParam = searchParams.get("step");
+    const planParam = searchParams.get("plan");
+    const industryParam = searchParams.get("industry");
+
+    if (stepParam) {
+      const parsedStep = parseInt(stepParam, 10);
+      if (!isNaN(parsedStep) && parsedStep >= 1 && parsedStep <= 3) {
+        setStep(parsedStep);
+      }
+    }
+    if (planParam) {
+      setSelectedPlan(planParam);
+    }
+    if (industryParam) {
+      setSelectedIndustry(industryParam);
+      // Also sync to formData if needed (name would need mapping, but id is sufficient for selection)
+    }
+  }, [searchParams]);
+
+  // -----------------------------------------------------------------
+  //  UPDATE URL PARAMS WHEN STEP, PLAN, OR INDUSTRY CHANGES
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set('step', step.toString());
+
+    if (selectedPlan && step >= 2) {
+      params.set('plan', selectedPlan);
+    }
+    if (selectedIndustry && step >= 3) {
+      params.set('industry', selectedIndustry);
+    }
+
+    router.replace(`/sign-up?${params.toString()}`, { shallow: true });
+  }, [step, selectedPlan, selectedIndustry, router]);
+
+  const normalizedPlans = plans.map(plan => ({
+    _id: plan._id,
+    name: plan.name,
+    price: plan.price,
+    interval: plan.validateDays ? `${plan.validateDays} days` : 'month',
+    description: plan.description,
+    popular: plan.popular ?? false,
+    limitations: {
+      maxStaff: plan.limitations?.maxStaff ?? 0,
+      maxVendors: plan.limitations?.maxVendors ?? 0,
+      maxInventoryItems: plan.limitations?.maxProductItems ?? 0,
+      features: plan.limitations?.features ?? [],
+    },
+  }));
+
+  const [formData, setFormData] = useState({
+    companyName: "", companyEmail: "", adminName: "", adminEmail: "", password: "", confirmPassword: "", industry: ""
+  });
+
+  const steps = [
+    { num: 1, label: "Plan", icon: Zap },
+    { num: 2, label: "Industry", icon: Building2 },
+    { num: 3, label: "Details", icon: Sparkles }
+  ];
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-    const email = emailForVerify || String(fd.get('verifyEmail') || '').trim();
-    const otp = String(fd.get('otp') || '').trim();
+    setError("");
 
-    if (!email) {
-      alert('Please enter your email.');
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
-    if (!/^\d{5}$/.test(otp)) {
-      alert('Please enter a valid 5-digit code.');
+    if (!selectedPlan || !selectedIndustry) {
+      setError("Please complete all steps.");
       return;
     }
 
+    setIsLoading(true);
     try {
-      await verifyEmail({ email, otp }).unwrap();
-      setStep('verified');
+      const payload = {
+        company: {
+          name: formData.companyName,
+          contactEmail: formData.companyEmail,
+          plan: selectedPlan,
+          industryName: selectedIndustry,
+        },
+        admin: {
+          name: formData.adminName,
+          email: formData.adminEmail,
+          password: formData.password,
+        },
+      };
+
+      await createCompany(payload).unwrap();
+      router.push(`/verify-email?email=${encodeURIComponent(formData.adminEmail)}`);
     } catch (err) {
-      console.error('Verify error:', err);
-      alert(err?.data?.message || err?.data?.error || 'Verification failed. Please check your code and try again.');
+      setError(err?.data?.error || "Failed to create account.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  if (isPlansLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+          <Loader2 className="w-12 h-12 text-blue-600" />
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-screen h-screen flex justify-center item-center">
-      <div className="">
-        <div className="w-full">
-          {step === 'register' && (
-            <>
-              <div className="text-center mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-                  Create Accountss
-                </h2>
-                <p className="text-gray-600">
-                  Choose the type of account you want to create
-                </p>
-                <div className="space-x-5 mt-4">
-                  <button
-                    onClick={() => setRegisterType('company')}
-                    className={`px-4 py-2 rounded-lg ${registerType === 'company' ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-800'}`}
-                  >
-                    Company Registration
-                  </button>
-                  <button
-                    onClick={() => setRegisterType('user')}
-                    className={`px-4 py-2 rounded-lg ${registerType === 'user' ? 'bg-blue-900 text-white' : 'bg-gray-200 text-gray-800'}`}
-                  >
-                    User Registration
-                  </button>
-                </div>
-              </div>
+    <RegisterLayout>
+      <StepIndicator steps={steps} currentStep={step} onStepClick={setStep} />
 
-              {registerType === 'company' ? (
-                <CompanyRegister setStep={setStep} setEmailForVerify={setEmailForVerify} />
-              ) : (
-                <UserRegister setStep={setStep} setEmailForVerify={setEmailForVerify} />
-              )}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5 }}
+        className="p-12 backdrop-blur-2xl bg-white/80 border border-white/50 shadow-2xl shadow-black/10 rounded-3xl"
+      >
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <PlanStep
+              plans={normalizedPlans}
+              selectedPlan={selectedPlan}
+              onPlanSelect={(planId) => {
+                setSelectedPlan(planId);
+                setStep(2);
+              }}
+              isLoading={isLoading}
+            />
+          )}
+          {step === 2 && (
+            <IndustryStep
+              selectedIndustry={selectedIndustry}
+              onIndustrySelect={(id, name) => {
+                setSelectedIndustry(id);
+                setFormData(prev => ({ ...prev, industry: name }));
+                setStep(3);
+              }}
+            />
+          )}
+          {step === 3 && (
+            <DetailsStep
+              formData={formData}
+              setFormData={setFormData}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              showConfirmPassword={showConfirmPassword}
+              setShowConfirmPassword={setShowConfirmPassword}
+              error={error}
+              isLoading={isLoading}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </AnimatePresence>
 
-              <p className="text-center text-sm mt-4">
-                Already have an account?{' '}
-                <Link
-                  href="/login"
-                  className="text-red-600 hover:underline font-medium"
+        {step > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-between mt-8 pt-8 border-t border-gray-200"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02, x: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setStep(step - 1)}
+              className="px-8 py-4 text-gray-600 hover:text-gray-800 font-semibold transition-colors flex items-center gap-2"
+            >
+              ← Previous
+            </motion.button>
+
+            <div className="text-center text-sm text-gray-500">
+              Already have an account?{" "}
+              <Link href="/login">
+                <motion.span
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold cursor-pointer"
                 >
                   Sign in
-                </Link>
-              </p>
-            </>
-          )}
-
-          {step === 'verify' && (
-            <div className="bg-gradient-to-br from-blue-50 via-orange-50 p-6 sm:p-8 rounded-lg shadow-sm">
-              <div className="text-center md:text-left mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-                  Verify your email
-                </h2>
-                <p className="text-gray-600">
-                  {emailForVerify ? (
-                    <>
-                      We sent a 5-digit code to{' '}
-                      <span className="font-medium">{emailForVerify}</span>.
-                    </>
-                  ) : (
-                    <>Enter your email and the 5-digit code we sent.</>
-                  )}
-                </p>
-              </div>
-
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    name="verifyEmail"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={emailForVerify}
-                    onChange={(e) => setEmailForVerify(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                    required
-                    readOnly={!!emailForVerify} // Make read-only if emailForVerify is set
-                    disabled={!!emailForVerify} // Disable input if emailForVerify is set
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Verification Code
-                  </label>
-                  <input
-                    name="otp"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{5}"
-                    placeholder="Enter the 5-digit code"
-                    className="tracking-widest text-center text-xl w-full px-4 py-3 border border-gray-300 rounded-lg"
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Enter 5 digits (0–9).
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-blue-900 hover:bg-blue-950 text-white py-3 rounded-lg mt-2 disabled:opacity-60"
-                  disabled={isVerifying}
-                >
-                  {isVerifying ? 'Verifying…' : 'Verify'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('register')}
-                  className="w-full text-gray-600 hover:underline font-medium mt-2"
-                >
-                  Go back
-                </button>
-              </form>
+                </motion.span>
+              </Link>
             </div>
-          )}
-
-          {step === 'verified' && (
-            <div className="bg-gradient-to-br from-blue-50 via-orange-50 p-6 sm:p-8 rounded-lg shadow-sm mt-10">
-              <div className="text-center space-y-4 py-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                  Email verified 🎉
-                </h2>
-                <p className="text-gray-700">
-                  Thanks for verifying your email. Your account is under review.
-                  You’ll be able to log in soon.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/login')}
-                  className="w-full bg-blue-900 hover:bg-blue-950 text-white py-3 rounded-lg font-medium transition-colors"
-                >
-                  Back to Login
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        )}
+      </motion.div>
+    </RegisterLayout>
   );
 }

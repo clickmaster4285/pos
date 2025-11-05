@@ -4,6 +4,7 @@ import IndexController from '../controllers/indexController.js';
 import passport from '../middleware/passportAuth.middleware.js';
 import { authenticateToken, checkPlanIsActive, checkPermissionsValidation } from '../middleware/authMiddleware.js';
 import { checkplan } from '../middleware/authMiddleware.js';
+import { upload, handleMulterError } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.post(
   checkPlanIsActive,
   checkPermissionsValidation('createProduct'),
   checkplan('Product'),
+  upload.array('productImage', 5),
   IndexController.Product.createProduct
 );
 
@@ -42,6 +44,7 @@ router.patch(
   checkPlanIsActive,
   checkPermissionsValidation('updateProduct'),
   checkplan('Product'),
+  upload.array('productImage', 5),
   IndexController.Product.updateProduct
 );
 

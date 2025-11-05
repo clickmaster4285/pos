@@ -24,6 +24,7 @@ import {
 import { useGetAllCategoriesQuery } from '@/features/categoryApi';
 import { useGetAllVendorsQuery } from '@/features/vendorApi';
 import { useGetAllIngredientsQuery } from '@/features/ingredientApi';
+import { getProductFields } from '@/utils/industryFields';
 
 const getId = (p) => String(p?.id ?? p?._id ?? '').trim();
 const norm = (s) => (typeof s === 'string' ? s : '');
@@ -32,57 +33,35 @@ function normalizeProduct(p, hasCategories, hasVendors) {
   return {
     id: getId(p),
     productName: norm(p?.productName),
-    categoryName: hasCategories ? norm(p?.category) : '',
+    categoryName: hasCategories ? norm(p?.category?.categoryName || p?.category) : '',
     subCategoryName: hasCategories ? norm(p?.subCategoryName) : '',
-    vendor: hasVendors ? norm(p?.vendor) : '',
+    vendor: hasVendors ? norm(p?.vendor?.vendorName || p?.vendor) : '',
     SKU: norm(p?.SKU),
     sellingPrice: p?.sellingPrice || 0,
-    costPrice: p?.costPrice || 0,
     quantity: p?.quantity || 0,
     description: norm(p?.description),
     tags: Array.isArray(p?.tags) ? p.tags : [],
     isActive: !!p?.isActive,
     createdAt: p?.createdAt || null,
     updatedAt: p?.updatedAt || null,
-    ingredientNames: Array.isArray(p?.ingredient)
-      ? p.ingredient.map(i => ({ ingredientName: norm(i.name) }))
-      : [],
+    imgUrl: Array.isArray(p?.imgUrl) ? p.imgUrl : (p?.imgUrl ? [p.imgUrl] : []),
+    metaData: p?.metaData || {},
+    ingredient: (p?.ingredient || []).map((ing) => ({
+      ingredientId: ing.ingredientId?._id || ing.ingredientId,
+      ingredientName: ing.ingredientName,
+      quantity: ing.quantity,
+    })),
   };
-}
-
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function addDays(d, days) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + days);
-  return x;
-}
-
-function getProductDate(p) {
-  const raw = p?.createdAt || p?.updatedAt || p?.date;
-  return raw ? new Date(raw) : null;
 }
 
 export function ProductManagement() {
   const user = useSelector((state) => state.auth.user);
-
-  const hasVendorsFeature = () => user?.extraFeature?.includes('Vendors') || false;
-  const hasCategoriesFeature = () => user?.extraFeature?.includes('Category') || false;
+  const hasVendorsFeature = () => (user?.extraFeature || []).includes('Vendors');
+  const hasCategoriesFeature = () => (user?.extraFeature || []).includes('Category');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [quickRange, setQuickRange] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -95,12 +74,12 @@ export function ProductManagement() {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockProduct, setStockProduct] = useState(null);
 
-  // === RTK QUERY HOOKS ===
   const {
     data: productsResponse,
     isLoading: productsLoading,
     isError: productsError,
     error: productsErrorData,
+    refetch,
   } = useGetAllProductsQuery();
 
   const { data: categories = [], isLoading: categoriesLoading } = hasCategoriesFeature()
@@ -117,98 +96,100 @@ export function ProductManagement() {
   const [createProduct, { isLoading: creating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: updating }] = useUpdateProductMutation();
   const [deleteProduct, { isLoading: deleting }] = useDeleteProductMutation();
-  const [toggleProductStatus] = useToggleProductStatusMutation();
+  const [toggleProductStatus, { isLoading: toggling }] = useToggleProductStatusMutation();
   const [updateProductStock, { isLoading: updatingStock }] = useUpdateProductStockMutation();
 
-  // === NORMALIZE & FILTER ===
-  const filteredProducts = useMemo(() => {
-    if (!productsResponse?.data) return [];
-
-    let result = productsResponse.data.map((p) =>
+  const products = useMemo(() => {
+    return (productsResponse?.data || []).map((p) =>
       normalizeProduct(p, hasCategoriesFeature(), hasVendorsFeature())
     );
+  }, [productsResponse]);
 
-    const term = searchTerm.toLowerCase().trim();
-    if (term) {
-      result = result.filter(
+  const filteredProducts = useMemo(() => {
+    let filtered = products;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
         (p) =>
           p.productName.toLowerCase().includes(term) ||
           p.SKU.toLowerCase().includes(term) ||
-          p.tags.some(t => t.toLowerCase().includes(term))
+          p.tags.some((t) => t.toLowerCase().includes(term))
       );
     }
 
     if (statusFilter !== 'all') {
-      const isActive = statusFilter === 'active';
-      result = result.filter(p => p.isActive === isActive);
+      filtered = filtered.filter((p) => (statusFilter === 'active' ? p.isActive : !p.isActive));
     }
 
-    if (quickRange !== 'all') {
-      const now = new Date();
-      let start;
-      switch (quickRange) {
-        case 'today': start = startOfDay(now); break;
-        case 'yesterday': start = startOfDay(addDays(now, -1)); break;
-        case 'last7': start = startOfDay(addDays(now, -7)); break;
-        case 'last30': start = startOfDay(addDays(now, -30)); break;
-        default: start = null;
-      }
-      if (start) {
-        result = result.filter(p => {
-          const date = getProductDate(p);
-          return date && date >= start;
-        });
-      }
-    }
+    return filtered;
+  }, [products, searchTerm, statusFilter]);
 
-    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [productsResponse, searchTerm, statusFilter, quickRange]);
+  const paginatedProducts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, page, pageSize]);
 
   const total = filteredProducts.length;
-  const paginatedProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
 
-  // === HANDLERS ===
-  const handleSaveProduct = async (data) => {
-    try {
-      if (modalMode === 'create') {
-        await createProduct(data).unwrap();
-      } else {
-        await updateProduct({ id: selectedProduct.id, ...data }).unwrap();
-      }
-      setIsModalOpen(false);
-      setSelectedProduct(null);
-    } catch (err) {
-      console.error('Save failed:', err);
-    }
-  };
-
-  const handleEditProduct = (product) => {
-    setSelectedProduct(product);
-    setModalMode('edit');
+  const handleCreateProduct = () => {
+    setModalMode('create');
+    setSelectedProduct(null);
     setIsModalOpen(true);
   };
 
+  const handleEditProduct = (product) => {
+    setModalMode('edit');
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleViewProduct = (product) => {
+    setDetailsProduct(product);
+    setIsDetailsOpen(true);
+  };
+
   const handleDeleteProduct = (product) => {
-    setDeleteDialog({ open: true, productId: product.id, productName: product.productName });
+    setDeleteDialog({
+      open: true,
+      productId: getId(product),
+      productName: product.productName,
+    });
   };
 
   const confirmDelete = async () => {
     try {
       await deleteProduct(deleteDialog.productId).unwrap();
-      setDeleteDialog({ open: false });
+      setDeleteDialog({ open: false, productId: null, productName: '' });
     } catch (err) {
       console.error('Delete failed:', err);
     }
   };
 
   const handleToggle = async (product) => {
-    setPendingId(product.id);
+    const id = getId(product);
+    setPendingId(id);
     try {
-      await toggleProductStatus(product.id).unwrap();
+      await toggleProductStatus(id).unwrap();
     } catch (err) {
       console.error('Toggle failed:', err);
     } finally {
       setPendingId(null);
+    }
+  };
+
+  // FIXED: Accept FormData directly — no rebuild
+  const handleSaveProduct = async (formData) => {
+    try {
+      if (modalMode === 'create') {
+        await createProduct(formData).unwrap();
+      } else {
+        await updateProduct({ id: getId(selectedProduct), formData }).unwrap();
+      }
+      setIsModalOpen(false);
+      setSelectedProduct(null);
+    } catch (err) {
+      console.error('Save failed:', err);
     }
   };
 
@@ -232,71 +213,50 @@ export function ProductManagement() {
     }
   };
 
-  // === RENDER ===
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
-          <p className="text-sm text-muted-foreground">Manage your product inventory</p>
-        </div>
-        <Button onClick={() => { setModalMode('create'); setIsModalOpen(true); }} className="gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl font-bold">Products</h1>
+        <Button onClick={handleCreateProduct} className="gap-2">
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border-border"
-          />
+      <div className="flex flex-col lg:flex-row gap-3">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-border"
+            />
+          </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" /> Status: {statusFilter}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('active')}>Active</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>Inactive</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Filter className="h-4 w-4" />
+              {statusFilter === 'all' ? 'All Status' : statusFilter === 'active' ? 'Active' : 'Inactive'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setStatusFilter('all')}>All Status</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('active')}>Active</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>Inactive</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Calendar className="h-4 w-4" /> {quickRange === 'all' ? 'All Time' : quickRange}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setQuickRange('all')}>All Time</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('today')}>Today</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('yesterday')}>Yesterday</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('last7')}>Last 7 Days</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setQuickRange('last30')}>Last 30 Days</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button variant={view === 'grid' ? 'default' : 'outline'} onClick={() => setView('grid')} className="gap-2">
-            <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Grid</span>
-          </Button>
-          <Button variant={view === 'list' ? 'default' : 'outline'} onClick={() => setView('list')} className="gap-2">
-            <List className="h-4 w-4" /><span className="hidden sm:inline">List</span>
-          </Button>
-        </div>
+        <Button variant={view === 'grid' ? 'default' : 'outline'} onClick={() => setView('grid')} className="gap-2">
+          <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Grid</span>
+        </Button>
+        <Button variant={view === 'list' ? 'default' : 'outline'} onClick={() => setView('list')} className="gap-2">
+          <List className="h-4 w-4" /><span className="hidden sm:inline">List</span>
+        </Button>
       </div>
 
-      {/* Loading / Error / Data */}
       {productsLoading || categoriesLoading || vendorsLoading ? (
         <p className="text-center text-muted-foreground py-6">Loading...</p>
       ) : productsError ? (
@@ -348,11 +308,12 @@ export function ProductManagement() {
           </div>
         </>
       )}
-
-      {/* Modals */}
       <ProductModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setSelectedProduct(null); }}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedProduct(null);
+        }}
         onSave={handleSaveProduct}
         product={selectedProduct}
         mode={modalMode}
@@ -384,7 +345,10 @@ export function ProductManagement() {
 
       <AddStockModal
         isOpen={isStockModalOpen}
-        onClose={() => { setIsStockModalOpen(false); setStockProduct(null); }}
+        onClose={() => {
+          setIsStockModalOpen(false);
+          setStockProduct(null);
+        }}
         onSave={handleSaveStock}
         products={productsResponse?.data || []}
         selectedProduct={stockProduct}

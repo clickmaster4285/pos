@@ -170,6 +170,24 @@ export const authApi = createApi({
         body: { email, otp },
       }),
     }),
+    // Resend OTP ---
+    resendOtp: builder.mutation({
+      query: ({ email }) => ({
+        url: "/resend-otp",
+        method: "POST",
+        body: { email },
+      }),
+      async onQueryStarted({ email }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(addToast({ message: `New OTP sent to ${email}`, type: "success" }));
+        } catch (error) {
+          const msg = error?.error?.data?.error || "Failed to resend OTP";
+          dispatch(addToast({ message: msg, type: "error" }));
+          throw error;
+        }
+      },
+    }),
 
     refreshToken: builder.mutation({
       query: () => ({
@@ -210,6 +228,7 @@ export const {
   useGetMeQuery,
   useRegisterUserMutation,
   useVerifyEmailMutation,
+  useResendOtpMutation,
   useRefreshTokenMutation,
 } = authApi;
 

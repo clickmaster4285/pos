@@ -18,8 +18,9 @@ import Shippment from "./shipment.routes.js";
 import Category from "./category.route.js";
 import Product from "./product.route.js";
 import Ingredient from "./ingredient.route.js";
-import { updateSuperAdminInfo } from "../config/superAdminConfig.js";
-import { upload } from "../config/multer.js";
+import SuperAdmin from "./superAdmin.route.js";
+import Landing from "./landing.route.js";
+
 import { authenticateToken } from "../middleware/authMiddleware.js";
 import passport from "../middleware/passportAuth.middleware.js";
 
@@ -41,7 +42,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 25,
   message: {
     success: false,
     message: "Too many authentication attempts, please try again later.",
@@ -77,13 +78,9 @@ router.use("/strip", PaymentGatway);
 router.use("/category", Category);
 router.use("/product", Product);
 router.use("/ingredient", Ingredient);
+router.use("/landing", Landing);
 
-// superAdmin config update
-router.patch(
-  "/superadmin/update-super-admin-info-by-super-admin",
-  // passport.authenticate("jwt", { session: false }),
-  upload.single("toolLogo"), // Matches Postman field name
-  updateSuperAdminInfo
-);
+// superAdmin config route
+router.use("/superadmin",SuperAdmin);
 
 export default router;

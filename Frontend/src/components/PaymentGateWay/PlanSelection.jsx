@@ -34,7 +34,8 @@ export default function PlanSelection({
       </div>
     );
   }
-
+  
+  console.log("plandljdffkkj: ", plans)
   const getPlanFeatures = (plan) => [
     `${plan.limitations?.maxStaff || 0} Staff Members`,
     `${plan.limitations?.maxVendors || 0} Vendors`,
@@ -52,6 +53,7 @@ export default function PlanSelection({
           Select the plan that best fits your business needs
         </p>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans?.map((plan, index) => (

@@ -129,13 +129,6 @@ export const userApi = createApi({
         data: res?.data,
       }),
     }),
-    updateSuperAdminInfo: builder.mutation({
-      query: (formData) => ({
-        url: "/superadmin/update-super-admin-info-by-super-admin",
-        method: "PATCH",
-        body: formData, // Pass raw FormData
-      }),
-    }),
   }),
 });
 
@@ -147,5 +140,4 @@ export const {
   useVerifyEmailChangeMutation,
   useInitiatePasswordChangeMutation,
   useVerifyPasswordChangeMutation,
-  useUpdateSuperAdminInfoMutation,
 } = userApi;
