@@ -60,7 +60,6 @@ const processIngredients = async (ingredients, companyId) => {
 
 /* ------------------------------------------------------------------ */
 const createProduct = async (req, res) => {
-  console.log("the req.body: ", req.body);
   try {
     const { companyId, userId } = req.user;
     const features = await getFeatures(companyId);
