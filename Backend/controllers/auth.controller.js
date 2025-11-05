@@ -11,6 +11,11 @@ import {
   fetchToolLogoName,
   fetchIndustryName,
 } from "../utils/fetchToolLogoName.js";
+import { OAuth2Client } from "google-auth-library";
+import { v4 as uuidv4 } from "uuid";
+
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -152,6 +157,99 @@ const login = async (req, res, next) => {
   } catch (error) {
     console.error("[auth.controller] Error during login:", error);
     return next(new ErrorResponse("Server error during login", 500));
+  }
+};
+
+const googleSignIn = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return next(new ErrorResponse("idToken required", 400));
+    // 1. Verify Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload) return next(new ErrorResponse("Invalid Google token", 401));
+    
+    const { sub: googleId, email, name, picture } = payload;
+    if (!email) return next(new ErrorResponse("Email not provided by Google", 400));
+
+    // 2. Look for existing user by email (or googleId)
+    let user = await User.findOne({
+      $or: [{ email, deleted: false }, { googleId, deleted: false }],
+    }).select("+password");
+
+    const isNewUser = !user;
+
+    // 3. Create user if not exists
+    if (!user) {
+      const userId = await generateUniqueUserId(name || "Google User");
+      user = new User({
+        name: name || "Google User",
+        email,
+        userId,
+        googleId,
+        role: "user",               // default – will be upgraded later
+        verified: true,             // Google already verified email
+        picture,
+        // password is NOT set – Google users never login with password
+      });
+      await user.save();
+    }
+
+    // 4. Generate JWT tokens (same as normal login)
+    const { accessToken, refreshToken } = await generateTokens(user);
+    setTokens(res, accessToken, refreshToken);
+
+    // 5. If NEW user → go to onboarding (plan → industry → company)
+    if (isNewUser) {
+      return res.status(200).json({
+        success: true,
+        onboarding: true,
+        user: {
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          picture: user.picture,
+        },
+        token: accessToken,
+        refreshToken,
+      });
+    }
+
+    // 6. Existing user → normal login response (same shape as email login)
+    const toolNameLogo = await fetchToolLogoName();
+    const industryName = user.companyId
+      ? await fetchIndustryName(user.companyId)
+      : null;
+
+    res.status(200).json({
+      success: true,
+      onboarding: false,
+      data: {
+        user: {
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          companyId: user.companyId,
+          role: user.role,
+          subRole: user.subRole,
+          department: user.department,
+          permissions: user.permissions,
+          isActive: user.isActive,
+          extraFeature: [],
+          toolName: toolNameLogo.toolName,
+          toolLogo: toolNameLogo.toolLogo,
+          industryName,
+        },
+        token: accessToken,
+        refreshToken,
+      },
+    });
+  } catch (err) {
+    console.error("[auth.controller] Google login error:", err);
+    return next(new ErrorResponse("Google authentication failed", 500));
   }
 };
 
@@ -455,4 +553,5 @@ export default {
   getme,
   refreshToken,
   registerUser,
+  googleSignIn,
 };
