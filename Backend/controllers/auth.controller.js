@@ -13,7 +13,7 @@ import {
 } from "../utils/fetchToolLogoName.js";
 import { OAuth2Client } from "google-auth-library";
 import { v4 as uuidv4 } from "uuid";
-
+import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -73,15 +73,17 @@ const login = async (req, res, next) => {
       if (!user) {
         return next(new ErrorResponse("Invalid credentials", 401));
       }
-      let companyAdmin = await User.findOne({ userId:user.owner, deleted: false }).select(
-      "+password"
-    );
+      let companyAdmin = await User.findOne({
+        userId: user.owner,
+        deleted: false,
+      }).select("+password");
 
-    if (!companyAdmin) {
-        return next(new ErrorResponse("Company exist but Company Admin not found", 401));
+      if (!companyAdmin) {
+        return next(
+          new ErrorResponse("Company exist but Company Admin not found", 401)
+        );
       }
-    user = companyAdmin;
-
+      user = companyAdmin;
     }
     // console.log("User found:", user.isActive);
     if (user.isActive === false) {
@@ -164,6 +166,7 @@ const googleSignIn = async (req, res, next) => {
   try {
     const { idToken } = req.body;
     if (!idToken) return next(new ErrorResponse("idToken required", 400));
+
     // 1. Verify Google token
     const ticket = await googleClient.verifyIdToken({
       idToken,
@@ -171,13 +174,16 @@ const googleSignIn = async (req, res, next) => {
     });
     const payload = ticket.getPayload();
     if (!payload) return next(new ErrorResponse("Invalid Google token", 401));
-    
+
     const { sub: googleId, email, name, picture } = payload;
     if (!email) return next(new ErrorResponse("Email not provided by Google", 400));
 
-    // 2. Look for existing user by email (or googleId)
+    // 2. Look for existing user
     let user = await User.findOne({
-      $or: [{ email, deleted: false }, { googleId, deleted: false }],
+      $or: [
+        { email, deleted: false },
+        { googleId, deleted: false },
+      ],
     }).select("+password");
 
     const isNewUser = !user;
@@ -185,24 +191,30 @@ const googleSignIn = async (req, res, next) => {
     // 3. Create user if not exists
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
+      const companyId = await generateUniqueCompanyId(name);
       user = new User({
         name: name || "Google User",
         email,
         userId,
+        companyId,
         googleId,
-        role: "user",               // default – will be upgraded later
-        verified: true,             // Google already verified email
+        role: "admin",
+        verified: true,
         picture,
-        // password is NOT set – Google users never login with password
+        password: Math.random().toString(36).slice(-10) + "!@#",
+        status: {
+          isaccepted: true,
+          performedBy: "google-oauth",
+        },
       });
       await user.save();
     }
 
-    // 4. Generate JWT tokens (same as normal login)
+    // 4. Generate tokens
     const { accessToken, refreshToken } = await generateTokens(user);
     setTokens(res, accessToken, refreshToken);
 
-    // 5. If NEW user → go to onboarding (plan → industry → company)
+    // 5. NEW USER → Onboarding
     if (isNewUser) {
       return res.status(200).json({
         success: true,
@@ -212,13 +224,14 @@ const googleSignIn = async (req, res, next) => {
           name: user.name,
           email: user.email,
           picture: user.picture,
+          sub: googleId,          // ADD THIS LINE
         },
         token: accessToken,
         refreshToken,
       });
     }
 
-    // 6. Existing user → normal login response (same shape as email login)
+    // 6. EXISTING USER → Normal login
     const toolNameLogo = await fetchToolLogoName();
     const industryName = user.companyId
       ? await fetchIndustryName(user.companyId)

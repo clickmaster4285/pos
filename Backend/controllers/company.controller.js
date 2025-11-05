@@ -10,9 +10,9 @@ import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 
 const createCompany = async (req, res) => {
   try {
-    const { company, admin } = req.body;
-
-    // Validate required fields
+    const { company, admin, googleUser } = req.body;
+console.log("the googleUser: ", req.body)
+    // === 1. Input Validation ===
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
         success: false,
@@ -20,174 +20,225 @@ const createCompany = async (req, res) => {
       });
     }
 
-    if (!admin || !admin.name || !admin.email || !admin.password) {
+    if (!admin || !admin.name || !admin.email) {
       return res.status(400).json({
         success: false,
-        error: "Admin name, email, and password are required",
+        error: "Admin name and email are required",
       });
     }
-    // console.log("the logs is : io am her")
-
-    // console.log("the availablePlan", company.plan)
+let googleUserComID;
+    // === 2. Plan Validation ===
     const availablePlan = await IndexModel.Plan.findById(company.plan);
-    // console.log("the availablePlan", availablePlan)
-    if (
-      !availablePlan ||
-      availablePlan.deleted === true ||
-      availablePlan.isActive === false
-    ) {
+    if (!availablePlan || availablePlan.deleted === true || availablePlan.isActive === false) {
       return res.status(400).json({
         success: false,
-        error: "plan does not exist or deactivated: contact support",
+        error: "Plan does not exist or is deactivated: contact support",
       });
     }
-    if (company.plan !== availablePlan.id) {
+    if (company.plan !== availablePlan._id.toString()) {
       return res.status(400).json({
         success: false,
-        error: "plan does not exist or deactivated: contact support",
+        error: "Invalid plan selected",
       });
     }
-    // Generate unique companyId
-    const companyId = await generateUniqueCompanyId(company.name);
 
-    const userId = await generateUniqueUserId(admin.name);
-    // Create company
+    // === 3. Generate IDs ===
+    const isGoogleFlow = !!googleUser?.googleId;
+
+    let adminUser;
+    let adminUserId;
+
+    // === 4. Handle Google User (Skip Password & OTP) ===
+    if (isGoogleFlow) {
+      const existingGoogleUser = await IndexModel.User.findOne({
+        googleId: googleUser.googleId,
+        deleted: false,
+      }).select("+password");
+
+      if (!existingGoogleUser) {
+        return res.status(400).json({
+          success: false,
+          error: "Google user not found. Please sign in with Google first.",
+        });
+      }
+googleUserComID = existingGoogleUser.companyId;
+      // Use existing Google user
+      adminUser = existingGoogleUser;
+      adminUserId = existingGoogleUser.userId;
+
+      // Optional: Update name if changed in form
+      if (admin.name && admin.name !== existingGoogleUser.name) {
+        existingGoogleUser.name = admin.name;
+      }
+      if(admin.password) existingGoogleUser.password = admin.password; 
+        existingGoogleUser.history.push({
+          action: `${admin.name}, ${admin.password} updated during company creation`,
+          performedBy: existingGoogleUser.userId,
+        });
+        await existingGoogleUser.save();
+    } 
+    // === 5. Handle Regular (Email/Password) User ===
+    else {
+      if (!admin.password) {
+        return res.status(400).json({
+          success: false,
+          error: "Password is required for email registration",
+        });
+      }
+
+      adminUserId = await generateUniqueUserId(admin.name);
+
+      adminUser = new IndexModel.User({
+        name: admin.name,
+        email: admin.email,
+        password: admin.password, // Will be hashed in pre-save hook
+        role: "admin",
+        companyId: null, // Will be set after company creation
+        userId: adminUserId,
+        address: admin.address,
+        Phone: admin.phone,
+        status: {
+          isaccepted: availablePlan.price === 0 ? true : "pending",
+          performedBy: availablePlan.price === 0 ? "free plan" : "",
+          updatedAt: new Date(),
+        },
+        permissions: {
+          approveRequests: true,
+          assignTasks: true,
+          manageAppointments: true,
+          createProduct: true,
+          updateProduct: true,
+          viewProduct: true,
+          deleteProduct: true,
+          managePlans: true,
+          manageTeams: true,
+          createVendors: true,
+          updateVendors: true,
+          deleteVendors: true,
+          viewVendors: true,
+          staffCreate: true,
+          staffDelete: true,
+          staffUpdate: true,
+          viewReports: true,
+          viewallstaff: true,
+          editBilling: true,
+          deleteBilling: true,
+          addBilling: true,
+          viewBilling: true,
+          createPayment: true,
+          viewAllStaffSalaries: true,
+          updateSalary: true,
+          deletePayment: true,
+          staffSummary: true,
+          viewActiveLog: true,
+          viewCompanySummary: true,
+          companyprofileupdate: true,
+        },
+        history: [
+          {
+            action: "Admin created",
+            performedBy: adminUserId,
+          },
+        ],
+        verified: false,
+      });
+    }
+    const companyId = await generateUniqueCompanyId(company.name);
+    // === 6. Create Company ===
     const newCompany = new IndexModel.Company({
       name: company.name,
-      companyId,
+      companyId: Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
       contactEmail: company.contactEmail,
       contactPhone: company.contactPhone,
       address: company.address,
       industryName: company.industryName,
       plan: {
-        planId: await generatePlanId(companyId, userId),
+        planId: await generatePlanId(companyId, adminUserId),
         status: "not started",
-        ...availablePlan,
+        ...availablePlan.toObject(),
         isActive: availablePlan.price === 0,
       },
       history: [
         {
           action: "Company created",
-          performedBy: userId,
+          performedBy: adminUserId,
         },
       ],
-      isActive: false,
+      isActive: Object.keys(googleUser).length >= 1 ? true : false,
+      owner: adminUserId,
     });
-    // Create admin user
-    const adminUser = new IndexModel.User({
-      name: admin.name,
-      email: admin.email,
-      password: admin.password,
-      role: "admin",
-      companyId: newCompany.companyId,
-      userId,
-      address: admin.address,
-      Phone: admin.phone,
-      status: {
-        isaccepted: availablePlan.price === 0 ? "true" : "pending",
-        performedBy: availablePlan.price === 0 ? "free plan" : "",
-        updatedAt: new Date(),
-      },
-      permissions: {
-        approveRequests: true,
-        assignTasks: true,
-        manageAppointments: true,
-        createProduct: true,
-        updateProduct: true,
-        viewProduct: true,
-        deleteProduct: true,
-        managePlans: true,
-        manageTeams: true,
-        createVendors: true,
-        updateVendors: true,
-        deleteVendors: true,
-        viewVendors: true,
-        staffCreate: true,
-        staffDelete: true,
-        staffUpdate: true,
-        viewReports: true,
-        viewallstaff: true,
-        editBilling: true,
-        deleteBilling: true,
-        addBilling: true,
-        viewBilling: true,
-        createPayment: true,
-        viewAllStaffSalaries: true,
-        updateSalary: true,
-        deletePayment: true,
-        staffSummary: true,
-        viewActiveLog: true,
-        viewCompanySummary: true,
-        companyprofileupdate: true,
-      },
-      history: [
-        {
-          action: "Admin created",
-          performedBy: userId,
-        },
-      ],
-      verified: false,
-    });
-
-    // Set company owner to admin user's userId
-    newCompany.owner = adminUser.userId;
 
     // Save company first
     await newCompany.save();
 
-    // Generate OTP
-    const { otp, hashedOTP } = await generateOTP();
-    adminUser.verificationOTP = hashedOTP;
-    adminUser.verificationExpiry = Date.now() + 5 * 60 * 1000; // 5 minute
-
-    try {
-      // Try to save admin
-      await adminUser.save();
-    } catch (adminError) {
-      // If admin creation fails, delete the created company
-      await IndexModel.Company.findByIdAndDelete(newCompany._id);
-      return res.status(400).json({
-        success: false,
-        error: "Failed to create admin, company creation rolled back",
-        details: adminError.message,
-      });
+    // === 7. Save Admin (only for non-Google users) ===
+    if (!isGoogleFlow) {
+      try {
+        await adminUser.save();
+      } catch (adminError) {
+        // Rollback company if admin save fails
+        await IndexModel.Company.findByIdAndDelete(newCompany._id);
+        return res.status(400).json({
+          success: false,
+          error: "Failed to create admin, company creation rolled back",
+          details: adminError.message,
+        });
+      }
     }
 
-    // Send verification email
-    try {
-      await sendEmail({
-        email: admin.email,
-        subject: "Verify Your Account",
-        template: "emailVerification",
-        data: { name: admin.name, otp },
-      });
-    } catch (emailError) {
-      await IndexModel.Company.findByIdAndDelete(newCompany._id);
-      await IndexModel.User.findByIdAndDelete(adminUser._id);
-      return res.status(500).json({
-        success: false,
-        error: "Failed to send verification email, creation rolled back",
-        details: emailError.message,
-      });
+    // === 8. Send OTP (only for non-Google users) ===
+    if (!isGoogleFlow) {
+      const { otp, hashedOTP } = await generateOTP();
+      adminUser.verificationOTP = hashedOTP;
+      adminUser.verificationExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+      try {
+        await adminUser.save();
+      } catch (saveError) {
+        await IndexModel.Company.findByIdAndDelete(newCompany._id);
+        if (!isGoogleFlow) await IndexModel.User.findByIdAndDelete(adminUser._id);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to save OTP",
+          details: saveError.message,
+        });
+      }
+
+      try {
+        await sendEmail({
+          email: admin.email,
+          subject: "Verify Your Account",
+          template: "emailVerification",
+          data: { name: admin.name, otp },
+        });
+      } catch (emailError) {
+        // Rollback everything if email fails
+        await IndexModel.Company.findByIdAndDelete(newCompany._id);
+        if (!isGoogleFlow) await IndexModel.User.findByIdAndDelete(adminUser._id);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to send verification email, creation rolled back",
+          details: emailError.message,
+        });
+      }
     }
 
-    // Verify both company and admin exist
+    // === 9. Final Verification & Response ===
     const verifyCompany = await IndexModel.Company.findById(newCompany._id);
-    const verifyAdmin = await IndexModel.User.findById(adminUser._id);
+    const verifyAdmin = isGoogleFlow
+      ? await IndexModel.User.findOne({ googleId: googleUser.googleId })
+      : await IndexModel.User.findById(adminUser._id);
 
     if (!verifyCompany || !verifyAdmin) {
-      // Clean up if either doesn't exist
-      if (verifyCompany)
-        await IndexModel.Company.findByIdAndDelete(newCompany._id);
-      if (verifyAdmin) await IndexModel.User.findByIdAndDelete(adminUser._id);
-
-      return res.status(400).json({
+      if (verifyCompany) await IndexModel.Company.findByIdAndDelete(newCompany._id);
+      if (verifyAdmin && !isGoogleFlow) await IndexModel.User.findByIdAndDelete(verifyAdmin._id);
+      return res.status(500).json({
         success: false,
-        error: "Verification failed: Incomplete creation detected, rolled back",
+        error: "Verification failed: incomplete creation detected, rolled back",
       });
     }
 
-    // Return response with populated data
+    // Populate response
     const populatedCompany = await IndexModel.Company.findById(newCompany._id)
       .populate("owner", "name email userId")
       .populate("plan");
@@ -197,17 +248,21 @@ const createCompany = async (req, res) => {
       data: {
         companyId: populatedCompany,
         admin: {
-          userId: adminUser.userId,
-          name: adminUser.name,
-          email: adminUser.email,
-          role: adminUser.role,
+          userId: adminUserId,
+          name: admin.name,
+          email: admin.email,
+          role: "admin",
         },
       },
-      message:
-        "Company and admin created. Please verify via the OTP sent to your email within 1 minute.",
+      message: isGoogleFlow
+        ? "Company created successfully. Google account is already verified."
+        : "Company and admin created. Please verify your email with the OTP sent.",
     });
+
   } catch (error) {
-    // Handle specific errors
+    // === 10. Global Error Handling ===
+    console.error("[createCompany] Error:", error);
+
     if (error.name === "ValidationError") {
       return res.status(400).json({
         success: false,
@@ -216,9 +271,12 @@ const createCompany = async (req, res) => {
     }
 
     if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: "Company name, company ID, or admin email already exists",
+        error: `${
+          field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
+        } already exists`,
       });
     }
 
