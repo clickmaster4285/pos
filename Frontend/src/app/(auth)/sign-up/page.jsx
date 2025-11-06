@@ -133,6 +133,8 @@ export default function RegisterPage() {
       await createCompany(payload).unwrap();
       if(googleUser){
       await login({ email:payload.admin.email, password: payload.admin.password }).unwrap();
+      }else{
+        router.push(`/verify-email?email=${encodeURIComponent(formData.adminEmail)}`);
       }
 // router.push("/admin/dashboard");
       } catch (err) {
