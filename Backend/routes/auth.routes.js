@@ -14,4 +14,5 @@ router.post("/refresh", authController.refreshToken);
 router.post("/register", authController.registerUser);
 router.post("/verify-email", verifyOTP);
 router.post('/resend-otp', resendOtp);          // ← new
+router.post('/google-login', authController.googleSignIn);          // ← new
 export default router;

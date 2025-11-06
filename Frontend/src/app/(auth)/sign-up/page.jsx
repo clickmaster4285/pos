@@ -1,3 +1,4 @@
+// app/sign-up/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -6,7 +7,7 @@ import { useCreateCompanyMutation } from '@/features/CompanyApi';
 import { Zap, Building2, Sparkles, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-
+import { useLoginMutation } from '@/features/authApi';
 import RegisterLayout from './RegisterLayout';
 import StepIndicator from './StepIndicator';
 import PlanStep from './PlanStep';
@@ -21,52 +22,49 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [googleUser, setGoogleUser] = useState(null);
+  const [login] = useLoginMutation();
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: plans = [], isLoading: isPlansLoading } = useGetAllPlansQuery();
   const [createCompany] = useCreateCompanyMutation();
 
-  // -----------------------------------------------------------------
-  //  READ QUERY PARAMS ON MOUNT → auto-advance to step 2 + pre-select
-  // -----------------------------------------------------------------
+  // Parse googleUser from URL
   useEffect(() => {
-    const stepParam = searchParams.get("step");
-    const planParam = searchParams.get("plan");
-    const industryParam = searchParams.get("industry");
+    const gu = searchParams.get("googleUser");
+    if (gu) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(gu));
+        setGoogleUser(parsed);
+        console.log("Google user loaded:", parsed);
 
-    if (stepParam) {
-      const parsedStep = parseInt(stepParam, 10);
-      if (!isNaN(parsedStep) && parsedStep >= 1 && parsedStep <= 3) {
-        setStep(parsedStep);
+        // Pre-fill form
+        setFormData(prev => ({
+          ...prev,
+          adminName: parsed.name || "",
+          adminEmail: parsed.email,
+          companyEmail: parsed.email,
+        }));
+      } catch (e) {
+        console.error("Failed to parse googleUser:", e);
       }
-    }
-    if (planParam) {
-      setSelectedPlan(planParam);
-    }
-    if (industryParam) {
-      setSelectedIndustry(industryParam);
-      // Also sync to formData if needed (name would need mapping, but id is sufficient for selection)
     }
   }, [searchParams]);
 
-  // -----------------------------------------------------------------
-  //  UPDATE URL PARAMS WHEN STEP, PLAN, OR INDUSTRY CHANGES
-  // -----------------------------------------------------------------
+  // Keep URL in sync
   useEffect(() => {
     const params = new URLSearchParams();
     params.set('step', step.toString());
-
-    if (selectedPlan && step >= 2) {
-      params.set('plan', selectedPlan);
+    if (selectedPlan) params.set('plan', selectedPlan);
+    if (selectedIndustry) params.set('industry', selectedIndustry);
+    if (googleUser) {
+      params.set('googleUser', encodeURIComponent(JSON.stringify(googleUser)));
     }
-    if (selectedIndustry && step >= 3) {
-      params.set('industry', selectedIndustry);
-    }
-
     router.replace(`/sign-up?${params.toString()}`, { shallow: true });
-  }, [step, selectedPlan, selectedIndustry, router]);
+  }, [step, selectedPlan, selectedIndustry, googleUser, router]);
 
+  // Normalize plans
   const normalizedPlans = plans.map(plan => ({
     _id: plan._id,
     name: plan.name,
@@ -83,7 +81,13 @@ export default function RegisterPage() {
   }));
 
   const [formData, setFormData] = useState({
-    companyName: "", companyEmail: "", adminName: "", adminEmail: "", password: "", confirmPassword: "", industry: ""
+    companyName: "",
+    companyEmail: "",
+    adminName: "",
+    adminEmail: "",
+    password: "",
+    confirmPassword: "",
+    industry: ""
   });
 
   const steps = [
@@ -95,17 +99,21 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
+
+    // Validation
+    if (!selectedPlan || !selectedIndustry) {
+      setError("Please complete all steps.");
+      setIsLoading(false);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match.");
-      return;
-    }
-    if (!selectedPlan || !selectedIndustry) {
-      setError("Please complete all steps.");
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
     try {
       const payload = {
         company: {
@@ -117,14 +125,19 @@ export default function RegisterPage() {
         admin: {
           name: formData.adminName,
           email: formData.adminEmail,
-          password: formData.password,
+          password: formData.password || undefined, // send even if Google user
         },
+        googleUser: googleUser ? { googleId: googleUser.sub } : undefined, // KEY FIX
       };
 
+
       await createCompany(payload).unwrap();
-      router.push(`/verify-email?email=${encodeURIComponent(formData.adminEmail)}`);
-    } catch (err) {
-      setError(err?.data?.error || "Failed to create account.");
+      console.log("tehj payload i return: ", payload)
+      await login({ email:payload.admin.email, password: payload.admin.password }).unwrap();
+// router.push("/admin/dashboard");
+      } catch (err) {
+      console.error("Create company error:", err);
+      setError(err?.data?.error || err?.data?.message || "Failed to create account.");
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +146,10 @@ export default function RegisterPage() {
   if (isPlansLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
           <Loader2 className="w-12 h-12 text-blue-600" />
         </motion.div>
       </div>
@@ -144,12 +160,7 @@ export default function RegisterPage() {
     <RegisterLayout>
       <StepIndicator steps={steps} currentStep={step} onStepClick={setStep} />
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5 }}
-        className="p-12 backdrop-blur-2xl bg-white/80 border border-white/50 shadow-2xl shadow-black/10 rounded-3xl"
-      >
+      <motion.div className="p-12 backdrop-blur-2xl bg-white/80 border border-white/50 shadow-2xl shadow-black/10 rounded-3xl">
         <AnimatePresence mode="wait">
           {step === 1 && (
             <PlanStep
@@ -162,6 +173,7 @@ export default function RegisterPage() {
               isLoading={isLoading}
             />
           )}
+
           {step === 2 && (
             <IndustryStep
               selectedIndustry={selectedIndustry}
@@ -172,6 +184,7 @@ export default function RegisterPage() {
               }}
             />
           )}
+
           {step === 3 && (
             <DetailsStep
               formData={formData}
@@ -183,23 +196,20 @@ export default function RegisterPage() {
               error={error}
               isLoading={isLoading}
               onSubmit={handleSubmit}
+              readOnlyGoogle={!!googleUser}
             />
           )}
         </AnimatePresence>
 
         {step > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-between mt-8 pt-8 border-t border-gray-200"
-          >
+          <motion.div className="flex justify-between mt-8 pt-8 border-t border-gray-200">
             <motion.button
               whileHover={{ scale: 1.02, x: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setStep(step - 1)}
               className="px-8 py-4 text-gray-600 hover:text-gray-800 font-semibold transition-colors flex items-center gap-2"
             >
-              ← Previous
+              Previous
             </motion.button>
 
             <div className="text-center text-sm text-gray-500">

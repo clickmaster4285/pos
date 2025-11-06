@@ -163,6 +163,14 @@ export const authApi = createApi({
       },
     }),
 
+    googleLogin: builder.mutation({
+      query: (idToken) => ({
+        url: "/google-login",
+        method: "POST",
+        body: { idToken },
+      }),
+    }),
+
     verifyEmail: builder.mutation({
       query: ({ email, otp }) => ({
         url: "/verify-email",
@@ -227,6 +235,7 @@ export const {
   useLogoutMutation,
   useGetMeQuery,
   useRegisterUserMutation,
+  useGoogleLoginMutation,
   useVerifyEmailMutation,
   useResendOtpMutation,
   useRefreshTokenMutation,
