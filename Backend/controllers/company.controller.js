@@ -25,7 +25,8 @@ const createCompany = async (req, res) => {
         error: "Admin name and email are required",
       });
     }
-let googleUserComID;
+    let googleUserComID;
+    let companyId =  await generateUniqueCompanyId(company.name);
     // === 2. Plan Validation ===
     const availablePlan = await IndexModel.Plan.findById(company.plan);
     if (!availablePlan || availablePlan.deleted === true || availablePlan.isActive === false) {
@@ -60,7 +61,7 @@ let googleUserComID;
           error: "Google user not found. Please sign in with Google first.",
         });
       }
-googleUserComID = existingGoogleUser.companyId;
+      googleUserComID = existingGoogleUser.companyId;
       // Use existing Google user
       adminUser = existingGoogleUser;
       adminUserId = existingGoogleUser.userId;
@@ -69,13 +70,13 @@ googleUserComID = existingGoogleUser.companyId;
       if (admin.name && admin.name !== existingGoogleUser.name) {
         existingGoogleUser.name = admin.name;
       }
-      if(admin.password) existingGoogleUser.password = admin.password; 
-        existingGoogleUser.history.push({
-          action: `${admin.name}, ${admin.password} updated during company creation`,
-          performedBy: existingGoogleUser.userId,
-        });
-        await existingGoogleUser.save();
-    } 
+      if (admin.password) existingGoogleUser.password = admin.password;
+      existingGoogleUser.history.push({
+        action: `${admin.name}, ${admin.password} updated during company creation`,
+        performedBy: existingGoogleUser.userId,
+      });
+      await existingGoogleUser.save();
+    }
     // === 5. Handle Regular (Email/Password) User ===
     else {
       if (!admin.password) {
@@ -92,7 +93,7 @@ googleUserComID = existingGoogleUser.companyId;
         email: admin.email,
         password: admin.password, // Will be hashed in pre-save hook
         role: "admin",
-        companyId: null, // Will be set after company creation
+        companyId, // Will be set after company creation
         userId: adminUserId,
         address: admin.address,
         Phone: admin.phone,
@@ -142,7 +143,7 @@ googleUserComID = existingGoogleUser.companyId;
         verified: false,
       });
     }
-    const companyId = await generateUniqueCompanyId(company.name);
+    // companyId = await generateUniqueCompanyId(company.name);
     // === 6. Create Company ===
     const newCompany = new IndexModel.Company({
       name: company.name,
@@ -273,9 +274,8 @@ googleUserComID = existingGoogleUser.companyId;
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: `${
-          field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
-        } already exists`,
+        error: `${field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
+          } already exists`,
       });
     }
 
