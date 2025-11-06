@@ -67,7 +67,7 @@ const handleGoogleLogin = async () => {
       ux_mode: 'popup', // Opens the Google account chooser popup window
       callback: async (response) => {
         try {
-          const result = await googleLogin({ credential: response.code }).unwrap();
+          const result = await googleLogin(response.code).unwrap();
 
           if (result.onboarding) {
             const gu = encodeURIComponent(JSON.stringify(result.user));
