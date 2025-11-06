@@ -11,7 +11,6 @@ import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 const createCompany = async (req, res) => {
   try {
     const { company, admin, googleUser } = req.body;
-console.log("the googleUser: ", req.body)
     // === 1. Input Validation ===
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
@@ -147,7 +146,7 @@ googleUserComID = existingGoogleUser.companyId;
     // === 6. Create Company ===
     const newCompany = new IndexModel.Company({
       name: company.name,
-      companyId: Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
+      companyId: googleUser && Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
       contactEmail: company.contactEmail,
       contactPhone: company.contactPhone,
       address: company.address,
@@ -164,7 +163,7 @@ googleUserComID = existingGoogleUser.companyId;
           performedBy: adminUserId,
         },
       ],
-      isActive: Object.keys(googleUser).length >= 1 ? true : false,
+      isActive: googleUser && Object.keys(googleUser).length >= 1 ? true : false,
       owner: adminUserId,
     });
 

@@ -37,14 +37,13 @@ export default function RegisterPage() {
       try {
         const parsed = JSON.parse(decodeURIComponent(gu));
         setGoogleUser(parsed);
-        console.log("Google user loaded:", parsed);
 
         // Pre-fill form
         setFormData(prev => ({
           ...prev,
-          adminName: parsed.name || "",
-          adminEmail: parsed.email,
-          companyEmail: parsed.email,
+          adminName: parsed.name || prev.adminName,
+          adminEmail: parsed.email || prev.adminEmail,
+          companyEmail: parsed.email || prev.companyEmail,
         }));
       } catch (e) {
         console.error("Failed to parse googleUser:", e);
@@ -132,8 +131,9 @@ export default function RegisterPage() {
 
 
       await createCompany(payload).unwrap();
-      console.log("tehj payload i return: ", payload)
+      if(googleUser){
       await login({ email:payload.admin.email, password: payload.admin.password }).unwrap();
+      }
 // router.push("/admin/dashboard");
       } catch (err) {
       console.error("Create company error:", err);
