@@ -61,13 +61,21 @@ const setTokens = (res, accessToken, refreshToken) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return next(new ErrorResponse("Please provide email and password", 400));
+    const { email, password , googleId} = req.body;
+let user;
+    if( googleId ){
+      user = await User.findOne({ googleId: googleId , deleted: false }).select("+password");
+      if (!user) {
+        return next(new ErrorResponse("Invalid Google credentials", 401));
+      }
     }
 
-    let user = await User.findOne({ email, deleted: false }).select(
+  if (!email || (!password && !googleId)) {
+  return next(new ErrorResponse("Please provide email and either password or Google ID", 400));
+}
+
+
+    user = await User.findOne({ email, deleted: false }).select(
       "+password"
     );
     if (!user) {
@@ -97,12 +105,12 @@ const login = async (req, res, next) => {
         message: "User or company is deactivated",
       });
     }
-
+    if(!googleId){
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return next(new ErrorResponse("Invalid credentials", 401));
     }
-
+  }
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
     const toolNameLogo = await fetchToolLogoName();
@@ -189,7 +197,7 @@ const googleSignIn = async (req, res, next) => {
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
-    if (!email) return next(new ErrorResponse("Email not provided by Google", 400));
+    if (!email || !name) return next(new ErrorResponse("Email OR Name not provided by Google", 400));
 
     // find or create user
     let user = await User.findOne({ $or: [{ email }, { googleId }] }).select("+password");
@@ -199,7 +207,7 @@ const googleSignIn = async (req, res, next) => {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
       user = new User({
-        name: name || "Google User",
+        name: name ,
         email,
         userId,
         companyId,
@@ -213,9 +221,6 @@ const googleSignIn = async (req, res, next) => {
       await user.save();
     }
 
-    const { accessToken, refreshToken } = await generateTokens(user);
-    setTokens(res, accessToken, refreshToken);
-
     if (isNewUser) {
       return res.status(200).json({
         success: true,
@@ -227,13 +232,8 @@ const googleSignIn = async (req, res, next) => {
           picture: user.picture,
           sub: googleId,
         },
-        token: accessToken,
-        refreshToken,
       });
     }
-
-    const toolNameLogo = await fetchToolLogoName();
-    const industryName = user.companyId ? await fetchIndustryName(user.companyId) : null;
 
     res.status(200).json({
       success: true,
@@ -244,18 +244,8 @@ const googleSignIn = async (req, res, next) => {
           name: user.name,
           email: user.email,
           companyId: user.companyId,
-          role: user.role,
-          subRole: user.subRole,
-          department: user.department,
-          permissions: user.permissions,
-          isActive: user.isActive,
-          extraFeature: [],
-          toolName: toolNameLogo.toolName,
-          toolLogo: toolNameLogo.toolLogo,
-          industryName,
+          googleId: user.googleId,
         },
-        token: accessToken,
-        refreshToken,
       },
     });
   } catch (err) {
