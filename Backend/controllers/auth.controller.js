@@ -15,7 +15,12 @@ import { OAuth2Client } from "google-auth-library";
 import { v4 as uuidv4 } from "uuid";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET, // ✅ must be defined
+  redirectUri: process.env.GOOGLE_REDIRECT_URI || "postmessage", // ✅ use "postmessage" for code flow from frontend
+});
+
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -56,13 +61,21 @@ const setTokens = (res, accessToken, refreshToken) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return next(new ErrorResponse("Please provide email and password", 400));
+    const { email, password , googleId} = req.body;
+let user;
+    if( googleId ){
+      user = await User.findOne({ googleId: googleId , deleted: false }).select("+password");
+      if (!user) {
+        return next(new ErrorResponse("Invalid Google credentials", 401));
+      }
     }
 
-    let user = await User.findOne({ email, deleted: false }).select(
+  if (!email || (!password && !googleId)) {
+  return next(new ErrorResponse("Please provide email and either password or Google ID", 400));
+}
+
+
+    user = await User.findOne({ email, deleted: false }).select(
       "+password"
     );
     if (!user) {
@@ -92,12 +105,12 @@ const login = async (req, res, next) => {
         message: "User or company is deactivated",
       });
     }
-
+    if(!googleId){
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return next(new ErrorResponse("Invalid credentials", 401));
     }
-
+  }
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
     const toolNameLogo = await fetchToolLogoName();
@@ -164,36 +177,37 @@ const login = async (req, res, next) => {
 
 const googleSignIn = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
-    if (!idToken) return next(new ErrorResponse("idToken required", 400));
+    const { idToken: code } = req.body; // ✅ your frontend sends { idToken: response.code }
+    if (!code) return next(new ErrorResponse("Authorization code required", 400));
 
-    // 1. Verify Google token
+    // Exchange authorization code for tokens
+    const { tokens } = await googleClient.getToken(code);
+    const idToken = tokens.id_token;
+
+    if (!idToken) {
+      return next(new ErrorResponse("Failed to retrieve ID token from Google", 400));
+    }
+
+    // Verify ID token (JWT)
     const ticket = await googleClient.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
     const payload = ticket.getPayload();
-    if (!payload) return next(new ErrorResponse("Invalid Google token", 401));
-
     const { sub: googleId, email, name, picture } = payload;
-    if (!email) return next(new ErrorResponse("Email not provided by Google", 400));
 
-    // 2. Look for existing user
-    let user = await User.findOne({
-      $or: [
-        { email, deleted: false },
-        { googleId, deleted: false },
-      ],
-    }).select("+password");
+    if (!email || !name) return next(new ErrorResponse("Email OR Name not provided by Google", 400));
 
+    // find or create user
+    let user = await User.findOne({ $or: [{ email }, { googleId }] }).select("+password");
     const isNewUser = !user;
 
-    // 3. Create user if not exists
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
       user = new User({
-        name: name || "Google User",
+        name: name ,
         email,
         userId,
         companyId,
@@ -202,19 +216,11 @@ const googleSignIn = async (req, res, next) => {
         verified: true,
         picture,
         password: Math.random().toString(36).slice(-10) + "!@#",
-        status: {
-          isaccepted: true,
-          performedBy: "google-oauth",
-        },
+        status: { isaccepted: true, performedBy: "google-oauth" },
       });
       await user.save();
     }
 
-    // 4. Generate tokens
-    const { accessToken, refreshToken } = await generateTokens(user);
-    setTokens(res, accessToken, refreshToken);
-
-    // 5. NEW USER → Onboarding
     if (isNewUser) {
       return res.status(200).json({
         success: true,
@@ -224,18 +230,10 @@ const googleSignIn = async (req, res, next) => {
           name: user.name,
           email: user.email,
           picture: user.picture,
-          sub: googleId,          // ADD THIS LINE
+          sub: googleId,
         },
-        token: accessToken,
-        refreshToken,
       });
     }
-
-    // 6. EXISTING USER → Normal login
-    const toolNameLogo = await fetchToolLogoName();
-    const industryName = user.companyId
-      ? await fetchIndustryName(user.companyId)
-      : null;
 
     res.status(200).json({
       success: true,
@@ -246,18 +244,8 @@ const googleSignIn = async (req, res, next) => {
           name: user.name,
           email: user.email,
           companyId: user.companyId,
-          role: user.role,
-          subRole: user.subRole,
-          department: user.department,
-          permissions: user.permissions,
-          isActive: user.isActive,
-          extraFeature: [],
-          toolName: toolNameLogo.toolName,
-          toolLogo: toolNameLogo.toolLogo,
-          industryName,
+          googleId: user.googleId,
         },
-        token: accessToken,
-        refreshToken,
       },
     });
   } catch (err) {
@@ -265,6 +253,7 @@ const googleSignIn = async (req, res, next) => {
     return next(new ErrorResponse("Google authentication failed", 500));
   }
 };
+
 
 const logout = async (req, res, next) => {
   try {

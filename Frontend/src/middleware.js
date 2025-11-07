@@ -17,7 +17,6 @@ function isPublic(pathname) {
   if (pathname.startsWith("/")) return true;
   return false;
 }
-    console.log("middleware redite :")
 
 const tokenCache = new LRUCache({ max: 1000, ttl: 60 * 60 * 1000 }); // 1h cache
 

@@ -35,7 +35,6 @@ export default function PlanSelection({
     );
   }
   
-  console.log("plandljdffkkj: ", plans)
   const getPlanFeatures = (plan) => [
     `${plan.limitations?.maxStaff || 0} Staff Members`,
     `${plan.limitations?.maxVendors || 0} Vendors`,

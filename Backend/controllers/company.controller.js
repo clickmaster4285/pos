@@ -11,7 +11,6 @@ import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 const createCompany = async (req, res) => {
   try {
     const { company, admin, googleUser } = req.body;
-console.log("the googleUser: ", req.body)
     // === 1. Input Validation ===
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
@@ -26,7 +25,8 @@ console.log("the googleUser: ", req.body)
         error: "Admin name and email are required",
       });
     }
-let googleUserComID;
+    let googleUserComID;
+    let companyId =  await generateUniqueCompanyId(company.name);
     // === 2. Plan Validation ===
     const availablePlan = await IndexModel.Plan.findById(company.plan);
     if (!availablePlan || availablePlan.deleted === true || availablePlan.isActive === false) {
@@ -61,7 +61,7 @@ let googleUserComID;
           error: "Google user not found. Please sign in with Google first.",
         });
       }
-googleUserComID = existingGoogleUser.companyId;
+      googleUserComID = existingGoogleUser.companyId;
       // Use existing Google user
       adminUser = existingGoogleUser;
       adminUserId = existingGoogleUser.userId;
@@ -70,13 +70,13 @@ googleUserComID = existingGoogleUser.companyId;
       if (admin.name && admin.name !== existingGoogleUser.name) {
         existingGoogleUser.name = admin.name;
       }
-      if(admin.password) existingGoogleUser.password = admin.password; 
-        existingGoogleUser.history.push({
-          action: `${admin.name}, ${admin.password} updated during company creation`,
-          performedBy: existingGoogleUser.userId,
-        });
-        await existingGoogleUser.save();
-    } 
+      if (admin.password) existingGoogleUser.password = admin.password;
+      existingGoogleUser.history.push({
+        action: `${admin.name}, ${admin.password} updated during company creation`,
+        performedBy: existingGoogleUser.userId,
+      });
+      await existingGoogleUser.save();
+    }
     // === 5. Handle Regular (Email/Password) User ===
     else {
       if (!admin.password) {
@@ -93,7 +93,7 @@ googleUserComID = existingGoogleUser.companyId;
         email: admin.email,
         password: admin.password, // Will be hashed in pre-save hook
         role: "admin",
-        companyId: null, // Will be set after company creation
+        companyId, // Will be set after company creation
         userId: adminUserId,
         address: admin.address,
         Phone: admin.phone,
@@ -143,11 +143,11 @@ googleUserComID = existingGoogleUser.companyId;
         verified: false,
       });
     }
-    const companyId = await generateUniqueCompanyId(company.name);
+    // companyId = await generateUniqueCompanyId(company.name);
     // === 6. Create Company ===
     const newCompany = new IndexModel.Company({
       name: company.name,
-      companyId: Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
+      companyId: googleUser && Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
       contactEmail: company.contactEmail,
       contactPhone: company.contactPhone,
       address: company.address,
@@ -164,7 +164,7 @@ googleUserComID = existingGoogleUser.companyId;
           performedBy: adminUserId,
         },
       ],
-      isActive: Object.keys(googleUser).length >= 1 ? true : false,
+      isActive: googleUser && Object.keys(googleUser).length >= 1 ? true : false,
       owner: adminUserId,
     });
 
@@ -274,9 +274,8 @@ googleUserComID = existingGoogleUser.companyId;
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: `${
-          field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
-        } already exists`,
+        error: `${field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
+          } already exists`,
       });
     }
 

@@ -29,16 +29,20 @@ export default function SignInPage() {
   const [login, { isLoading }] = useLoginMutation();
   const [googleLogin, { isLoading: googleLoading }] = useGoogleLoginMutation();
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
-  }, []);
+useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  script.defer = true;
+  script.onload = () => {
+    console.log("Google OAuth script loaded");
+  };
+  document.body.appendChild(script);
+  return () => {
+    if (document.body.contains(script)) document.body.removeChild(script);
+  };
+}, []);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,34 +54,42 @@ export default function SignInPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      if (!window.google?.accounts?.id) {
-        setError("Google SDK not loaded yet.");
-        return;
-      }
-
-      window.google.accounts.id.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          try {
-            const result = await googleLogin(response.credential).unwrap();
-
-            if (result.onboarding) {
-              const gu = encodeURIComponent(JSON.stringify(result.user));
-              router.push(`/sign-up?step=1&googleUser=${gu}`);
-            }
-          } catch (err) {
-            setError(err?.data?.message || "Google login failed");
-          }
-        },
-      });
-
-      window.google.accounts.id.prompt();
-    } catch (err) {
-      setError("Failed to initialize Google login");
+const handleGoogleLogin = async () => {
+  try {
+    if (!window.google?.accounts?.oauth2) {
+      setError("Google OAuth SDK not loaded yet.");
+      return;
     }
-  };
+
+    const client = window.google.accounts.oauth2.initCodeClient({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      scope: 'openid email profile',
+      ux_mode: 'popup', // Opens the Google account chooser popup window
+      callback: async (response) => {
+        try {
+          const result = await googleLogin(response.code).unwrap();
+console.log("Google login result:", result);
+          if (result.onboarding) {
+            const gu = encodeURIComponent(JSON.stringify(result.user));
+            router.push(`/sign-up?step=1&googleUser=${gu}`);
+          } else{
+            console.log("Logging in existing user with Google ID:", result);
+            await login({ email:result.data.user.email, googleId: result.data.user.googleId }).unwrap();
+          }
+        } catch (err) {
+          setError(err?.data?.message || "Google login failed");
+        }
+      },
+    }); 
+
+    // This opens the account chooser when the button is clicked
+    client.requestCode();
+  } catch (err) {
+    console.error(err);
+    setError("Failed to initialize Google login");
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative overflow-hidden">
