@@ -7,7 +7,12 @@ import BillDetailsSheet from './BillDetailsSheet';
 import { CreateBillDialog } from './CreateBillDialog';
 import { RefundDialog } from './RefundDialog';
 import { ThermalPrintSlip } from './ThermalPrintSlip';
-import { useGetBillsQuery, useCreateBillMutation } from '@/features/billingApi';
+import {
+  useGetBillsQuery,
+  useCreateBillMutation,
+  useUpdateBillStatusMutation,
+  useSoftDeleteBillMutation,
+} from '@/features/billingApi';
 import { useGetAllProductsQuery } from '@/features/productApi';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 import { useGetCompanySettingsQuery } from '@/features/settingsApi';
@@ -19,6 +24,34 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+// Map UI enum -> backend strings your controller expects
+const toBackendPaymentMethod = (pm) => {
+  if (pm === PAYMENT_METHODS.CASH) return 'cash';
+  if (pm === PAYMENT_METHODS.CREDIT_CARD) return 'credit_card';
+  if (pm === PAYMENT_METHODS.BANK_TRANSFER) return 'bank_transfer';
+  return 'cash';
+};
+
+// Extract unique orderIds from billData or from preview items (if they embed orderId)
+const extractOrderIds = (billData, items) => {
+  // Preferred: explicit orderIds from dialog
+  if (Array.isArray(billData?.orderIds) && billData.orderIds.length > 0) {
+    return [...new Set(billData.orderIds.map(String))];
+  }
+  // Fallback: scan preview items for item.orderId
+  const ids = (items || [])
+    .map((it) => it?.orderId)
+    .filter(Boolean)
+    .map(String);
+  return [...new Set(ids)];
+};
+
+const getSingleOrderId = (billData, items) =>
+  billData?.orderId ||
+  (items.find((it) => it.orderId)?.orderId
+    ? String(items.find((it) => it.orderId).orderId)
+    : '');
 
 export default function BillingPage() {
   const [bills, setBills] = useState([]);
@@ -40,17 +73,31 @@ export default function BillingPage() {
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.CASH);
   const [paymentNumber, setPaymentNumber] = useState('');
   const [companyId, setCompanyId] = useState(''); // TODO: Set from auth context
-  const [taxRates, setTaxRates] = useState({ taxRateCash: 18, taxRateCard: 10 });
+  const [taxRates, setTaxRates] = useState({
+    taxRateCash: 18,
+    taxRateCard: 10,
+  });
   const [companyLoading, setCompanyLoading] = useState(false);
   const searchRef = useRef(null);
 
-  const { data: products = { data: [], pagination: {} }, isLoading: productsLoading } = useGetAllProductsQuery({ page: 1, limit: 100 });
-  const { data: billsData, refetch: refetchBills } = useGetBillsQuery({ page: 1, limit: 100 });
+  const {
+    data: products = { data: [], pagination: {} },
+    isLoading: productsLoading,
+  } = useGetAllProductsQuery({ page: 1, limit: 100 });
+
+  const { data: billsData, refetch: refetchBills } = useGetBillsQuery({
+    page: 1,
+    limit: 100,
+  });
   const [createBill] = useCreateBillMutation();
-  const { data: company, isLoading: settingsLoading } = useGetCompanySettingsQuery();
+  const { data: company, isLoading: settingsLoading } =
+    useGetCompanySettingsQuery();
+  const [updateBillStatus] = useUpdateBillStatusMutation();
+  const [softDeleteBill] = useSoftDeleteBillMutation();
 
   const settingsRaw = company?.invoiceSettings ?? {};
-  const currencySymbol = settingsRaw?.currency?.symbol ?? company?.currency?.symbol ?? '€';
+  const currencySymbol =
+    settingsRaw?.currency?.symbol ?? company?.currency?.symbol ?? '€';
 
   useEffect(() => {
     if (company) {
@@ -102,18 +149,47 @@ export default function BillingPage() {
     return result;
   }, [bills, filterStatus, searchQuery]);
 
-  const addItemToBill = (item) => {
-    console.log("item: ", item);
+  // BillingPage.jsx
+  const addItemToBill = (payload) => {
     setItems((prev) => {
-      const existingItem = prev.find((i) => i.sku === item.sku);
-      if (existingItem) {
-        return prev.map((i) =>
-          i.sku === item.sku
-            ? { ...i, qty: i.qty + 1, lineTotal: (i.qty + 1) * i.price }
-            : i
+      const upsert = (acc, it) => {
+        const orderKey = String(it.orderId || 'manual');
+        const skuKey = String(it.sku || it.productId || Math.random());
+        const compositeKey = `${orderKey}::${skuKey}`;
+
+        const qty = Math.max(1, Number(it.qty ?? 1));
+        const price = Number(it.price ?? 0);
+
+        const idx = acc.findIndex(
+          (x) =>
+            `${String(x.orderId || 'manual')}::${String(
+              x.sku || x.productId
+            )}` === compositeKey
         );
-      }
-      return [...prev, { ...item, qty: 1, lineTotal: item.price }];
+
+        if (idx !== -1) {
+          const ex = acc[idx];
+          const nextQty = Number(ex.qty || 0) + qty;
+          acc[idx] = {
+            ...ex,
+            qty: nextQty,
+            price,
+            lineTotal: nextQty * price,
+          };
+          return acc;
+        }
+
+        acc.push({
+          ...it,
+          qty,
+          price,
+          lineTotal: qty * price,
+        });
+        return acc;
+      };
+
+      if (Array.isArray(payload)) return payload.reduce(upsert, [...prev]);
+      return upsert([...prev], payload);
     });
   };
 
@@ -124,7 +200,8 @@ export default function BillingPage() {
           ? {
               ...item,
               qty: Math.max(1, Math.min(qty, item.availableQty)),
-              lineTotal: Math.max(1, Math.min(qty, item.availableQty)) * item.price,
+              lineTotal:
+                Math.max(1, Math.min(qty, item.availableQty)) * item.price,
             }
           : item
       )
@@ -140,29 +217,67 @@ export default function BillingPage() {
   }, [items]);
 
   const taxAmount = useMemo(() => {
-    return (subtotal * taxPercent) / 100;
+    return (subtotal * (Number(taxPercent) || 0)) / 100;
   }, [subtotal, taxPercent]);
 
   const grandTotal = useMemo(() => {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
 
+  // UPDATED: Only shape and mapping changed to match your controller
   const handleCreateBill = async (billData) => {
     try {
       setCreating(true);
+
+      // 1) Collect orderIds the same way you already do
+      const orderIds = extractOrderIds(billData, items);
+
+      if (!orderIds.length) {
+        alert('Please select one order to bill (missing orderId).');
+        return;
+      }
+
+      // If your schema supports ONLY ONE OrderId, enforce it here:
+      if (orderIds.length > 1) {
+        alert(
+          'Only one order can be billed at a time. Please remove extra orders.'
+        );
+        return;
+      }
+
+      const orderId = String(orderIds[0]); // <— SINGLE string now
+
+      // 2) Build payload your controller expects (single orderId)
       const payload = {
-        ...billData,
-        companyId,
-        taxPercent,
-        taxAmount,
-        total: grandTotal,
+        orderId, // <— NOT an array
+        buyer: {
+          name: buyer?.name || '',
+          email: buyer?.email || '',
+          phone: buyer?.phone || '',
+        },
+        taxPercent: Number(taxPercent) || 0,
+        notes: notes || '',
+        paymentMethod: toBackendPaymentMethod(paymentMethod),
+        ...(paymentMethod !== PAYMENT_METHODS.CASH && paymentNumber
+          ? { paymentNumber: String(paymentNumber) }
+          : {}),
       };
+
       await createBill(payload).unwrap();
       refetchBills();
       setIsCreateDialogOpen(false);
       onReset();
     } catch (error) {
-      console.error('Failed to create bill:', error?.data?.message || error.message);
+      console.error(
+        'Failed to create bill:',
+        error?.data?.message || error?.data?.error || error.message
+      );
+      alert(
+        error?.data?.message ||
+          error?.data?.error ||
+          error.message ||
+          'Failed to create bill'
+      );
     } finally {
       setCreating(false);
     }
@@ -179,31 +294,66 @@ export default function BillingPage() {
 
   const handleDelete = async (billId) => {
     try {
-      await billsApi.useSoftDeleteBillMutation(billId);
+      await softDeleteBill(billId).unwrap();
       refetchBills();
-      console.log('Bill deleted:', billId);
     } catch (error) {
-      console.error('Failed to delete bill:', error?.data?.message || error.message);
+      console.error(
+        'Failed to delete bill:',
+        error?.data?.message || error.message
+      );
     }
+  };
+
+  // Accept lower/upper-cased IDs from UI, output only the expected fields
+  const toRefundItem = (src) => {
+    const productId = src?.productId || src?.ProductId;
+    const orderItemId = src?.orderItemId || src?.OrderItemId;
+    const quantity = Number(src?.quantity ?? 0);
+    const reason = src?.reason || '';
+
+    return {
+      ...(productId ? { productId: String(productId) } : {}),
+      ...(orderItemId ? { orderItemId: String(orderItemId) } : {}),
+      quantity,
+      ...(reason ? { reason } : {}),
+    };
+  };
+
+  const buildRefundPayload = (bill, refundData) => {
+    const billId = bill?._id ? String(bill._id) : '';
+    const lines = Array.isArray(refundData?.lines) ? refundData.lines : [];
+
+    const refundItems = lines
+      .map(toRefundItem)
+      .filter((r) => (r.productId || r.orderItemId) && r.quantity > 0); // must have an ID + qty>0
+
+    return { billId, notes: refundData?.notes || '', refundItems };
   };
 
   const handleRefund = async (bill, refundData) => {
     try {
       setRefunding(true);
-      await billsApi.useUpdateBillStatusMutation({
-        id: bill._id,
-        ...refundData,
-      });
+      const payload = buildRefundPayload(bill, refundData);
+console.log("payload" , payload)
+      if (!payload.billId) return alert('No bill id provided');
+      if (!payload.refundItems.length)
+        return alert('Select at least one item to refund');
+
+      await updateBillStatus({
+        billId: payload.billId, // goes in URL
+        notes: payload.notes, // body
+        refundItems: payload.refundItems, // body
+      }).unwrap();
+
       refetchBills();
       setIsRefundDialogOpen(false);
-      console.log('Refund processed for bill:', bill.billNumber);
-    } catch (error) {
-      console.error('Failed to process refund:', error?.data?.message || error.message);
+    } catch (e) {
+      console.error('Failed to process refund:', e?.data?.message || e.message);
+      alert(e?.data?.message || e?.data?.error || e.message || 'Refund failed');
     } finally {
       setRefunding(false);
     }
   };
-
   const onReset = () => {
     setItems([]);
     setBuyer({ name: '', email: '', phone: '' });
@@ -277,7 +427,10 @@ export default function BillingPage() {
         totalRefundQty={selectedBill?.items?.reduce(
           (sum, item) =>
             sum +
-            (item.refundHistory?.reduce((s, r) => s + (r.refundQuantity || 0), 0) || 0),
+            (item.refundHistory?.reduce(
+              (s, r) => s + (r.refundQuantity || 0),
+              0
+            ) || 0),
           0
         )}
         currencySymbol={currencySymbol}

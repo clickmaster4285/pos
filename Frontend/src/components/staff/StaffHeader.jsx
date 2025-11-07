@@ -21,6 +21,9 @@ const StaffHeader = ({
   staffPermissionKeys,
   billingPermissionKeys,
   salaryPermissionKeys,
+  orderPermissionKeys ,
+  vendorPermissionKeys ,
+  productPermissionKeys ,
 }) => {
   const { user } = useContext(AuthContext) || {};
   const addPermission = user?.permissions?.staffCreate;
@@ -80,6 +83,10 @@ const StaffHeader = ({
             staffPermissionKeys={staffPermissionKeys}
             billingPermissionKeys={billingPermissionKeys}
             salaryPermissionKeys={salaryPermissionKeys}
+            orderPermissionKeys={orderPermissionKeys}
+            //
+            vendorPermissionKeys={vendorPermissionKeys}
+            productPermissionKeys={productPermissionKeys}
           />
         </Dialog>
       </div>

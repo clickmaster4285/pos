@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   ChevronRight,
   UserSquare2,
+  Utensils,
 } from 'lucide-react';
 
 const iconMap = {
@@ -39,6 +40,7 @@ const iconMap = {
   Vendors: Briefcase,
   Customers: Users,
   Orders: ShoppingCart,
+  Tables: Utensils,
   Sumeries: FileText,
   Reports: BarChart,
   'Live Store': Store,
@@ -102,7 +104,14 @@ function buildStaffLinks(user) {
     },
   ];
 
-  if (hasAny(user, ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct'])) {
+  if (
+    hasAny(user, [
+      'createProduct',
+      'updateProduct',
+      'deleteProduct',
+      'viewProduct',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/product`,
       label: 'Product',
@@ -110,7 +119,15 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling', 'createPayment'])) {
+  if (
+    hasAny(user, [
+      'viewBilling',
+      'addBilling',
+      'editBilling',
+      'deleteBilling',
+      'createPayment',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/billing`,
       label: 'Billing',
@@ -118,7 +135,7 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (subRoleLower === 'receptionist' && hasAny(user, ['viewProduct'])) {
+  if (hasAny(user, ['createOrder', 'viewOrder', 'updateOrderStatus'])) {
     links.push({
       href: `${staffBase}/orders`,
       label: 'Orders',
@@ -134,11 +151,26 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors'])) {
+  if (
+    hasAny(user, [
+      'createVendors',
+      'updateVendors',
+      'deleteVendors',
+      'viewVendors',
+    ])
+  ) {
     links.push({
       href: `${staffBase}/vendors`,
       label: 'Vendors',
       icon: iconMap['Vendors'],
+    });
+  }
+
+  if (hasAny(user, ['manageTables'])) {
+    links.push({
+      href: `${staffBase}/tables`,
+      label: 'Tables',
+      icon: iconMap['Tables'],
     });
   }
 
@@ -150,7 +182,9 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])) {
+  if (
+    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
+  ) {
     links.push({
       href: `${staffBase}/staff`,
       label: 'Staff',
@@ -186,7 +220,10 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const authUser = useSelector((state) => state.auth.user);
+  const authUser = useSelector((state) => state.auth.user); // Moved
+  // useSelector here
+
+  const industry = authUser.industryName;
 
   const isSettingsMode = pathname?.startsWith('/settings');
 
@@ -213,6 +250,13 @@ export default function Sidebar() {
         href: '/admin/product',
         label: 'Product',
         icon: iconMap['Product'],
+        compulsory: true,
+      },
+
+      {
+        href: '/admin/orders',
+        label: 'Orders',
+        icon: iconMap['Orders'],
         compulsory: true,
       },
       {
@@ -248,6 +292,7 @@ export default function Sidebar() {
         icon: iconMap['Staff'],
         extraFeature: 'Staff',
       },
+
       {
         href: '/admin/permissions',
         label: 'Permission',
@@ -260,6 +305,16 @@ export default function Sidebar() {
         icon: iconMap['Vendors'],
         extraFeature: 'Vendors',
       },
+      ...(industry?.toLowerCase() === 'restaurant'
+        ? [
+            {
+              href: '/admin/tables',
+              label: 'Tables',
+              icon: iconMap['Tables'],
+              compulsory: true,
+            },
+          ]
+        : []),
       {
         href: '/admin/category',
         label: 'Category',
@@ -311,7 +366,11 @@ export default function Sidebar() {
           label: 'Companies',
           icon: iconMap['Companies'],
         },
-        { href: '/superadmin/profile-setting', label: 'Settings', icon: iconMap['Settings'] },
+        {
+          href: '/superadmin/profile-setting',
+          label: 'Settings',
+          icon: iconMap['Settings'],
+        },
         {
           href: '/superadmin/payment-gateway-config',
           label: 'Payment GateWay Configuration',
