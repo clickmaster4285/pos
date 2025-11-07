@@ -1,159 +1,211 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Package, Calculator, Pencil } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
-import { useGetAddressesQuery } from '@/features/addressApi';
-import AddressUpsertDialog from './AddressUpsertDialog';
-import DeleteAddressDialog from './DeleteAddressDialog';
-/* ---------------- helpers ---------------- */
+import { useGetAllProductsQuery } from '@/features/productApi';
+import { useGetAllStaffQuery } from '@/features/staffApi';
+import { useListTablesQuery } from '@/features/tableApi';
 
-const toId = (x) => (x == null ? '' : String(x));
-const isObjectId = (v) => typeof v === 'string' && /^[0-9a-fA-F]{24}$/.test(v);
+import useScopedFields from './useScopedFields';
+import { currency, normalizeItems } from './helpers';
 
-function currency(n) {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'USD',
-  }).format(Number.isFinite(n) ? n : 0);
-}
+import ItemsSection from './ItemsSection';
+import CustomerAndMetaPanel from './CustomerAndMetaPanel';
+import ShippingAddressPanel from './ShippingAddressPanel';
+import WaiterSelectPanel from './WaiterSelectPanel';
 
-function normalizeItems(items) {
-  if (!Array.isArray(items) || items.length === 0) {
-    return [
-      {
-        productId: '',
-        itemName: '',
-        sku: '',
-        quantity: 1,
-        price: 0,
-        costPrice: 0,
-      },
-    ];
-  }
-  return items.map((it) => ({
-    productId: String(it?.productItem || it?.productId || ''),
-    sku: it?.sku || '',
-    itemName: it?.itemName || '',
-    quantity: Number(it?.quantity ?? 1),
-    price: Number(it?.price ?? 0),
-    costPrice: Number(it?.costPrice ?? 0),
-  }));
-}
-// addresses
+export default function OrderForm({ onSubmit, loading, isEndUser }) {
+  const user = useSelector((state) => state.auth.user);
+  const industry = user?.industryName || '';
 
-/* a tiny truncated text wrapper (for SelectItem labels etc.) */
-function Truncate({ children, className, title }) {
-  return (
-    <span
-      className={`block min-w-0 max-w-full truncate ${className || ''}`}
-      title={
-        typeof title === 'string'
-          ? title
-          : typeof children === 'string'
-          ? children
-          : undefined
-      }
-    >
-      {children}
-    </span>
-  );
-}
+  const isWaiter = (user?.subRole || '').toLowerCase() === 'waiter';
+  const isAdmin = (user?.role || '').toLowerCase() === 'admin';
+  const subRoleLC = (user?.subRole || '').toLowerCase();
+  const roleLC = (user?.role || '').toLowerCase();
+  const industryLC = (industry || '').toLowerCase();
+  const isRestaurant = industryLC === 'restaurant';
+  const isFashionPharmacy =
+    industryLC === 'fashion' || industryLC === 'pharmacy';
+  const isUserSubRole = subRoleLC === 'user';
 
-/* ---------------- component ---------------- */
+  const { data: table = [], refetch: refetchTables } = useListTablesQuery();
 
-export default function OrderForm({ onSubmit, loading, product }) {
+  const tables = table.filter((t) => t.state === 'available');
+
+  const { data: staff = [] } = useGetAllStaffQuery();
+
+  // map waiterId -> waiterName
+  const waiterMap = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(staff) ? staff : []).forEach((s) => {
+      const id = String(s?._id || s?.id || '');
+      if (!id) return;
+      const name = s?.fullName || s?.name || 'Unnamed';
+      map.set(id, name);
+    });
+    return map;
+  }, [staff]);
+
   const [values, setValues] = useState({
-    shippingAddressId: '',
     orderType: '',
-    paymentMethod: '',
-    notes: '',
+    dynamicAttributes: {}, // order-level attrs
+    shippingAddressId: '', // for Delivery/Online
     items: normalizeItems(),
+    customerName: '',
+    customerPhone: '',
+    waiterId: '', // optional top-level (kept for compatibility)
   });
 
   const [errors, setErrors] = useState({
     orderType: '',
-    paymentMethod: '',
     shippingAddressId: '',
     items: {},
+    customerName: '',
+    customerPhone: '',
+    waiterId: '',
+    tableNo: '',
   });
 
   const submitting = !!loading;
 
-  /* addresses */
-  const { data: addresses = [] } = useGetAddressesQuery();
-
-
-
-// dialog state
-const [openAddrCreate, setOpenAddrCreate] = useState(false);
-const [openAddrEdit, setOpenAddrEdit] = useState(false);
-const [openAddrDelete, setOpenAddrDelete] = useState(false);
-const [selectedAddr, setSelectedAddr] = useState(null);
-
+  // If logged-in user is a waiter, default their id/name
   useEffect(() => {
-    if (!values.shippingAddressId && addresses.length) {
-      const def = addresses.find((a) => a.isDefault) || addresses[0];
-      if (def?._id) setValues((v) => ({ ...v, shippingAddressId: def._id }));
-    }
-  }, [addresses, values.shippingAddressId]);
+    if (!isWaiter) return;
+    const myId = String(user?._id || '');
+    const myName = user?.fullName || user?.name || '';
+    setValues((v) => ({
+      ...v,
+      waiterId: myId, // optional top-level
+      dynamicAttributes: {
+        ...v.dynamicAttributes,
+        waiterId: myId, // store inside dynamicAttributes (required)
+        waiterName: myName,
+      },
+    }));
+  }, [isWaiter, user]);
 
-  /* product maps */
+  /* ----- PRODUCTS from API ----- */
+  const { data: productsResp, isLoading: productsLoading } =
+    useGetAllProductsQuery();
+
+  const productList = useMemo(() => productsResp?.data ?? [], [productsResp]);
+
   const invById = useMemo(() => {
     const m = new Map();
-    (product || []).forEach((it) => {
-      const id = String(it.id || it._id || '');
-      if (id) m.set(id, it);
+    productList.forEach((p) => {
+      const id = String(p?._id || '');
+      if (id) m.set(id, p);
     });
     return m;
-  }, [product]);
+  }, [productList]);
 
   const invOptions = useMemo(
     () =>
-      (product || []).map((it) => ({
-        id: String(it.id || it._id),
-        label: it.itemName,
+      productList.map((p) => ({
+        id: String(p._id),
+        label: p.productName || 'Unnamed',
+        sub: p.SKU ? `(${p.SKU})` : '',
       })),
-    [product]
+    [productList]
   );
 
-  /* backfill names/prices if we had an productId stored */
+  // backfill item fields when product list changes
   useEffect(() => {
     setValues((v) => ({
       ...v,
       items: v.items.map((row) => {
-        if (row.itemName || !row.productId) return row;
+        if (!row.productId) return row;
         const inv = invById.get(String(row.productId));
-        return inv
-          ? {
-              ...row,
-              itemName: inv.itemName || '',
-              price: row.price ?? 0,
-              costPrice: row.costPrice ?? 0,
-            }
-          : row;
+        if (!inv) return row;
+        const price = Number(inv?.sellingPrice ?? row.price ?? 0);
+        const name = inv?.productName || row.name || '';
+        return {
+          ...row,
+          name,
+          price,
+          total: Number(row.qty || 0) * price,
+        };
       }),
     }));
   }, [invById]);
 
-  /* state helpers */
+  /* derive orderType options from industry */
+  const orderScopedFields = useScopedFields(industry, 'order');
+  const itemScopedFields = useScopedFields(industry, 'item');
+
+  const policy = useMemo(() => {
+    // default options (used if order scope didn't define its own select options)
+    const defaultOptions = [
+      'Dine-In',
+      'Takeaway',
+      'Delivery',
+      'In-Store',
+      'Online',
+      'Purchase',
+      'Service',
+    ];
+    const scoped = orderScopedFields.find(
+      (x) => x.name === 'orderType' && x.type === 'select'
+    );
+    const baseOptions = scoped?.options?.length
+      ? scoped.options
+      : defaultOptions;
+
+    // RESTAURANT
+    if (isRestaurant) {
+      if (isUserSubRole || isEndUser) {
+        return { forced: 'Delivery', lock: true, options: ['Delivery'] };
+      }
+      // Staff: only Dine-In / Takeaway
+      return { forced: null, lock: false, options: ['Dine-In', 'Takeaway'] };
+    }
+
+    // FASHION / PHARMACY
+    if (isFashionPharmacy) {
+      if (isUserSubRole || isEndUser) {
+        return { forced: 'Delivery', lock: true, options: ['Delivery'] };
+      }
+      // Admin or other staff
+      return { forced: 'In-Store', lock: true, options: ['In-Store'] };
+    }
+
+    // Other industries: keep your previous behavior
+    if (isEndUser) {
+      return { forced: 'Online', lock: true, options: ['Online', 'Delivery'] };
+    }
+    return {
+      forced: 'In-Store',
+      lock: true,
+      options: ['In-Store', 'Delivery'],
+    };
+  }, [
+    orderScopedFields,
+    isRestaurant,
+    isFashionPharmacy,
+    isUserSubRole,
+    isEndUser,
+  ]);
+
+  const orderTypeOptions = policy.options;
+  // enforce forced orderType when policy requires it
+
+
+  // helpers to mutate state
   const update = (patch) => setValues((v) => ({ ...v, ...patch }));
   const updateItem = (idx, patch) =>
-    setValues((v) => ({
-      ...v,
-      items: v.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)),
-    }));
+    setValues((v) => {
+      const next = v.items.map((it, i) =>
+        i === idx ? { ...it, ...patch } : it
+      );
+      if ('qty' in patch || 'price' in patch) {
+        const t = Number(next[idx].qty || 0) * Number(next[idx].price || 0);
+        next[idx].total = t;
+      }
+      return { ...v, items: next };
+    });
   const addItem = () =>
     setValues((v) => ({
       ...v,
@@ -161,55 +213,118 @@ const [selectedAddr, setSelectedAddr] = useState(null);
         ...v.items,
         {
           productId: '',
-          itemName: '',
-          sku: '',
-          quantity: 1,
+          name: '',
+          qty: 1,
           price: 0,
-          costPrice: 0,
+          total: 0,
+          dynamicAttributes: {},
         },
       ],
     }));
   const removeItem = (idx) =>
     setValues((v) => ({ ...v, items: v.items.filter((_, i) => i !== idx) }));
 
-  const totalAmount = useMemo(
-    () =>
-      values.items.reduce(
-        (s, it) => s + Number(it.quantity || 0) * Number(it.price || 0),
-        0
-      ),
-    [values.items]
-  );
+  // select product → also pre-fill allowed item-scoped dynamicAttributes
+  const onProductSelect = (idx, id) => {
+    const nextInv = invById.get(id);
+    const price = Number(nextInv?.sellingPrice ?? 0);
+    const name = nextInv?.productName || '';
+    const allowed = new Set(itemScopedFields.map((f) => f.name));
+    const dynSrc = nextInv?.dynamicAttributes || {};
+    const dyn = {};
+    Object.entries(dynSrc).forEach(([k, v]) => {
+      if (allowed.has(k)) dyn[k] = v;
+    });
 
-  /* validation */
+    const qty = Number(values.items[idx]?.qty || 0);
+    updateItem(idx, {
+      productId: id,
+      name,
+      price,
+      total: qty * price,
+      dynamicAttributes: dyn,
+    });
+  };
+
+  // --- Visibility flags ---
+  const orderTypeLC = (values.orderType || '').toLowerCase();
+  const isDineIn =
+    orderTypeLC === 'dine-in' ||
+    orderTypeLC === 'dine in' ||
+    orderTypeLC === 'dinein';
+  const isAddressRequired =
+    orderTypeLC === 'online' || orderTypeLC === 'delivery';
+
+  // keep dynamicAttributes.orderType in sync if the field exists in order scope
+  useEffect(() => {
+    const hasOrderTypeInOrderFields = orderScopedFields.some(
+      (f) => f.name === 'orderType'
+    );
+    if (!hasOrderTypeInOrderFields) return;
+
+    setValues((v) => ({
+      ...v,
+      dynamicAttributes: { ...v.dynamicAttributes, orderType: v.orderType },
+      // if address is NOT required anymore, clear selection
+      shippingAddressId: isAddressRequired ? v.shippingAddressId : '',
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.orderType]);
+
+  // validation (with dine-in guardrails)
   const validate = () => {
     const nextErrors = {
       orderType: values.orderType ? '' : 'Order type is required',
-      paymentMethod: values.paymentMethod ? '' : 'Payment method is required',
-      shippingAddressId: isObjectId(values.shippingAddressId)
-        ? ''
-        : 'Valid shipping address ID is required',
+      shippingAddressId:
+        isAddressRequired && !values.shippingAddressId
+          ? 'Shipping address is required for Delivery/Online orders'
+          : '',
       items: {},
+      tableNo:
+        isDineIn && !values?.dynamicAttributes?.tableNo
+          ? 'Table is required for Dine-In'
+          : '',
+      waiterId:
+        isDineIn && !values?.dynamicAttributes?.waiterId
+          ? 'Waiter is required for Dine-In (select a table)'
+          : '',
     };
 
     values.items.forEach((row, idx) => {
-      const skuOk = typeof row.sku === 'string' && /^[A-Z0-9-]+$/.test(row.sku);
-      const qtyOk =
-        Number.isInteger(Number(row.quantity)) && Number(row.quantity) > 0;
+      const nameOk = typeof row.name === 'string' && row.name.trim().length > 0;
+      const priceNum = Number(row.price);
+      const priceOk = Number.isFinite(priceNum) && priceNum >= 0;
+      const qtyNum = Number(row.qty);
+      const qtyOk = Number.isInteger(qtyNum) && qtyNum > 0;
+
+      const inv = row.productId ? invById.get(String(row.productId)) : null;
+      const stockOk = !inv || qtyNum <= Number(inv?.quantity ?? Infinity);
+
       const itemErr = {
-        sku: skuOk ? '' : 'Valid SKU required (A-Z, 0-9, hyphen)',
-        quantity: qtyOk ? '' : 'Quantity must be a positive integer',
+        name: nameOk ? '' : 'Item name is required',
+        price: priceOk ? '' : 'Price must be a non-negative number',
+        qty: qtyOk ? '' : 'Qty must be a positive integer',
+        stock: stockOk ? '' : `Only ${inv?.quantity ?? 0} in stock`,
       };
-      if (itemErr.sku || itemErr.quantity) nextErrors.items[idx] = itemErr;
+
+      if (itemErr.name || itemErr.price || itemErr.qty || itemErr.stock) {
+        nextErrors.items[idx] = itemErr;
+      }
     });
 
     setErrors(nextErrors);
+
     const top =
       nextErrors.orderType ||
-      nextErrors.paymentMethod ||
-      nextErrors.shippingAddressId;
-    const item = Object.keys(nextErrors.items).length > 0;
-    return !(top || item);
+      nextErrors.shippingAddressId ||
+      nextErrors.tableNo ||
+      nextErrors.waiterId ||
+      nextErrors.customerName ||
+      nextErrors.customerPhone;
+
+    const itemHasErrors = Object.keys(nextErrors.items).length > 0;
+
+    return !(top || itemHasErrors);
   };
 
   const handleSubmit = async (e) => {
@@ -217,485 +332,157 @@ const [selectedAddr, setSelectedAddr] = useState(null);
     if (!validate()) return;
 
     const itemsPayload = values.items
-      .filter((it) => it.sku && Number(it.quantity) > 0)
-      .map((it) => ({ sku: it.sku, quantity: Number(it.quantity) }));
+      .filter((it) => it.name && Number(it.qty) > 0)
+      .map((it) => ({
+        productId: it.productId || undefined,
+        name: it.name,
+        qty: Number(it.qty),
+        price: Number(it.price),
+        total: Number(it.total || Number(it.price) * Number(it.qty)),
+        dynamicAttributes: it.dynamicAttributes || {},
+      }));
 
     const payload = {
       items: itemsPayload,
       orderType: values.orderType,
-      shippingAddressId: values.shippingAddressId.trim(),
-      paymentMethod: values.paymentMethod,
-      ...(values.notes?.trim() ? { notes: values.notes.trim() } : {}),
+      dynamicAttributes: {
+        ...values.dynamicAttributes, // includes waiterId, waiterName, tableNo, tableName, specialInstructions, orderType
+      },
+      ...(isAddressRequired && values.shippingAddressId
+        ? { shippingAddressId: values.shippingAddressId }
+        : {}),
+      customerName: values.customerName.trim(),
+      customerPhone: String(values.customerPhone).trim(),
     };
 
-    await onSubmit?.(payload);
+    //  await onSubmit?.(payload);
+
+    try {
+      await onSubmit?.(payload);
+      await refetchTables(); // ⬅️ refresh tables list
+    } catch (err) {
+      console.log(err.message);
+    }
   };
+
+  // totals
+  const subTotal = useMemo(
+    () => values.items.reduce((s, it) => s + Number(it.total || 0), 0),
+    [values.items]
+  );
+
+  // table → waiter auto-fill
+  const handleTableSelect = (tableId) => {
+    const table = Array.isArray(tables)
+      ? tables.find((t) => String(t?._id) === String(tableId))
+      : null;
+ 
+
+    const assignedWaiterId = table?.assignedWaiterId
+      ? String(table.assignedWaiterId)
+      : '';
+    const assignedWaiterName = assignedWaiterId
+      ? waiterMap.get(assignedWaiterId) || ''
+      : '';
+
+    setValues((v) => ({
+      ...v,
+      waiterId: assignedWaiterId || '', // optional top-level
+      dynamicAttributes: {
+        ...v.dynamicAttributes,
+        tableNo: table ? String(table._id) : '',
+        tableName: table?.name || '',
+        waiterId: assignedWaiterId || '', // REQUIRED: we persist this
+        waiterName: assignedWaiterName || '',
+        //orderStatus: v.dynamicAttributes?.orderStatus || 'pending',
+      },
+    }));
+  };
+
+const forcedOrderType = policy.forced;   // string | null
+  const lockOrderType = policy.lock;  
+
+  useEffect(() => {
+    if (!forcedOrderType) return; // restaurant staff case (free selection)
+    setValues((v) => {
+      if ((v.orderType || '').toLowerCase() === forcedOrderType.toLowerCase()) {
+        return v;
+      }
+      return { ...v, orderType: forcedOrderType };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forcedOrderType]);
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
-      {/* Items */}
-      <div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-muted-foreground" />
-            <Label className="text-base">Items</Label>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={addItem}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" /> Add Item
-          </Button>
-        </div>
+      <ItemsSection
+        values={values}
+        errors={errors}
+        invById={invById}
+        invOptions={invOptions}
+        productsLoading={productsLoading}
+        itemScopedFields={itemScopedFields}
+        updateItem={updateItem}
+        addItem={addItem}
+        removeItem={removeItem}
+        onProductSelect={onProductSelect}
+      />
 
-        <div className="grid gap-3">
-          {values.items.map((it, idx) => {
-            const selectedInvId = toId(it.productId);
-            const inv = invById.get(selectedInvId) || null;
-            const variants = inv?.variants || [];
-            const selectedSku = it.sku || '';
-            const itemErr = errors.items[idx] || {};
-            const lineTotal = Number(it.quantity || 0) * Number(it.price || 0);
+      <CustomerAndMetaPanel
+        values={values}
+        errors={errors}
+        update={update}
+        orderTypeOptions={orderTypeOptions}
+        orderScopedFields={orderScopedFields}
+        isDineIn={isDineIn}
+        tables={tables}
+        onTableSelect={handleTableSelect}
+        forcedOrderType={forcedOrderType}
+        lockOrderType={lockOrderType}
+      />
 
-            return (
-              <div
-                key={idx}
-                className="grid grid-cols-1 gap-3 rounded-lg border p-3 mt-2 sm:grid-cols-12 hover:bg-muted/30 transition-colors"
-              >
-                {/* Item */}
-                <div className="sm:col-span-4 grid gap-1.5 min-w-0">
-                  <Label className="text-xs text-muted-foreground">Item</Label>
-                  <Select
-                    key={`${invOptions.length}-${selectedInvId}`}
-                    value={selectedInvId || undefined}
-                    onValueChange={(id) => {
-                      const nextInv = invById.get(id);
-                      // reset variant-related fields on item change
-                      updateItem(idx, {
-                        productId: id,
-                        itemName: nextInv?.itemName || '',
-                        sku: '',
-                        variantId: '',
-                        price: 0,
-                        costPrice: 0,
-                        returnUnder: undefined,
-                      });
-                      // if exactly one variant, auto-select it immediately (no hooks in loop)
-                      if (nextInv?.variants?.length === 1) {
-                        const v = nextInv.variants[0];
-                        updateItem(idx, {
-                          sku: v.sku,
-                          variantId: toId(v._id),
-                          price: Number(v.price || 0),
-                          costPrice: Number(v.costPrice || 0),
-                          returnUnder: Number(v.returnUnder || 0),
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger
-                      className="
-                        h-9 w-full min-w-0
-                        [&>span]:block [&>span]:min-w-0 [&>span]:max-w-full [&>span]:truncate
-                      "
-                      title={it.itemName || undefined}
-                    >
-                      <SelectValue placeholder={it.itemName || 'Select item'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {invOptions.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.id}>
-                          <Truncate>{opt.label}</Truncate>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* Address panel for Delivery/Online */}
+      <ShippingAddressPanel
+        values={values}
+        errors={errors}
+        update={update}
+        isAddressRequired={isAddressRequired}
+      />
 
-                {/* Variant */}
-                <div className="sm:col-span-4 grid gap-1.5 min-w-0">
-                  <Label className="text-xs text-muted-foreground">
-                    Variant
-                  </Label>
-                  <Select
-                    value={selectedSku || undefined}
-                    onValueChange={(sku) => {
-                      const v = (inv?.variants || []).find(
-                        (vv) => String(vv.sku) === String(sku)
-                      );
-                      if (v) {
-                        updateItem(idx, {
-                          sku: v.sku, // controller needs SKU
-                          variantId: toId(v._id),
-                          price: Number(v.price || 0), // auto from variant
-                          costPrice: Number(v.costPrice || 0),
-                          returnUnder: Number(v.returnUnder || 0),
-                        });
-                      } else {
-                        updateItem(idx, {
-                          sku: '',
-                          variantId: '',
-                          price: 0,
-                          costPrice: 0,
-                          returnUnder: undefined,
-                        });
-                      }
-                    }}
-                    disabled={!inv}
-                  >
-                    <SelectTrigger
-                      className={`
-                        h-9 w-full min-w-0
-                        ${itemErr.sku ? 'border-destructive' : ''}
-                        [&>span]:block [&>span]:min-w-0 [&>span]:max-w-full [&>span]:truncate
-                      `}
-                      aria-invalid={!!itemErr.sku}
-                      title={
-                        selectedSku
-                          ? (() => {
-                              const vv = variants.find(
-                                (x) => x.sku === selectedSku
-                              );
-                              return vv
-                                ? `${vv.variantName} — ${vv.sku}`
-                                : selectedSku;
-                            })()
-                          : undefined
-                      }
-                    >
-                      <SelectValue
-                        placeholder={
-                          inv ? 'Select variant' : 'Select item first'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(variants || []).map((v) => (
-                        <SelectItem key={String(v._id)} value={String(v.sku)}>
-                          <Truncate title={`${v.variantName} — ${v.sku}`}>
-                            {v.variantName} — {v.sku}
-                          </Truncate>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {itemErr.sku ? (
-                    <p className="text-xs text-destructive mt-1">
-                      {itemErr.sku}
-                    </p>
-                  ) : null}
-                </div>
+      {/* Read-only waiter display for dine-in */}
+      <WaiterSelectPanel
+        industry={industry}
+        user={user}
+        isWaiter={isWaiter}
+        isAdmin={isAdmin}
+        values={values}
+        errors={errors}
+        setValues={setValues}
+        isDineIn={isDineIn}
+      />
 
-                {/* Qty */}
-                <div className="sm:col-span-2 grid gap-1.5 min-w-0">
-                  <Label className="text-xs text-muted-foreground">Qty</Label>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    min="1"
-                    step="1"
-                    value={it.quantity}
-                    onChange={(e) =>
-                      updateItem(idx, { quantity: Number(e.target.value) })
-                    }
-                    className={`h-9 ${
-                      itemErr.quantity ? 'border-destructive' : ''
-                    }`}
-                    aria-invalid={!!itemErr.quantity}
-                  />
-                  {itemErr.quantity ? (
-                    <p className="text-xs text-destructive mt-1">
-                      {itemErr.quantity}
-                    </p>
-                  ) : null}
-                </div>
-
-                {/* Price (read-only) */}
-                <div className="sm:col-span-2 grid gap-1.5 min-w-0">
-                  <Label className="text-xs text-muted-foreground">Price</Label>
-                  <div className="relative">
-                    <Calculator className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.01"
-                      value={it.price}
-                      readOnly
-                      placeholder="0.00"
-                      className="h-9 pl-8 read-only:bg-muted/40"
-                      title="Price comes from selected variant"
-                    />
-                  </div>
-                </div>
-
-                {/* Line total + remove */}
-                <div className="sm:col-span-12 flex items-end justify-between gap-2 sm:justify-end">
-                  <div className="rounded-md bg-muted/60 px-2 py-1 text-[11px] font-medium">
-                    {currency(lineTotal)}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeItem(idx)}
-                    disabled={values.items.length === 1}
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Remove item ${idx + 1}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-     
-      {/* Shipping Address */}
-      <div className="grid gap-2">
-        <Label>Shipping Address</Label>
-
-        {/* Row 1: Select (full width, truncates) */}
-        <div className="min-w-0">
-          <Select
-            value={values.shippingAddressId || undefined}
-            onValueChange={(v) => {
-              const found = addresses.find((a) => a._id === v) || null;
-              setSelectedAddr(found);
-              update({ shippingAddressId: v });
-            }}
-          >
-            <SelectTrigger
-              className={`
-          h-9 w-full min-w-0 overflow-hidden truncate text-left
-          ${errors.shippingAddressId ? 'border-destructive' : ''}
-        `}
-              aria-invalid={!!errors.shippingAddressId}
-              title={(() => {
-                const a = addresses.find(
-                  (x) => x._id === values.shippingAddressId
-                );
-                return a
-                  ? `${a.fullName} — ${a.addressLine1}, ${a.city}${
-                      a.isDefault ? ' (default)' : ''
-                    }`
-                  : undefined;
-              })()}
-            >
-              <div className="truncate">
-                <SelectValue placeholder="Choose shipping address" />
-              </div>
-            </SelectTrigger>
-
-            <SelectContent
-              position="popper"
-              className="w-[var(--radix-select-trigger-width)] max-w-full max-h-72 overflow-y-auto"
-            >
-              {addresses.map((a) => (
-                <SelectItem key={a._id} value={a._id} className="max-w-full">
-                  <span
-                    className="block max-w-full truncate"
-                    title={`${a.fullName} — ${a.addressLine1}, ${a.city}${
-                      a.isDefault ? ' (default)' : ''
-                    }`}
-                  >
-                    {a.fullName} — {a.addressLine1}, {a.city}
-                    {a.isDefault ? ' (default)' : ''}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {errors.shippingAddressId ? (
-            <p className="text-xs text-destructive mt-1">
-              {errors.shippingAddressId}
-            </p>
-          ) : null}
-        </div>
-
-        {/* Row 2: Actions (next row, align right; change to justify-start if you want left) */}
-        <div className="flex items-center gap-2 justify-end flex-wrap">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="gap-2"
-            onClick={() => setOpenAddrCreate(true)}
-          >
-            <Plus className="h-4 w-4" /> Add
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            disabled={!values.shippingAddressId}
-            onClick={() => {
-              const curr =
-                addresses.find((a) => a._id === values.shippingAddressId) ||
-                null;
-              setSelectedAddr(curr);
-              setOpenAddrEdit(true);
-            }}
-          >
-            <Pencil className="h-4 w-4" /> Edit
-          </Button>
-
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            className="gap-2"
-            disabled={!values.shippingAddressId}
-            onClick={() => {
-              const curr =
-                addresses.find((a) => a._id === values.shippingAddressId) ||
-                null;
-              setSelectedAddr(curr);
-              setOpenAddrDelete(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Delete
-          </Button>
-        </div>
-
-        {/* dialogs (unchanged) */}
-        <AddressUpsertDialog
-          open={openAddrCreate}
-          onOpenChange={setOpenAddrCreate}
-          mode="create"
-          onSaved={(res) => {
-            const addr = res?.address || res;
-            if (addr?._id) {
-              update({ shippingAddressId: addr._id });
-              setSelectedAddr(addr);
-            }
-          }}
-        />
-        <AddressUpsertDialog
-          open={openAddrEdit}
-          onOpenChange={setOpenAddrEdit}
-          mode="edit"
-          initialAddress={selectedAddr}
-          onSaved={(res) => {
-            const addr = res?.address || res;
-            if (addr?._id && values.shippingAddressId === addr._id)
-              setSelectedAddr(addr);
-          }}
-        />
-        <DeleteAddressDialog
-          open={openAddrDelete}
-          onOpenChange={setOpenAddrDelete}
-          address={selectedAddr}
-          onDeleted={(deletedId) => {
-            if (values.shippingAddressId === deletedId) {
-              const fresh = addresses.filter((a) => a._id !== deletedId);
-              const def = fresh.find((a) => a.isDefault) || fresh[0] || null;
-              update({ shippingAddressId: def?._id || '' });
-              setSelectedAddr(def);
-            }
-          }}
-        />
-      </div>
-
-      {/* Meta selects */}
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-        <div className="grid gap-2 min-w-0">
-          <Label>Payment Method</Label>
-          <Select
-            value={values.paymentMethod || undefined}
-            onValueChange={(v) => update({ paymentMethod: v })}
-          >
-            <SelectTrigger
-              className={`
-                h-9 w-full min-w-0
-                ${errors.paymentMethod ? 'border-destructive' : ''}
-                [&>span]:block [&>span]:min-w-0 [&>span]:max-w-full [&>span]:truncate
-              `}
-              aria-invalid={!!errors.paymentMethod}
-            >
-              <SelectValue placeholder="Select payment method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="credit_card">Credit Card</SelectItem>
-              <SelectItem value="debit_card">Debit Card</SelectItem>
-              <SelectItem value="paypal">PayPal</SelectItem>
-              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-              <SelectItem value="cod">Cash on Delivery</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.paymentMethod ? (
-            <p className="text-xs text-destructive mt-1">
-              {errors.paymentMethod}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="grid gap-2 min-w-0">
-          <Label>Order Type</Label>
-          <Select
-            value={values.orderType || undefined}
-            onValueChange={(v) => update({ orderType: v })}
-          >
-            <SelectTrigger
-              className={`
-                h-9 w-full min-w-0
-                ${errors.orderType ? 'border-destructive' : ''}
-                [&>span]:block [&>span]:min-w-0 [&>span]:max-w-full [&>span]:truncate
-              `}
-              aria-invalid={!!errors.orderType}
-            >
-              <SelectValue placeholder="Select order type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="purchase">Purchase</SelectItem>
-              <SelectItem value="service">Service</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.orderType ? (
-            <p className="text-xs text-destructive mt-1">{errors.orderType}</p>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="grid gap-2">
-        <Label htmlFor="notes">Notes (optional)</Label>
-        <Textarea
-          id="notes"
-          value={values.notes}
-          onChange={(e) => update({ notes: e.target.value })}
-          placeholder="Delivery window, special handling, etc."
-          rows={3}
-          className="resize-y"
-        />
-      </div>
-
-      {/* Total */}
+      {/* Totals */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border bg-muted/40 p-4">
         <div className="text-sm text-muted-foreground">
           Review your items before submitting.
         </div>
         <div className="flex items-center justify-between sm:justify-end gap-3">
-          <span className="text-sm font-medium">Total Amount</span>
+          <span className="text-sm font-medium">Subtotal</span>
           <span className="rounded-md bg-background px-3 py-1.5 text-base font-semibold shadow-sm">
-            {currency(totalAmount)}
+            {currency(subTotal)}
           </span>
         </div>
       </div>
 
       {/* Submit */}
       <div className="flex items-center justify-end gap-2">
-        <Button type="submit" disabled={submitting} className="min-w-36">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="min-w-36 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 disabled:opacity-60"
+        >
           {submitting ? 'Saving...' : 'Create Order'}
-        </Button>
+        </button>
       </div>
     </form>
   );

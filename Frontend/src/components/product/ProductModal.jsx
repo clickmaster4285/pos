@@ -1,19 +1,19 @@
 // ProductModal.jsx
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { useState, useEffect, useMemo, memo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import dynamic from 'next/dynamic';
+import { useState, useEffect, useMemo, memo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -21,29 +21,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Tag, X, PlusCircle, Image as ImageIcon } from "lucide-react";
-import { getProductFields } from "@/utils/industryFields";
-import { useSelector } from "react-redux";
-import { useCreateCategoryMutation } from "@/features/categoryApi";
-import { useCreateVendorMutation } from "@/features/vendorApi";
-import { useCreateIngredientMutation } from "@/features/ingredientApi";
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Tag, X, PlusCircle, Image as ImageIcon } from 'lucide-react';
+import { getProductFields } from '@/utils/industryFields';
+import { useSelector } from 'react-redux';
+import { useCreateCategoryMutation } from '@/features/categoryApi';
+import { useCreateVendorMutation } from '@/features/vendorApi';
+import { useCreateIngredientMutation } from '@/features/ingredientApi';
 
 const CategoryModal = dynamic(
   () =>
-    import("@/components/category/CategoryModal").then(
+    import('@/components/category/CategoryModal').then(
       (m) => m.default ?? m.CategoryModal
     ),
   { ssr: false }
 );
-import { VendorModal } from "@/components/vendors/vendor-modal";
-import { IngredientModal } from "@/components/ingredients/IngredientModal";
+import { VendorModal } from '@/components/vendors/vendor-modal';
+import { IngredientModal } from '@/components/ingredients/IngredientModal';
 
 const useIndustry = (user) => user?.industryName;
 const useFeatureFlags = (user) => ({
-  hasCategories: (user?.extraFeature || []).includes("Category"),
-  hasVendors: (user?.extraFeature || []).includes("Vendors"),
+  hasCategories: (user?.extraFeature || []).includes('Category'),
+  hasVendors: (user?.extraFeature || []).includes('Vendors'),
 });
 
 export const ProductModal = memo(function ProductModal({
@@ -68,13 +68,13 @@ export const ProductModal = memo(function ProductModal({
   const MANUAL_FIELDS = useMemo(
     () =>
       new Set([
-        "productName",
-        "description",
-        "tags",
-        "productImage",
-        "SKU",
-        ...(hasCategories ? ["category", "subCategoryName"] : []),
-        ...(hasVendors ? ["vendor"] : []),
+        'productName',
+        'description',
+        'tags',
+        'productImage',
+        'SKU',
+        ...(hasCategories ? ['category', 'subCategoryName'] : []),
+        ...(hasVendors ? ['vendor'] : []),
       ]),
     [hasCategories, hasVendors]
   );
@@ -84,28 +84,28 @@ export const ProductModal = memo(function ProductModal({
   }, [industryFields, MANUAL_FIELDS]);
 
   const emptyForm = () => ({
-    id: "",
-    productName: "",
-    description: "",
+    id: '',
+    productName: '',
+    description: '',
     tags: [],
     imgUrl: [],
     productImage: [],
     ingredients: [],
-    category: "",
-    subCategoryName: "",
-    vendor: "",
-    SKU: "",
+    category: '',
+    subCategoryName: '',
+    vendor: '',
+    SKU: '',
     isAutoSKU: true,
     ...industryFields.reduce((acc, f) => {
-      if (f.type === "ingredients-array") acc[f.name] = [];
-      else if (f.type === "checkbox") acc[f.name] = false;
-      else acc[f.name] = "";
+      if (f.type === 'ingredients-array') acc[f.name] = [];
+      else if (f.type === 'checkbox') acc[f.name] = false;
+      else acc[f.name] = '';
       return acc;
     }, {}),
   });
 
   const [formData, setFormData] = useState(emptyForm());
-  const [newTag, setNewTag] = useState("");
+  const [newTag, setNewTag] = useState('');
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
   const [localCategories, setLocalCategories] = useState(categories);
   const [localVendors, setLocalVendors] = useState(vendors);
@@ -128,17 +128,17 @@ export const ProductModal = memo(function ProductModal({
   useEffect(() => {
     if (!isOpen) {
       setFormData(emptyForm());
-      setNewTag("");
+      setNewTag('');
       return;
     }
 
     if (product) {
       const base = {
-        id: product.id || product._id || "",
-        productName: product.productName || "",
-        description: product.description || "",
+        id: product.id || product._id || '',
+        productName: product.productName || '',
+        description: product.description || '',
         tags: product.tags || [],
-        vendor: product.vendor?._id || product.vendor || "",
+        vendor: product.vendor?._id || product.vendor || '',
         imgUrl: Array.isArray(product.imgUrl)
           ? product.imgUrl
           : product.imgUrl
@@ -147,21 +147,21 @@ export const ProductModal = memo(function ProductModal({
         productImage: [],
         ingredients: Array.isArray(product.ingredient)
           ? product.ingredient.map((i) => ({
-              ingredientId: i.ingredientId?._id || i.ingredientId || "",
-              ingredientName: i.ingredientName || "",
-              quantity: i.quantity || "",
-              unit: i.unit || "",
+              ingredientId: i.ingredientId?._id || i.ingredientId || '',
+              ingredientName: i.ingredientName || '',
+              quantity: i.quantity || '',
+              unit: i.unit || '',
             }))
           : [],
-        category: product.category?._id || product.category || "",
-        subCategoryName: product.subCategoryName || "",
-        SKU: product.SKU || "",
+        category: product.category?._id || product.category || '',
+        subCategoryName: product.subCategoryName || '',
+        SKU: product.SKU || '',
         isAutoSKU: !product.SKU,
       };
 
       const dyn = {};
       industryFields.forEach((f) => {
-        dyn[f.name] = product[f.name] ?? (f.type === "checkbox" ? false : "");
+        dyn[f.name] = product[f.name] ?? (f.type === 'checkbox' ? false : '');
       });
 
       setFormData({ ...emptyForm(), ...base, ...dyn });
@@ -183,7 +183,7 @@ export const ProductModal = memo(function ProductModal({
     setAvailableSubCategories(subs);
 
     if (formData.subCategoryName && !subs.includes(formData.subCategoryName)) {
-      setFormData((prev) => ({ ...prev, subCategoryName: "" }));
+      setFormData((prev) => ({ ...prev, subCategoryName: '' }));
     }
   }, [formData.category, localCategories, hasCategories]);
 
@@ -196,37 +196,37 @@ export const ProductModal = memo(function ProductModal({
   const addTag = () => {
     const t = newTag.trim();
     if (t && !formData.tags.includes(t)) {
-      handleChange("tags", [...formData.tags, t]);
-      setNewTag("");
+      handleChange('tags', [...formData.tags, t]);
+      setNewTag('');
     }
   };
   const removeTag = (i) =>
     handleChange(
-      "tags",
+      'tags',
       formData.tags.filter((_, idx) => idx !== i)
     );
 
   const addIngredient = () =>
-    handleChange("ingredients", [
+    handleChange('ingredients', [
       ...(formData.ingredients || []),
-      { ingredientId: "", ingredientName: "", quantity: "", unit: "" },
+      { ingredientId: '', ingredientName: '', quantity: '', unit: '' },
     ]);
 
   const updateIngredient = (idx, field, value) => {
     const copy = [...formData.ingredients];
     copy[idx][field] = value;
-    if (field === "ingredientId") {
+    if (field === 'ingredientId') {
       const ing = localIngredients.find((i) => i._id === value);
       if (ing) {
         copy[idx].ingredientName = ing.name;
-        copy[idx].unit = ing.unit || "";
+        copy[idx].unit = ing.unit || '';
       }
     }
-    handleChange("ingredients", copy);
+    handleChange('ingredients', copy);
   };
   const removeIngredient = (i) =>
     handleChange(
-      "ingredients",
+      'ingredients',
       formData.ingredients.filter((_, idx) => idx !== i)
     );
 
@@ -239,7 +239,7 @@ export const ProductModal = memo(function ProductModal({
       productImage: [...prev.productImage, ...files],
     }));
 
-    e.target.value = "";
+    e.target.value = '';
   };
 
   const removeImage = (i) => {
@@ -257,22 +257,22 @@ export const ProductModal = memo(function ProductModal({
 
     const fd = new FormData();
 
-    fd.append("productName", formData.productName || "");
-    fd.append("description", formData.description || "");
-    fd.append("tags", JSON.stringify(formData.tags || []));
+    fd.append('productName', formData.productName || '');
+    fd.append('description', formData.description || '');
+    fd.append('tags', JSON.stringify(formData.tags || []));
 
     (formData.productImage || []).forEach((file) =>
-      fd.append("productImage", file)
+      fd.append('productImage', file)
     );
 
-    if (!formData.isAutoSKU && formData.SKU) fd.append("SKU", formData.SKU);
+    if (!formData.isAutoSKU && formData.SKU) fd.append('SKU', formData.SKU);
 
     if (hasCategories) {
-      if (formData.category) fd.append("category", formData.category);
+      if (formData.category) fd.append('category', formData.category);
       if (formData.subCategoryName)
-        fd.append("subCategoryName", formData.subCategoryName);
+        fd.append('subCategoryName', formData.subCategoryName);
     }
-    if (hasVendors && formData.vendor) fd.append("vendor", formData.vendor);
+    if (hasVendors && formData.vendor) fd.append('vendor', formData.vendor);
 
     industryFields.forEach((field) => {
       if (MANUAL_FIELDS.has(field.name)) return;
@@ -282,7 +282,7 @@ export const ProductModal = memo(function ProductModal({
 
       if (
         Array.isArray(value) ||
-        (typeof value === "object" && value !== null)
+        (typeof value === 'object' && value !== null)
       ) {
         fd.append(field.name, JSON.stringify(value));
       } else {
@@ -294,7 +294,7 @@ export const ProductModal = memo(function ProductModal({
     onClose();
   };
 
-  const isReadOnly = mode === "view";
+  const isReadOnly = mode === 'view';
 
   /* ----------------------------------------------------------------- */
   /*  Create helpers                                                    */
@@ -302,8 +302,8 @@ export const ProductModal = memo(function ProductModal({
   const saveNewCategoryToDb = async (payload) => {
     try {
       const created = await createCategory({
-        categoryName: payload?.categoryName?.trim() || "",
-        description: payload?.description || "",
+        categoryName: payload?.categoryName?.trim() || '',
+        description: payload?.description || '',
         subCategory: Array.isArray(payload?.subCategory)
           ? payload.subCategory
           : [],
@@ -317,22 +317,22 @@ export const ProductModal = memo(function ProductModal({
         return exists ? prev : [...prev, created];
       });
 
-      handleChange("category", created._id || created.id);
+      handleChange('category', created._id || created.id);
       setIsCatModalOpen(false);
     } catch (err) {
-      console.error("Create category failed:", err);
+      console.error('Create category failed:', err);
     }
   };
 
   const saveNewVendorToDb = async (payload) => {
     try {
       const created = await createVendor({
-        name: payload?.name?.trim() || "",
-        email: payload?.email || "",
-        contactName: payload?.contactName || "",
-        phone: payload?.phone || "",
-        address: payload?.address || "",
-        paymentType: payload?.paymentType || "",
+        name: payload?.name?.trim() || '',
+        email: payload?.email || '',
+        contactName: payload?.contactName || '',
+        phone: payload?.phone || '',
+        address: payload?.address || '',
+        paymentType: payload?.paymentType || '',
       }).unwrap();
 
       setLocalVendors((prev) => {
@@ -342,10 +342,10 @@ export const ProductModal = memo(function ProductModal({
           : [...prev, created];
       });
 
-      handleChange("vendor", created._id || created.id);
+      handleChange('vendor', created._id || created.id);
       setIsVendorModalOpen(false);
     } catch (err) {
-      console.error("Create vendor failed:", err);
+      console.error('Create vendor failed:', err);
     }
   };
 
@@ -353,7 +353,7 @@ export const ProductModal = memo(function ProductModal({
   /*  Render helpers                                                    */
   /* ----------------------------------------------------------------- */
   const renderField = (field) => {
-    if (field.name === "SKU") {
+    if (field.name === 'SKU') {
       return (
         <div key="SKU" className="space-y-2">
           <Label>{field.label}</Label>
@@ -362,39 +362,39 @@ export const ProductModal = memo(function ProductModal({
               type="text"
               value={formData.SKU}
               onChange={(e) =>
-                handleChange("SKU", e.target.value.toUpperCase())
+                handleChange('SKU', e.target.value.toUpperCase())
               }
               placeholder={
-                formData.isAutoSKU ? "Auto-generated" : "Enter custom SKU"
+                formData.isAutoSKU ? 'Auto-generated' : 'Enter custom SKU'
               }
               disabled={formData.isAutoSKU || isReadOnly}
               className="flex-1"
             />
             <Button
               type="button"
-              variant={formData.isAutoSKU ? "default" : "outline"}
+              variant={formData.isAutoSKU ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
                 const newAuto = !formData.isAutoSKU;
-                handleChange("isAutoSKU", newAuto);
-                if (newAuto) handleChange("SKU", "");
+                handleChange('isAutoSKU', newAuto);
+                if (newAuto) handleChange('SKU', '');
               }}
               disabled={isReadOnly}
             >
-              {formData.isAutoSKU ? "Auto" : "Custom"}
+              {formData.isAutoSKU ? 'Auto' : 'Custom'}
             </Button>
           </div>
         </div>
       );
     }
 
-    if (field.type === "date") {
+    if (field.type === 'date') {
       return (
         <div key={field.name} className="space-y-2">
           <Label>{field.label}</Label>
           <Input
             type="date"
-            value={formData[field.name] || ""}
+            value={formData[field.name] || ''}
             onChange={(e) => handleChange(field.name, e.target.value)}
             disabled={isReadOnly}
           />
@@ -403,7 +403,7 @@ export const ProductModal = memo(function ProductModal({
     }
 
     switch (field.type) {
-      case "number":
+      case 'number':
         return (
           <div key={field.name} className="space-y-2">
             <Label>{field.label}</Label>
@@ -411,38 +411,38 @@ export const ProductModal = memo(function ProductModal({
               type="number"
               min={field.min}
               step={field.step || 1}
-              value={formData[field.name] || ""}
+              value={formData[field.name] || ''}
               onChange={(e) => handleChange(field.name, e.target.value)}
               disabled={isReadOnly}
             />
           </div>
         );
 
-      case "text":
+      case 'text':
         return (
           <div key={field.name} className="space-y-2">
             <Label>{field.label}</Label>
             <Input
-              value={formData[field.name] || ""}
+              value={formData[field.name] || ''}
               onChange={(e) => handleChange(field.name, e.target.value)}
               disabled={isReadOnly}
             />
           </div>
         );
 
-      case "textarea":
+      case 'textarea':
         return (
           <div key={field.name} className="space-y-2">
             <Label>{field.label}</Label>
             <Textarea
-              value={formData[field.name] || ""}
+              value={formData[field.name] || ''}
               onChange={(e) => handleChange(field.name, e.target.value)}
               disabled={isReadOnly}
             />
           </div>
         );
 
-      case "select":
+      case 'select':
         return (
           <div key={field.name} className="space-y-2">
             <Label>{field.label}</Label>
@@ -467,7 +467,7 @@ export const ProductModal = memo(function ProductModal({
           </div>
         );
 
-      case "checkbox":
+      case 'checkbox':
         return (
           <div key={field.name} className="flex items-center space-y-2">
             <input
@@ -495,16 +495,16 @@ export const ProductModal = memo(function ProductModal({
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === "create"
-                ? "Add Product"
-                : mode === "edit"
-                ? "Edit Product"
-                : "View Product"}
+              {mode === 'create'
+                ? 'Add Product'
+                : mode === 'edit'
+                ? 'Edit Product'
+                : 'View Product'}
             </DialogTitle>
             <DialogDescription>
-              {mode === "create"
-                ? "Fill in the details to create a new product."
-                : "Update product information."}
+              {mode === 'create'
+                ? 'Fill in the details to create a new product.'
+                : 'Update product information.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -516,7 +516,7 @@ export const ProductModal = memo(function ProductModal({
                 <Label>Name *</Label>
                 <Input
                   value={formData.productName}
-                  onChange={(e) => handleChange("productName", e.target.value)}
+                  onChange={(e) => handleChange('productName', e.target.value)}
                   required
                   disabled={isReadOnly}
                 />
@@ -534,7 +534,7 @@ export const ProductModal = memo(function ProductModal({
                         className="h-20 w-20 object-cover rounded-lg border cursor-pointer"
                         onClick={() =>
                           !isReadOnly &&
-                          document.getElementById("image-upload").click()
+                          document.getElementById('image-upload').click()
                         }
                       />
                       {!isReadOnly && (
@@ -562,7 +562,7 @@ export const ProductModal = memo(function ProductModal({
                         className="h-20 w-20 object-cover rounded-lg border cursor-pointer"
                         onClick={() =>
                           !isReadOnly &&
-                          document.getElementById("image-upload").click()
+                          document.getElementById('image-upload').click()
                         }
                       />
                       {!isReadOnly && (
@@ -581,7 +581,7 @@ export const ProductModal = memo(function ProductModal({
                     <div
                       className="h-20 w-20 bg-gray-100 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer"
                       onClick={() =>
-                        document.getElementById("image-upload").click()
+                        document.getElementById('image-upload').click()
                       }
                     >
                       <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -607,7 +607,7 @@ export const ProductModal = memo(function ProductModal({
 
               {/* ---- Category (if enabled) ---- */}
               {hasCategories &&
-                industryFields.some((f) => f.type === "select-category") && (
+                industryFields.some((f) => f.type === 'select-category') && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>Category *</Label>
@@ -624,7 +624,7 @@ export const ProductModal = memo(function ProductModal({
                     </div>
                     <Select
                       value={formData.category}
-                      onValueChange={(v) => handleChange("category", v)}
+                      onValueChange={(v) => handleChange('category', v)}
                       disabled={isReadOnly}
                       required
                     >
@@ -648,7 +648,7 @@ export const ProductModal = memo(function ProductModal({
                   <Label>Sub Category</Label>
                   <Select
                     value={formData.subCategoryName}
-                    onValueChange={(v) => handleChange("subCategoryName", v)}
+                    onValueChange={(v) => handleChange('subCategoryName', v)}
                     disabled={isReadOnly}
                   >
                     <SelectTrigger>
@@ -667,7 +667,7 @@ export const ProductModal = memo(function ProductModal({
 
               {/* ---- Vendor (if enabled) ---- */}
               {hasVendors &&
-                industryFields.some((f) => f.type === "select-vendor") && (
+                industryFields.some((f) => f.type === 'select-vendor') && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>Vendor</Label>
@@ -684,7 +684,7 @@ export const ProductModal = memo(function ProductModal({
                     </div>
                     <Select
                       value={formData.vendor}
-                      onValueChange={(v) => handleChange("vendor", v)}
+                      onValueChange={(v) => handleChange('vendor', v)}
                       disabled={isReadOnly}
                     >
                       <SelectTrigger>
@@ -702,14 +702,15 @@ export const ProductModal = memo(function ProductModal({
                 )}
 
               {/* ---- SKU (if defined) ---- */}
-              {industryFields.some((f) => f.name === "SKU") && renderField(industryFields.find((f) => f.name === "SKU"))}
+              {industryFields.some((f) => f.name === 'SKU') &&
+                renderField(industryFields.find((f) => f.name === 'SKU'))}
 
               {/* ---- Dynamic Industry Fields ---- */}
               {dynamicFields.map(renderField)}
             </div>
 
             {/* ==================== FULL-WIDTH INGREDIENTS ==================== */}
-            {industryFields.some((f) => f.type === "ingredients-array") && (
+            {industryFields.some((f) => f.type === 'ingredients-array') && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label>Ingredients</Label>
@@ -730,7 +731,7 @@ export const ProductModal = memo(function ProductModal({
                     <Select
                       value={ing.ingredientId}
                       onValueChange={(v) =>
-                        updateIngredient(idx, "ingredientId", v)
+                        updateIngredient(idx, 'ingredientId', v)
                       }
                       disabled={isReadOnly}
                     >
@@ -750,7 +751,7 @@ export const ProductModal = memo(function ProductModal({
                       type="text"
                       value={ing.quantity}
                       onChange={(e) =>
-                        updateIngredient(idx, "quantity", e.target.value)
+                        updateIngredient(idx, 'quantity', e.target.value)
                       }
                       placeholder="Qty"
                       disabled={isReadOnly}
@@ -759,7 +760,7 @@ export const ProductModal = memo(function ProductModal({
 
                     <Input
                       type="text"
-                      value={ing.unit || ""}
+                      value={ing.unit || ''}
                       readOnly
                       disabled
                       className="w-28 bg-muted text-muted-foreground"
@@ -803,7 +804,7 @@ export const ProductModal = memo(function ProductModal({
                   placeholder="Add tag"
                   disabled={isReadOnly}
                   onKeyDown={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addTag())
+                    e.key === 'Enter' && (e.preventDefault(), addTag())
                   }
                 />
                 <Button
@@ -834,7 +835,7 @@ export const ProductModal = memo(function ProductModal({
               <Label>Description *</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
+                onChange={(e) => handleChange('description', e.target.value)}
                 // required
                 disabled={isReadOnly}
                 className="min-h-32"
@@ -844,11 +845,11 @@ export const ProductModal = memo(function ProductModal({
             {/* ==================== FOOTER ==================== */}
             <DialogFooter className="gap-2">
               <Button type="button" variant="secondary" onClick={onClose}>
-                {isReadOnly ? "Close" : "Cancel"}
+                {isReadOnly ? 'Close' : 'Cancel'}
               </Button>
               {!isReadOnly && (
                 <Button type="submit">
-                  {mode === "create" ? "Create Product" : "Save Changes"}
+                  {mode === 'create' ? 'Create Product' : 'Save Changes'}
                 </Button>
               )}
             </DialogFooter>
@@ -889,7 +890,7 @@ export const ProductModal = memo(function ProductModal({
             });
             setIsIngredientModalOpen(false);
           } catch (err) {
-            console.error("Failed to create ingredient:", err);
+            console.error('Failed to create ingredient:', err);
           }
         }}
       />

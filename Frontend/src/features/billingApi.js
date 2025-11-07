@@ -1,33 +1,33 @@
 // src/features/billingApi.js
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3455"
-).replace(/\/$/, "");
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3455'
+).replace(/\/$/, '');
 
 export const billsApi = createApi({
-  reducerPath: "billsApi",
+  reducerPath: 'billsApi',
   baseQuery: fetchBaseQuery({
     baseUrl: `${API_URL}/api/billing`,
-    credentials: "include",
+    credentials: 'include',
     prepareHeaders: (headers, { getState }) => {
       const token =
         getState()?.auth?.token ||
-        (typeof window !== "undefined" &&
-          sessionStorage.getItem("authToken")) ||
+        (typeof window !== 'undefined' &&
+          sessionStorage.getItem('authToken')) ||
         null;
 
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      headers.set("Content-Type", "application/json");
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
-  tagTypes: ["Bills"],
+  tagTypes: ['Bills'],
   endpoints: (builder) => ({
     // GET /api/billing/get-all-bills
     getBills: builder.query({
       query: ({ page = 1, limit = 10 } = {}) => ({
-        url: "/get-all-bills",
+        url: '/get-all-bills',
         params: { page, limit },
       }),
       transformResponse: (res) => ({
@@ -39,38 +39,46 @@ export const billsApi = createApi({
           ? [
               ...result.data
                 .filter(Boolean)
-                .map((b) => ({ type: "Bills", id: b._id || b.id })),
-              { type: "Bills", id: "LIST" },
+                .map((b) => ({ type: 'Bills', id: b._id || b.id })),
+              { type: 'Bills', id: 'LIST' },
             ]
-          : [{ type: "Bills", id: "LIST" }],
+          : [{ type: 'Bills', id: 'LIST' }],
     }),
 
     // GET /api/billing/get-bill/:idOrNumber
     getBillById: builder.query({
       query: (id) => `/get-bill/${id}`,
-      providesTags: (_res, _err, id) => [{ type: "Bills", id }],
+      providesTags: (_res, _err, id) => [{ type: 'Bills', id }],
     }),
 
     // POST /api/billing/create-bill
     createBill: builder.mutation({
       query: (body) => ({
-        url: "/create-bill",
-        method: "POST",
+        url: '/create-bill',
+        method: 'POST',
         body,
       }),
-      invalidatesTags: [{ type: "Bills", id: "LIST" }],
+
+      invalidatesTags: [{ type: 'Bills', id: 'LIST' }],
     }),
 
     // PATCH /api/billing/update-bills-status/:id
+   
+
     updateBillStatus: builder.mutation({
-      query: ({ id, ...body }) => ({
-        url: `/update-bills-status/${id}`,
-        method: "PATCH",
-        body,
-      }),
-      invalidatesTags: (_res, _err, { id }) => [
-        { type: "Bills", id },
-        { type: "Bills", id: "LIST" },
+      query: ({ billId, notes = '', refundItems = [] }) => {
+   
+        console.log('billId:', billId, 'refundItems:', refundItems);
+
+        return {
+          url: `/update-bills-status/${encodeURIComponent(String(billId))}`,
+          method: 'PATCH',
+          body: { notes, refundItems },
+        };
+      },
+      invalidatesTags: (_res, _err, { billId }) => [
+        { type: 'Bills', id: billId },
+        { type: 'Bills', id: 'LIST' },
       ],
     }),
 
@@ -78,14 +86,13 @@ export const billsApi = createApi({
     softDeleteBill: builder.mutation({
       query: (id) => ({
         url: `/delete-bill/${id}`,
-        method: "DELETE",
+        method: 'DELETE',
       }),
       invalidatesTags: (_res, _err, id) => [
-        { type: "Bills", id },
-        { type: "Bills", id: "LIST" },
+        { type: 'Bills', id },
+        { type: 'Bills', id: 'LIST' },
       ],
     }),
-
   }),
 });
 

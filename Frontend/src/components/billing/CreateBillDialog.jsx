@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -31,35 +31,41 @@ import {
   Printer,
   CreditCard,
   Loader,
-  CheckCircle2,
+  Plus,
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useClickOutside } from '@/utils/useClickOutside';
 import { useDebounce } from '@/utils/useDebounce';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
-import { useGetAllProductsQuery } from '@/features/productApi';
-import { ThermalPrintSlip } from './ThermalPrintSlip';
+import { useGetOrdersQuery } from '@/features/orderApi';
+import CreateNewOrderInBill from './createNewOrderInBill';
 
 CreateBillDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onOpenChange: PropTypes.func.isRequired,
   creating: PropTypes.bool.isRequired,
+
+  // we’ll reuse these for ORDER search
   searchRef: PropTypes.shape({ current: PropTypes.any }),
   searchProduct: PropTypes.string.isRequired,
   setSearchProduct: PropTypes.func.isRequired,
   showSearchResults: PropTypes.bool.isRequired,
   setShowSearchResults: PropTypes.func.isRequired,
+
   addItemToBill: PropTypes.func.isRequired,
   items: PropTypes.arrayOf(PropTypes.object).isRequired,
   updateQty: PropTypes.func.isRequired,
   removeItem: PropTypes.func.isRequired,
+
   buyer: PropTypes.shape({
     name: PropTypes.string,
     email: PropTypes.string,
     phone: PropTypes.string,
   }).isRequired,
   setBuyer: PropTypes.func.isRequired,
-  taxPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+
+  taxPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
+    .isRequired,
   setTaxPercent: PropTypes.func.isRequired,
   notes: PropTypes.string.isRequired,
   setNotes: PropTypes.func.isRequired,
@@ -112,53 +118,98 @@ export function CreateBillDialog({
   companyId,
   taxRates,
   companyLoading,
-  currencySymbol = '€',
+  currencySymbol,
 }) {
-  const [showAllProducts, setShowAllProducts] = useState(false);
-  const debouncedSearchProduct = useDebounce(searchProduct, 300);
-  const { data: products = { data: [], pagination: { page: 1, totalPages: 1, total: 0 } }, isLoading: productsLoading } = useGetAllProductsQuery({ page: 1, limit: 100 });
+  const [buyerTouched, setBuyerTouched] = useState(false);
+  const [orderId, setOrderId] = useState([]);
+
+  const {
+    data: ordersResp,
+    isLoading: ordersLoading,
+    isFetching: isValidatingOrders,
+    refetch,
+  } = useGetOrdersQuery();
+
+  // normalize orders array
+  const allOrders = useMemo(() => {
+    if (Array.isArray(ordersResp?.data)) return ordersResp.data;
+    if (Array.isArray(ordersResp)) return ordersResp;
+    return [];
+  }, [ordersResp]);
+
+  const extractBuyerFromOrder = (allOrders) => {
+    const name =
+      allOrders?.customerName ||
+      allOrders?.buyer?.name ||
+      allOrders?.user?.name ||
+      '';
+    const phone =
+      allOrders?.customerPhone ||
+      allOrders?.buyer?.phone ||
+      allOrders?.user?.phone ||
+      '';
+    return { name, phone };
+  };
+
+  //--------------------------------------------
+
+  const debouncedSearch = useDebounce(searchProduct, 300);
+
+  // ✅ Only show UNPAID orders that are NOT already added
+  const filteredOrders = useMemo(() => {
+    const q = (debouncedSearch || '').toLowerCase().trim();
+
+    const base = allOrders.filter((o) => {
+      const status = String(o?.paymentStatus || '').toLowerCase();
+      const id = String(o?._id || '');
+      return (
+        status == 'unpaid' &&
+        (!orderId || orderId === id) && // allow only the picked one
+        (o?.items?.length ?? 0) > 0
+      );
+    });
+
+    if (!q) return base;
+
+    return base.filter((o) => {
+      const orderNo = String(o.orderNo || o.orderNumber || '').toLowerCase();
+      const customer = String(o.customerName || '').toLowerCase();
+      return orderNo.includes(q) || customer.includes(q);
+    });
+  }, [allOrders, debouncedSearch, orderId]);
+
+  // ✅ When items change, drop any orderId that no longer exist in items
+  useEffect(() => {
+    // find any orderId present in items
+    const first =
+      (items ?? []).map((it) => String(it.orderId || '')).find(Boolean) || '';
+    setOrderId((prev) => (prev && first && prev !== first ? prev : first));
+  }, [items]);
+
   useClickOutside(searchRef, () => setShowSearchResults(false));
 
-  // Update tax rate based on payment method
+  // tax rate by payment method
   useEffect(() => {
-    if (taxRates) {
-      if (paymentMethod === PAYMENT_METHODS.CASH) {
-        setTaxPercent(taxRates.taxRateCash);
-      } else if (
-        paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
-        paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
-      ) {
-        setTaxPercent(taxRates.taxRateCard);
-      } else {
-        setTaxPercent(0);
-      }
+    if (!taxRates) {
+      setTaxPercent(0);
+      return;
     }
-  }, [paymentMethod, taxRates, setTaxPercent]);
-
-  const filteredProducts = useMemo(() => {
-    if (!debouncedSearchProduct || showAllProducts) {
-      return products.data;
-    }
-    const query = debouncedSearchProduct.toLowerCase();
-    return products.data.filter(
-      (p) =>
-        p.productName.toLowerCase().includes(query) ||
-        p.SKU.toLowerCase().includes(query) ||
-        p.categoryName.toLowerCase().includes(query) ||
-        (p.subCategory && p.subCategory.toLowerCase().includes(query))
-    );
-  }, [debouncedSearchProduct, products.data, showAllProducts]);
-
-  const isTaxRateSet = useMemo(() => {
-    return taxRates?.taxRateCash > 0 || taxRates?.taxRateCard > 0;
-  }, [taxRates]);
-
-  const buyerDetailsRequired = useMemo(() => {
-    return (
+    if (paymentMethod === PAYMENT_METHODS.CASH)
+      setTaxPercent(taxRates.taxRateCash ?? 0);
+    else if (
       paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
       paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
-    );
-  }, [paymentMethod]);
+    )
+      setTaxPercent(taxRates.taxRateCard ?? 0);
+    else setTaxPercent(0);
+  }, [paymentMethod, taxRates, setTaxPercent]);
+
+  const buyerDetailsRequired = useMemo(
+    () =>
+      paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
+      paymentMethod === PAYMENT_METHODS.BANK_TRANSFER,
+    [paymentMethod]
+  );
 
   const isBuyerDetailsValid = useMemo(() => {
     if (!buyerDetailsRequired) return true;
@@ -178,15 +229,17 @@ export function CreateBillDialog({
       createdAt: new Date().toISOString(),
       buyer,
       companyId,
+      orderId, // ✅ single order id for backend
       items: items.map((it) => ({
         productId: it.productId,
-        sku: it.sku,
+        orderItemId: it.orderItemId || undefined,
         itemName: it.itemName,
         categoryName: it.categoryName,
         subCategory: it.subCategory,
         quantity: it.qty,
         price: it.price,
         total: it.lineTotal,
+        orderId: it.orderId || undefined,
       })),
       subtotal,
       taxPercent: Number(taxPercent || 0),
@@ -200,6 +253,7 @@ export function CreateBillDialog({
     [
       buyer,
       companyId,
+      orderId,
       items,
       subtotal,
       taxPercent,
@@ -211,21 +265,83 @@ export function CreateBillDialog({
     ]
   );
 
-  const handleSave = () => {
-    if (!items.length) {
-      alert('Please add at least one item.');
+  // inject an order’s items into the bill
+
+  const addOrderToBill = (order) => {
+    if (!order?.items?.length) return;
+
+    if (orderId && orderId !== id) {
+      // Optional: show a toast instead
+      alert('You can only add items from one order per bill.');
       return;
     }
-    onSave?.(draftBill);
+    // ⬇️ NEW: auto-fill buyer if user hasn't edited yet
+    if (!buyerTouched) {
+      const inferred = extractBuyerFromOrder(order);
+      // only set if we actually have something useful
+      if (
+        (inferred.name && !buyer?.name) ||
+        (inferred.phone && !buyer?.phone)
+      ) {
+        setBuyer({
+          name: buyer?.name || inferred.name || '',
+          phone: buyer?.phone || inferred.phone || '',
+        });
+      }
+    }
+
+    const id = String(order._id || '');
+    if (!id || orderId.includes(id)) return; // block duplicates
+
+    const orderNo = order.orderNo || order.orderNumber || '';
+
+    const batch = order.items.map((it) => {
+      const qty = Number(it.qty ?? it.quantity ?? 1);
+      const price = Number(it.price ?? 0);
+      const productId =
+        it.productId ||
+        it.product?._id ||
+        it.product ||
+        it.pid ||
+        it.dynamicAttributes?.productId ||
+        '';
+
+      return {
+        productId,
+        orderItemId: String(it._id || it.id || ''),
+        sku: orderNo,
+        itemName: it.name || it.itemName || 'Item',
+        categoryName: it.categoryName || '',
+        subCategory: it.subCategory || '',
+        qty,
+        price,
+        lineTotal: qty * price,
+        orderId: String(order._id || ''),
+        orderNo,
+      };
+    });
+
+    addItemToBill(batch); // one state update
+    setOrderId((p) => [...p, id]);
+    setShowSearchResults(false);
+    setSearchProduct('');
+  };
+
+  const handleSave = async () => {
+    try {
+      await onSave?.(draftBill);
+      await refetch(); // ✅ refresh orders after successful save
+      onReset?.(); // optional: clear the form
+      onOpenChange?.(false); // optional: close dialog
+    } catch (e) {
+      // keep your toast/log if you use one
+      console.error('Save bill failed:', e);
+    }
   };
 
   const handleSaveAndPrint = async () => {
-    if (!items.length) {
-      alert('Please add at least one item.');
-      return;
-    }
     await onSave?.(draftBill);
-    // Trigger thermal print
+    await refetch();
     const printWindow = window.open('', '_blank');
     const formattedContent = [
       '==============================',
@@ -235,13 +351,18 @@ export function CreateBillDialog({
       'Items:',
       ...draftBill.items.flatMap((item) => [
         `${item.quantity}x ${item.itemName}`,
-        `  ${item.categoryName}${item.subCategory ? ` - ${item.subCategory}` : ''}`,
-        `  SKU: ${item.sku}`,
-        `  ${currencySymbol}${Number(item.price || 0).toFixed(2)} x ${item.quantity} = ${currencySymbol}${Number(item.total || 0).toFixed(2)}`,
+
+        `  ${currencySymbol}${Number(item.price || 0).toFixed(2)} x ${
+          item.quantity
+        } = ${currencySymbol}${Number(item.total || 0).toFixed(2)}`,
       ]),
       '==============================',
-      `Subtotal: ${currencySymbol}${Number(draftBill.subtotal || 0).toFixed(2)}`,
-      `Tax (${draftBill.taxPercent}%): ${currencySymbol}${Number(draftBill.taxAmount || 0).toFixed(2)}`,
+      `Subtotal: ${currencySymbol}${Number(draftBill.subtotal || 0).toFixed(
+        2
+      )}`,
+      `Tax (${draftBill.taxPercent}%): ${currencySymbol}${Number(
+        draftBill.taxAmount || 0
+      ).toFixed(2)}`,
       `Total: ${currencySymbol}${Number(draftBill.total || 0).toFixed(2)}`,
       '==============================',
       'Buyer:',
@@ -262,11 +383,6 @@ ${formattedContent}
     printWindow.print();
   };
 
-  // Check if a product is already in the bill
-  const isProductSelected = (productId) => {
-    return items.some((item) => item.productId === productId);
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -274,27 +390,77 @@ ${formattedContent}
         aria-describedby="create-bill-description"
       >
         <DialogHeader>
-          <DialogTitle>Create New Bill</DialogTitle>
+          <DialogTitle>Create New Bill (from Orders)</DialogTitle>
           <DialogDescription id="create-bill-description">
-            Search products, add items, and enter buyer details (optional).
+            Search existing orders and add their items to this bill. Then enter
+            buyer and payment details.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="bg-card border-border lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Items</CardTitle>
-                <CardDescription>
-                  Search and add items from products.
-                </CardDescription>
+              <CardHeader className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Items</CardTitle>
+                  <CardDescription>
+                    Search orders and import their items.
+                  </CardDescription>
+                </div>
+                <CreateNewOrderInBill
+                  onCreated={async (created) => {
+                    if (created?.items?.length) {
+                      if (!buyerTouched) {
+                        const inferred = extractBuyerFromOrder(created);
+                        if (inferred.name || inferred.phone) {
+                          setBuyer({
+                            name: buyer?.name || inferred.name || '',
+                            email: buyer?.email || '',
+                            phone: buyer?.phone || inferred.phone || '',
+                          });
+                        }
+                      }
+                      addOrderToBill(created);
+                      return;
+                    }
+                    // Otherwise refetch list and find it by id
+                    try {
+                      const refreshed = await refetch().unwrap();
+                      const list = Array.isArray(refreshed?.data)
+                        ? refreshed.data
+                        : Array.isArray(refreshed)
+                        ? refreshed
+                        : [];
+                      const id = String(created?._id || created?.id || '');
+                      const full = list.find((o) => String(o?._id) === id);
+
+                      if (full) {
+                        if (!buyerTouched) {
+                          const inferred = extractBuyerFromOrder(full);
+                          if (inferred.name || inferred.phone) {
+                            setBuyer({
+                              name: buyer?.name || inferred.name || '',
+                              email: buyer?.email || '',
+                              phone: buyer?.phone || inferred.phone || '',
+                            });
+                          }
+                        }
+                        addOrderToBill(full);
+                      }
+                    } catch (e) {
+                      console.error('Refetch after create failed', e);
+                    }
+                  }}
+                />
               </CardHeader>
+
               <CardContent>
+                {/* Orders search */}
                 <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     ref={searchRef}
-                    placeholder="Search products by name, SKU, or category..."
+                    placeholder="Search orders by Order No. or Customer…"
                     value={searchProduct}
                     onChange={(e) => {
                       setSearchProduct(e.target.value);
@@ -303,61 +469,63 @@ ${formattedContent}
                     className="pl-10"
                     onFocus={() => setShowSearchResults(true)}
                   />
-
                   {showSearchResults && (
                     <div className="absolute z-10 mt-2 w-full bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {productsLoading ? (
-                        <div className="p-4 text-center text-muted-foreground">Loading...</div>
-                      ) : filteredProducts.length === 0 ? (
-                        <div className="p-4 text-center text-muted-foreground">No products found</div>
+                      {ordersLoading || isValidatingOrders ? (
+                        <div className="p-4 text-center text-muted-foreground">
+                          Loading orders…
+                        </div>
+                      ) : filteredOrders.length === 0 ? (
+                        <div className="p-4 text-center text-muted-foreground">
+                          No matching orders
+                        </div>
                       ) : (
-                        filteredProducts.map((product) => (
+                        filteredOrders.map((order) => (
                           <div
-                            key={product._id}
-                            className={`px-4 py-2 border-b last:border-b-0 flex justify-between items-center
-                              ${product.quantity === 0 ? 'text-red-500 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'}`}
-                            onMouseDown={() => {
-                              if (product.quantity === 0) return;
-                              addItemToBill({
-                                productId: product._id,
-                                sku: product.SKU,
-                                itemName: product.productName,
-                                categoryName: product.categoryName,
-                                subCategory: product.subCategory,
-                                price: product.sellingPrice,
-                                availableQty: product.quantity,
-                              });
-                              setShowSearchResults(false);
-                              setSearchProduct('');
-                            }}
+                            key={order._id}
+                            className="px-4 py-2 border-b last:border-b-0 hover:bg-muted cursor-pointer"
+                            onMouseDown={() => addOrderToBill(order)}
                           >
-                            <div>
-                              <p className="text-sm font-medium">{product.productName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {product.categoryName}
-                                {product.subCategory ? ` - ${product.subCategory}` : ''} · SKU: {product.SKU} ·{' '}
-                                {currencySymbol}
-                                {Number(product.sellingPrice).toFixed(2)} · {product.quantity} in stock
-                              </p>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {order.orderNo || '(Order)'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {order.customerName
+                                    ? `Customer: ${order.customerName} · `
+                                    : ''}
+                                  Items: {order.items?.length || 0} · Total:{' '}
+                                  {currencySymbol}
+                                  {Number(order.subTotal || 0).toFixed(
+                                    2
+                                  )} ·{' '}
+                                  {String(
+                                    order.paymentStatus || 'unpaid'
+                                  ).toUpperCase()}
+                                </p>
+                              </div>
+                              <span className="text-[11px] rounded px-2 py-0.5 bg-muted text-muted-foreground shrink-0">
+                                {(order.orderStatus || 'pending').toUpperCase()}
+                              </span>
                             </div>
-                            {isProductSelected(product._id) && (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            )}
                           </div>
                         ))
                       )}
                     </div>
                   )}
                 </div>
+
+                {/* Items table */}
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>SKU</TableHead>
+                      <TableHead>From</TableHead>
                       <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>Currency</TableHead>
                       <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-right">Line Total</TableHead>
+
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -370,31 +538,28 @@ ${formattedContent}
                       </TableRow>
                     ) : (
                       items.map((item, index) => (
-                        <TableRow key={index}>
+                        <TableRow key={`${item.productId || 'i'}-${index}`}>
                           <TableCell>{item.itemName}</TableCell>
-                          <TableCell>{item.categoryName}</TableCell>
-                          <TableCell>{item.sku}</TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={item.availableQty}
-                              value={item.qty}
-                              onChange={(e) =>
-                                updateQty(index, Number(e.target.value))
-                              }
-                              className="w-16 text-right"
-                              aria-label={`Quantity for ${item.itemName}`}
-                            />
+
+                          <TableCell>
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                              {item.orderId
+                                ? item.orderNo
+                                  ? `Order ${item.orderNo}`
+                                  : `Order ${String(item.orderId).slice(-6)}`
+                                : 'Manual'}
+                            </span>
                           </TableCell>
+
+                          <TableCell className="text-right">
+                            {Number(item.qty || 0)}
+                          </TableCell>
+                          <TableCell>{currencySymbol}</TableCell>
                           <TableCell className="text-right">
                             {currencySymbol}
                             {Number(item.price).toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right">
-                            {currencySymbol}
-                            {Number(item.lineTotal).toFixed(2)}
-                          </TableCell>
+
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
@@ -412,12 +577,17 @@ ${formattedContent}
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Bill details */}
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle>Bill Details</CardTitle>
-                <CardDescription>Enter buyer and payment details.</CardDescription>
+                <CardDescription>
+                  Enter buyer and payment details.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* ...unchanged details form... */}
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
@@ -432,19 +602,21 @@ ${formattedContent}
                     id="buyer-name"
                     placeholder="John Doe"
                     value={buyer.name || ''}
-                    onChange={(e) =>
-                      setBuyer({ ...buyer, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setBuyerTouched(true);
+                      setBuyer({ ...buyer, name: e.target.value });
+                    }}
                     required={buyerDetailsRequired}
                     aria-label="Buyer name"
                   />
                 </div>
+
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-email"
                   >
-                    Buyer Email{' '}
+                    Buyer Email
                   </label>
                   <Input
                     id="buyer-email"
@@ -453,29 +625,30 @@ ${formattedContent}
                     onChange={(e) =>
                       setBuyer({ ...buyer, email: e.target.value })
                     }
-                    required={buyerDetailsRequired}
                     type="email"
                     aria-label="Buyer email"
                   />
                 </div>
+
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
                     htmlFor="buyer-phone"
                   >
-                    Buyer Phone{' '}
+                    Buyer Phone
                   </label>
                   <Input
                     id="buyer-phone"
                     placeholder="+1234567890"
                     value={buyer.phone || ''}
-                    onChange={(e) =>
-                      setBuyer({ ...buyer, phone: e.target.value })
-                    }
-                    required={buyerDetailsRequired}
+                    onChange={(e) => {
+                      setBuyerTouched(true);
+                      setBuyer({ ...buyer, phone: e.target.value });
+                    }}
                     aria-label="Buyer phone"
                   />
                 </div>
+
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
@@ -507,6 +680,7 @@ ${formattedContent}
                     </option>
                   </select>
                 </div>
+
                 {buyerDetailsRequired && (
                   <div className="space-y-2">
                     <label
@@ -527,22 +701,16 @@ ${formattedContent}
                       }
                       value={paymentNumber || ''}
                       onChange={(e) => setPaymentNumber?.(e.target.value)}
-                      required={buyerDetailsRequired}
+                      required
                       aria-label={
                         paymentMethod === PAYMENT_METHODS.CREDIT_CARD
                           ? 'Card number'
                           : 'Bank account number'
                       }
                     />
-                    {!paymentNumber?.trim() && buyerDetailsRequired && (
-                      <p className="text-xs text-red-500">
-                        {paymentMethod === PAYMENT_METHODS.CREDIT_CARD
-                          ? 'Card number is required'
-                          : 'Bank account number is required'}
-                      </p>
-                    )}
                   </div>
                 )}
+
                 <div className="space-y-2">
                   <label
                     className="text-sm font-medium text-foreground"
@@ -589,31 +757,27 @@ ${formattedContent}
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t">
-            <Button
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-              aria-label="Cancel bill creation"
-            >
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
+
             <Button
               variant="secondary"
               onClick={() => {
                 if (
                   window.confirm('Are you sure you want to reset all fields?')
-                ) {
+                )
                   onReset();
-                }
+                setOrderId([]);
               }}
-              aria-label="Reset form"
             >
               Reset Form
             </Button>
+
             <Button
               variant="header"
               onClick={handleSaveAndPrint}
               disabled={creating || items.length === 0 || !isBuyerDetailsValid}
-              aria-label="Save and print receipt"
             >
               {creating ? (
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
@@ -622,22 +786,22 @@ ${formattedContent}
               )}
               Save & Print Receipt
             </Button>
+
             <div className="relative">
               <Button
                 onClick={handleSave}
-                disabled={creating || items.length === 0 || !isBuyerDetailsValid}
-                aria-label="Save bill"
+                disabled={creating || items.length === 0}
               >
                 {creating && <Loader className="w-4 h-4 mr-2 animate-spin" />}
                 <CreditCard className="w-4 h-4 mr-2" />
                 Save Bill
               </Button>
-              {items.length === 0 && (
-                <p className="text-sm text-red-500 mt-2 absolute">Please add at least one item.</p>
-              )}
-              {!isBuyerDetailsValid && items.length > 0 && (
-                <p className="text-sm text-red-500 mt-2 absolute">Please fill in all required buyer details.</p>
-              )}
+
+              {/* {!isBuyerDetailsValid && items.length > 0 && (
+                <p className="text-sm text-red-500 mt-2 absolute">
+                  Please fill in all required buyer details.
+                </p>
+              )} */}
             </div>
           </div>
         </div>
