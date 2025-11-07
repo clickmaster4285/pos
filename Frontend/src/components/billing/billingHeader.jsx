@@ -129,7 +129,8 @@ export function StatsCards({ summary, currencySymbol = '€' }) {
                 Today's Revenue
               </p>
               <p className="text-2xl font-bold text-foreground">
-                {currencySymbol}{Number(summary.todayRevenue || 0).toFixed(2)}
+                {currencySymbol}
+                {Number(summary.todayRevenue || 0).toFixed(2)}
               </p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
@@ -159,7 +160,7 @@ export function FilterBar({
             placeholder="Search bills by number, buyer, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-background/50 border border-border/50 focus:ring-2 focus:ring-primary/50 transition-all duration-300"
+            className="pl-10 bg-card border border-border/50 focus:ring-2 focus:ring-primary/50 transition-all duration-300"
           />
         </div>
 

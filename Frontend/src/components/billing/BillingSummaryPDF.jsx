@@ -4,14 +4,26 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Download, Calendar } from 'lucide-react';
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  pdf,
+} from '@react-pdf/renderer';
 import { useGetBillsQuery } from '@/features/billingApi';
 
 const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 8 },
   header: { fontSize: 18, marginBottom: 20, textAlign: 'center' },
   section: { marginBottom: 10 },
-  table: { display: 'table', width: 'auto', borderStyle: 'solid', borderWidth: 1 },
+  table: {
+    display: 'table',
+    width: 'auto',
+    borderStyle: 'solid',
+    borderWidth: 1,
+  },
   tableRow: { flexDirection: 'row' },
   tableCol: { borderStyle: 'solid', borderWidth: 1, padding: 5 },
   tableHeader: { fontWeight: 'bold', backgroundColor: '#f0f0f0' },
@@ -26,7 +38,10 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
   const dropdownRef = useRef(null);
 
   // ✅ Correct way to fetch using RTK Query
-  const { data, isLoading, isError } = useGetBillsQuery({ page: 1, limit: 1000 });
+  const { data, isLoading, isError } = useGetBillsQuery({
+    page: 1,
+    limit: 1000,
+  });
   const bills = data?.data || [];
 
   // ✅ Close dropdown when clicking outside
@@ -87,7 +102,9 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
         <Document>
           <Page size="A4" style={styles.page}>
             <Text style={styles.header}>{title}</Text>
-            <Text style={styles.text}>Generated on: {new Date().toLocaleString()}</Text>
+            <Text style={styles.text}>
+              Generated on: {new Date().toLocaleString()}
+            </Text>
 
             <View style={styles.table}>
               {/* Table Header */}
@@ -116,7 +133,7 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
               {billsToExport.map((bill, index) => (
                 <View key={bill._id} style={styles.tableRow}>
                   <View style={[styles.tableCol, { width: '5%' }]}>
-                    <Text>{index+1}</Text>
+                    <Text>{index + 1}</Text>
                   </View>
                   <View style={[styles.tableCol, { width: '35%' }]}>
                     <Text>{bill.billNumber}</Text>
@@ -149,7 +166,9 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
 
             {/* Summary */}
             <View style={styles.section}>
-              <Text style={styles.text}>Total Bills: {billsToExport.length}</Text>
+              <Text style={styles.text}>
+                Total Bills: {billsToExport.length}
+              </Text>
               <Text style={styles.text}>
                 Total Revenue: {currencySymbol}
                 {billsToExport
@@ -166,7 +185,10 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `billing_summary_${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      link.download = `billing_summary_${title.replace(
+        /[^a-zA-Z0-9]/g,
+        '_'
+      )}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
       console.log('PDF generated successfully:', title);
@@ -181,7 +203,6 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
       <Button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         disabled={isLoading || bills.length === 0}
-        className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
         <Download className="w-4 h-4 mr-2" />
         {isLoading ? 'Fetching Bills...' : 'Download Summary PDF'}

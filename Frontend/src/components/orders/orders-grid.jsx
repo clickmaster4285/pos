@@ -214,7 +214,7 @@ function ItemsBlock({ items, onCardClick }) {
   const count = list.length;
 
   const Item = ({ it }) => (
-    <div className="min-w-0 mb-3 p-2 rounded-lg border bg-secondary-foreground/40">
+    <div className="min-w-0 mb-3 p-2 rounded-lg border ">
       <div className="flex items-center gap-2">
         <Clock className="h-3.5 w-3.5 " />
         <div className="min-w-0 flex-1">
@@ -543,7 +543,7 @@ export function OrdersGrid({
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className="h-12 w-12 rounded-xl bg-primary text-white grid place-items-center shrink-0 shadow-sm"
+                    className="h-12 w-12 rounded-xl bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-white grid place-items-center shrink-0 shadow-sm"
                     onClick={() => onCardClick?.(o)}
                   >
                     <Package className="h-6 w-6" />
@@ -603,9 +603,7 @@ export function OrdersGrid({
                             disabled={!!loadingIds?.has(getId(o) || o._id)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            {isAdmin
-                              ? 'Cancel Items'
-                              : 'Cancel Pending Items'}
+                            {isAdmin ? 'Cancel Items' : 'Cancel Pending Items'}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />

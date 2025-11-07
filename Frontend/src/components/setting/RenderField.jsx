@@ -224,7 +224,7 @@ export default function RenderField({
               {/* Custom button */}
               <label
                 htmlFor={id}
-                className="inline-flex items-center gap-2 rounded-full bg-secondary-foreground px-4 py-2 text-sm font-semibold text-primary hover:bg-secondary-foreground/90 transition-colors duration-200 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary/90 to-secondary-foreground/90 px-4 py-2 text-sm font-semibold text-card hover:bg-secondary-foreground/90 transition-colors duration-200 cursor-pointer"
               >
                 <Upload className="h-4 w-4" />
                 Upload File

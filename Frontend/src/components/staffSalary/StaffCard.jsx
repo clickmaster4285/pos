@@ -165,7 +165,7 @@ export function StaffCard({
           {statusLabels[staff.status]}
         </Badge>
         <Button
-          onClick={() => onPaymentClick(staff)}
+          onClick={() => onPaymentClick(staff.id)}
           size="sm"
           variant="header"
           aria-label={`Make payment for ${staff.name}`}
