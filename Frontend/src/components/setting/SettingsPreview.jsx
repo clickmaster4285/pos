@@ -14,7 +14,7 @@ import { Eye } from 'lucide-react';
 export default function SettingsPreview({ companySettings, invoiceSettings }) {
   
   return (
-    <Card className="bg-gradient-to-br from-background to-muted/30 border-input shadow-lg">
+    <Card className="bg-background border-input shadow-lg">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Eye className="h-5 w-5 text-primary" />
