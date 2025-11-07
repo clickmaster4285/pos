@@ -101,11 +101,9 @@ export function BillRow({
   deletePermission,
   currencySymbol = '€',
 }) {
+
   const refundedAmount = useMemo(() => getRefundedAmount(bill), [bill]);
-  const netTotal = useMemo(
-    () => Math.max(0, num(bill.total) - refundedAmount),
-    [bill, refundedAmount]
-  );
+
 
   const handleDownloadPDF = () => {
     try {
@@ -125,7 +123,15 @@ export function BillRow({
       doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 42);
 
       // Table
-      const tableColumn = ['Item', 'Category', 'Subcategory', 'SKU', 'Qty', 'Price', 'Total'];
+      const tableColumn = [
+        'Item',
+        'Category',
+        'Subcategory',
+        'SKU',
+        'Qty',
+        'Price',
+        'Total',
+      ];
       const tableRows = bill.items.map((item) => [
         item.itemName,
         item.categoryName,
@@ -156,18 +162,44 @@ export function BillRow({
       const finalY = doc.lastAutoTable.finalY || 50;
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
-      doc.text(`Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`, 14, finalY + 10);
-      doc.text(`Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`, 14, finalY + 20);
-      doc.text(`Total: ${currencySymbol}${num(bill.total).toFixed(2)}`, 14, finalY + 30);
-      doc.text(`Refunded: ${currencySymbol}${num(refundedAmount).toFixed(2)}`, 14, finalY + 40);
-      doc.text(`Net Total: ${currencySymbol}${num(netTotal).toFixed(2)}`, 14, finalY + 50);
+      doc.text(
+        `Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`,
+        14,
+        finalY + 10
+      );
+      doc.text(
+        `Tax (${bill.taxPercent}%): ${currencySymbol}${num(
+          bill.taxAmount
+        ).toFixed(2)}`,
+        14,
+        finalY + 20
+      );
+      doc.text(
+        `Total: ${currencySymbol}${num(bill.total).toFixed(2)}`,
+        14,
+        finalY + 30
+      );
+      doc.text(
+        `Refunded: ${currencySymbol}${num(refundedAmount).toFixed(2)}`,
+        14,
+        finalY + 40
+      );
+      doc.text(
+        `Net Total: ${currencySymbol}${num(bill.total).toFixed(2)}`,
+        14,
+        finalY + 50
+      );
 
       // Buyer Details
       doc.text('Buyer:', 14, finalY + 60);
       doc.text(`Name: ${bill.buyer?.name || '—'}`, 14, finalY + 70);
       doc.text(`Email: ${bill.buyer?.email || '—'}`, 14, finalY + 80);
       doc.text(`Phone: ${bill.buyer?.phone || '—'}`, 14, finalY + 90);
-      doc.text(`Payment: ${bill.paymentMethod.replace('_', ' ')}`, 14, finalY + 100);
+      doc.text(
+        `Payment: ${bill.paymentMethod.replace('_', ' ')}`,
+        14,
+        finalY + 100
+      );
       if (bill.paymentNumber) {
         doc.text(`Ref: ${bill.paymentNumber}`, 14, finalY + 110);
       }
@@ -190,13 +222,16 @@ export function BillRow({
       'Items:',
       ...bill.items.flatMap((item) => [
         `${item.quantity}x ${item.itemName}`,
-        `  ${item.categoryName}${item.subCategory ? ` - ${item.subCategory}` : ''}`,
-        `  SKU: ${item.sku}`,
-        `  ${currencySymbol}${num(item.price).toFixed(2)} x ${item.quantity} = ${currencySymbol}${num(item.total).toFixed(2)}`,
+
+        `  ${currencySymbol}${num(item.price).toFixed(2)} x ${
+          item.quantity
+        } = ${currencySymbol}${num(item.total).toFixed(2)}`,
       ]),
       '==============================',
       `Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`,
-      `Tax (${bill.taxPercent}%): ${currencySymbol}${num(bill.taxAmount).toFixed(2)}`,
+      `Tax (${bill.taxPercent}%): ${currencySymbol}${num(
+        bill.taxAmount
+      ).toFixed(2)}`,
       `Total: ${currencySymbol}${num(bill.total).toFixed(2)}`,
       '==============================',
       'Buyer:',
@@ -260,7 +295,8 @@ ${formattedContent}
           className="text-right font-semibold text-card-foreground"
           onClick={() => onView(bill)}
         >
-          {currencySymbol}{netTotal.toFixed(2)}
+          {currencySymbol}
+          {bill.total.toFixed(2)}
         </TableCell>
 
         <TableCell onClick={() => onView(bill)}>
@@ -369,7 +405,8 @@ ${formattedContent}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal:</span>
                     <span className="font-medium">
-                      {currencySymbol}{num(bill.subtotal).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.subtotal).toFixed(2)}
                     </span>
                   </div>
 
@@ -378,21 +415,24 @@ ${formattedContent}
                       Tax ({bill.taxPercent}%):
                     </span>
                     <span className="font-medium">
-                      {currencySymbol}{num(bill.taxAmount).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.taxAmount).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-medium">
-                      {currencySymbol}{num(bill.total).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.total).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Refunded:</span>
                     <span className="font-medium">
-                      {currencySymbol}{num(refundedAmount).toFixed(2)}
+                      {currencySymbol}
+                      {num(refundedAmount).toFixed(2)}
                     </span>
                   </div>
 
@@ -401,7 +441,8 @@ ${formattedContent}
                       Net Total:
                     </span>
                     <span className="font-bold text-lg">
-                      {currencySymbol}{num(netTotal).toFixed(2)}
+                      {currencySymbol}
+                      {num(bill.total).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -431,12 +472,15 @@ ${formattedContent}
                       <div>
                         <p className="font-medium text-sm">{item.itemName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {item.categoryName} {item.subCategory ? `· ${item.subCategory}` : ''} · {item.sku}
+                          {item.categoryName}{' '}
+                          {item.subCategory ? `· ${item.subCategory}` : ''} ·{' '}
+                          {item.sku}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-medium text-sm">
-                          {item.quantity} × {currencySymbol}{num(item.price).toFixed(2)}
+                          {item.quantity} × {currencySymbol}
+                          {num(item.price).toFixed(2)}
                         </p>
                       </div>
                     </div>

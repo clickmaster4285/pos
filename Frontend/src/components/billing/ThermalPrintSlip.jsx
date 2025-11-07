@@ -21,7 +21,7 @@ ThermalPrintSlip.propTypes = {
         itemName: PropTypes.string,
         categoryName: PropTypes.string,
         subCategory: PropTypes.string,
-        sku: PropTypes.string,
+      
         price: PropTypes.number,
         total: PropTypes.number,
       })
@@ -47,9 +47,7 @@ export function ThermalPrintSlip({ bill, currencySymbol = '€' }) {
     ];
     bill.items.forEach((item) => {
       lines.push(`${item.quantity}x ${item.itemName}`);
-      lines.push(`  ${item.categoryName}${item.subCategory ? ` - ${item.subCategory}` : ''}`);
-      lines.push(`  SKU: ${item.sku}`);
-      lines.push(`  ${currencySymbol}${Number(item.price || 0).toFixed(2)} x ${item.quantity} = ${currencySymbol}${Number(item.total || 0).toFixed(2)}`);
+      lines.push(`  ${currencySymbol}${Number(item.price || 0).toFixed(2)} `);
     });
     lines.push('==============================');
     lines.push(`Subtotal: ${currencySymbol}${Number(bill.subtotal || 0).toFixed(2)}`);

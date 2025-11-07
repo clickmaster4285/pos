@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const EmailChangeSchema = new mongoose.Schema(
   {
@@ -63,8 +63,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["superAdmin", "admin", "staff", "user"],
-    default: "user",
+    enum: ['superAdmin', 'admin', 'staff', 'user'],
+    default: 'user',
   },
   subRole: {
     type: String,
@@ -131,8 +131,8 @@ const userSchema = new mongoose.Schema({
   status: {
     isaccepted: {
       type: String,
-      enum: ["true", "false", "pending"],
-      default: "pending",
+      enum: ['true', 'false', 'pending'],
+      default: 'pending',
     },
     performedBy: {
       type: String,
@@ -204,7 +204,7 @@ const userSchema = new mongoose.Schema({
   addressBookId: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Address",
+      ref: 'Address',
     },
   ],
   security: { type: SecuritySchema, default: {} },
@@ -218,21 +218,21 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-userSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
+userSchema.pre('save', async function (next) {
+  if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   this.updatedAt = Date.now();
   next();
 });
 
-userSchema.pre("save", async function (next) {
+userSchema.pre('save', async function (next) {
   this.updatedAt = Date.now();
 
-  if (!this.isModified("password")) return next();
+  if (!this.isModified('password')) return next();
 
   // Prevent double-hash if already hashed
-  if (typeof this.password === "string" && this.password.startsWith("$2")) {
+  if (typeof this.password === 'string' && this.password.startsWith('$2')) {
     return next();
   }
 
@@ -241,4 +241,4 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-export default mongoose.model("User", userSchema);
+export default mongoose.model('User', userSchema);

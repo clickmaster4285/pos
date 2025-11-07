@@ -36,6 +36,9 @@ const StaffForm = ({
   staffPermissionKeys = null,
   billingPermissionKeys = null,
   salaryPermissionKeys = null,
+  orderPermissionKeys = null,
+  vendorPermissionKeys = null,
+  productPermissionKeys = null,
 }) => {
   // Fetch devices
   const { data: devicesData, isLoading: isDevicesLoading } =
@@ -104,10 +107,58 @@ const StaffForm = ({
     ];
   }, [salaryPermissionKeys]);
 
+  // ORDER group
+  const orderKeys = useMemo(() => {
+    if (Array.isArray(orderPermissionKeys) && orderPermissionKeys.length > 0) {
+      return orderPermissionKeys.filter((k) => permissionLabels[k] != null);
+    }
+    // Fallback inference
+    return permissionKeys.filter((k) => /(order|orders)/i.test(k));
+  }, [permissionKeys, orderPermissionKeys, permissionLabels]);
+
+  // VENDOR group
+  const vendorKeys = useMemo(() => {
+    if (
+      Array.isArray(vendorPermissionKeys) &&
+      vendorPermissionKeys.length > 0
+    ) {
+      return vendorPermissionKeys.filter((k) => permissionLabels[k] != null);
+    }
+    // Fallback inference
+    return permissionKeys.filter((k) => /vendor/i.test(k));
+  }, [permissionKeys, vendorPermissionKeys, permissionLabels]);
+
+  // PRODUCT group
+  const productKeys = useMemo(() => {
+    if (
+      Array.isArray(productPermissionKeys) &&
+      productPermissionKeys.length > 0
+    ) {
+      return productPermissionKeys.filter((k) => permissionLabels[k] != null);
+    }
+    // Fallback inference
+    return permissionKeys.filter((k) => /product/i.test(k));
+  }, [permissionKeys, productPermissionKeys, permissionLabels]);
+
   const otherKeys = useMemo(() => {
-    const exclude = new Set([...staffKeys, ...billingKeys, ...salaryKeys]);
+    const exclude = new Set([
+      ...staffKeys,
+      ...billingKeys,
+      ...salaryKeys,
+      ...orderKeys,
+      ...vendorKeys,
+      ...productKeys,
+    ]);
     return permissionKeys.filter((k) => !exclude.has(k));
-  }, [permissionKeys, staffKeys, billingKeys, salaryKeys]);
+  }, [
+    permissionKeys,
+    staffKeys,
+    billingKeys,
+    salaryKeys,
+    orderKeys,
+    vendorKeys,
+    productKeys,
+  ]);
 
   // ---------- Selection state ----------
   const allSelected = useMemo(() => {
@@ -133,10 +184,20 @@ const StaffForm = ({
     return salaryKeys.every((k) => !!staff.permissions[k]);
   }, [salaryKeys, staff?.permissions]);
 
-  const allOtherSelected = useMemo(() => {
-    if (!staff?.permissions || otherKeys.length === 0) return false;
-    return otherKeys.every((k) => !!staff.permissions[k]);
-  }, [otherKeys, staff?.permissions]);
+  const allOrderSelected = useMemo(() => {
+    if (!staff?.permissions || orderKeys.length === 0) return false;
+    return orderKeys.every((k) => !!staff.permissions[k]);
+  }, [orderKeys, staff?.permissions]);
+
+  const allVendorSelected = useMemo(() => {
+    if (!staff?.permissions || vendorKeys.length === 0) return false;
+    return vendorKeys.every((k) => !!staff.permissions[k]);
+  }, [vendorKeys, staff?.permissions]);
+
+  const allProductSelected = useMemo(() => {
+    if (!staff?.permissions || productKeys.length === 0) return false;
+    return productKeys.every((k) => !!staff.permissions[k]);
+  }, [productKeys, staff?.permissions]);
 
   // ---------- Focus helpers + Enter navigation ----------
   function focusById(id) {
@@ -244,6 +305,39 @@ const StaffForm = ({
     setStaff({ ...staff, permissions: next });
   }
 
+  function handleSelectAllOrder() {
+    const next = { ...(staff?.permissions || {}) };
+    orderKeys.forEach((k) => (next[k] = true));
+    setStaff({ ...staff, permissions: next });
+  }
+  function handleClearAllOrder() {
+    const next = { ...(staff?.permissions || {}) };
+    orderKeys.forEach((k) => (next[k] = false));
+    setStaff({ ...staff, permissions: next });
+  }
+
+  function handleSelectAllVendor() {
+    const next = { ...(staff?.permissions || {}) };
+    vendorKeys.forEach((k) => (next[k] = true));
+    setStaff({ ...staff, permissions: next });
+  }
+  function handleClearAllVendor() {
+    const next = { ...(staff?.permissions || {}) };
+    vendorKeys.forEach((k) => (next[k] = false));
+    setStaff({ ...staff, permissions: next });
+  }
+
+  function handleSelectAllProduct() {
+    const next = { ...(staff?.permissions || {}) };
+    productKeys.forEach((k) => (next[k] = true));
+    setStaff({ ...staff, permissions: next });
+  }
+  function handleClearAllProduct() {
+    const next = { ...(staff?.permissions || {}) };
+    productKeys.forEach((k) => (next[k] = false));
+    setStaff({ ...staff, permissions: next });
+  }
+
   // ---------- Custom role/department ----------
   function addCustomRole() {
     const text = customRoleText.trim();
@@ -294,8 +388,20 @@ const StaffForm = ({
     if (activePermTab === 'staff') return staffKeys;
     if (activePermTab === 'billing') return billingKeys;
     if (activePermTab === 'salary') return salaryKeys; // <-- wire salary tab
+    if (activePermTab === 'order') return orderKeys;
+    if (activePermTab === 'vendor') return vendorKeys;
+    if (activePermTab === 'product') return productKeys;
     return otherKeys;
-  }, [activePermTab, staffKeys, billingKeys, salaryKeys, otherKeys]);
+  }, [
+    activePermTab,
+    staffKeys,
+    billingKeys,
+    salaryKeys,
+    otherKeys,
+    orderKeys,
+    vendorKeys,
+    productKeys,
+  ]);
 
   return (
     <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -711,12 +817,32 @@ const StaffForm = ({
 
               <Button
                 type="button"
-                variant={activePermTab === 'other' ? 'default' : 'outline'}
+                variant={activePermTab === 'vendor' ? 'default' : 'outline'}
                 size="sm"
                 className="w-full text-xs whitespace-normal text-center leading-tight"
-                onClick={() => setActivePermTab('other')}
+                onClick={() => setActivePermTab('vendor')}
               >
-                Other Permissions
+                Vendor Permissions
+              </Button>
+
+              <Button
+                type="button"
+                variant={activePermTab === 'order' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('order')}
+              >
+                Order Permissions
+              </Button>
+
+              <Button
+                type="button"
+                variant={activePermTab === 'product' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('product')}
+              >
+                Product Permissions
               </Button>
 
               <Button
@@ -727,6 +853,16 @@ const StaffForm = ({
                 onClick={() => setActivePermTab('salary')}
               >
                 Manage Salary Permissions
+              </Button>
+
+              <Button
+                type="button"
+                variant={activePermTab === 'other' ? 'default' : 'outline'}
+                size="sm"
+                className="w-full text-xs whitespace-normal text-center leading-tight"
+                onClick={() => setActivePermTab('other')}
+              >
+                Other Permissions
               </Button>
             </div>
 
@@ -758,7 +894,47 @@ const StaffForm = ({
                 </Button>
               </div>
             )}
+            {activePermTab === 'order' && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSelectAllOrder}
+                  disabled={orderKeys.length === 0}
+                >
+                  Select All Order
+                </Button>
+              </div>
+            )}
 
+            {activePermTab === 'product' && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSelectAllProduct}
+                  disabled={productKeys.length === 0}
+                >
+                  Select All Product
+                </Button>
+              </div>
+            )}
+
+            {activePermTab === 'vendor' && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSelectAllVendor}
+                  disabled={vendorKeys.length === 0}
+                >
+                  Select All Vendor
+                </Button>
+              </div>
+            )}
             {activePermTab === 'other' && (
               <div className="flex justify-end gap-2">
                 <Button
@@ -784,16 +960,6 @@ const StaffForm = ({
                 >
                   Select All Salary
                 </Button>
-                {/* If you want a Clear button too, uncomment:
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearAllSalary}
-                  disabled={salaryKeys.length === 0}
-                >
-                  Clear All Salary
-                </Button> */}
               </div>
             )}
           </div>

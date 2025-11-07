@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { useSelector } from 'react-redux';
 
 const Staff = () => {
   const { data: staff = [], isLoading, error } = useGetAllStaffQuery();
@@ -35,7 +36,10 @@ const Staff = () => {
   const [deleteStaff, { isLoading: isDeleting }] = useDeleteStaffMutation();
 
   const { user } = useContext(AuthContext) || {};
-
+  const authUser = useSelector((state) => state.auth.user); // Moved
+  const industry = authUser.industryName;
+  console.log('industry', industry);
+  //
   const updatePermission = user?.permissions?.staffUpdate;
   const deletePermission = user?.permissions?.staffDelete;
 
@@ -90,12 +94,18 @@ const Staff = () => {
     setPage(1);
   }, [searchTerm, pageSize, staff.length]);
 
-  const subRoles = [
+  const allSubRoles = [
     { value: 'manager', label: 'Manager', color: 'bg-chart-1' },
     { value: 'receptionist', label: 'Receptionist', color: 'bg-chart-2' },
     { value: 'mechanic', label: 'Mechanic', color: 'bg-chart-5' },
     { value: 'seller', label: 'Seller', color: 'bg-chart-4' },
+    { value: 'waiter', label: 'Waiter', color: 'bg-chart-2' },
+    { value: 'chef', label: 'Chef', color: 'bg-chart-1' },
   ];
+  const subRoles =
+    industry?.toLowerCase() === 'restaurant'
+      ? allSubRoles
+      : allSubRoles.slice(0, allSubRoles.length - 2);
   const departments = [
     'Engineering',
     'Front Office',
@@ -110,16 +120,18 @@ const Staff = () => {
     staffDelete: 'Delete Staff',
     viewallstaff: 'View All Staff',
     viewReports: 'View Reports',
-    manageProduct: 'Manage Product',
+
     createVendors: 'Create Vendors',
     updateVendors: 'Update Vendors',
     deleteVendors: 'Delete Vendors',
     viewVendors: 'View Vendors',
+    //
     assignTasks: 'Assign Tasks',
     approveRequests: 'Approve Requests',
     manageAppointments: 'Manage Appointments',
     manageTeams: 'Manage Teams',
     managePlans: 'Manage Plans',
+    //
     addBilling: 'Add Billing',
     editBilling: 'Edit Billing',
     deleteBilling: 'Delete Billing',
@@ -132,9 +144,32 @@ const Staff = () => {
     staffSummary: 'Staff Summary',
     viewActiveLog: 'View Active Log',
     viewCompanySummary: 'View Company Summary',
+    //
+    createProduct: 'Create Product',
+    updateProduct: 'Update Product',
+    viewProduct: 'View Product',
+    deleteProduct: 'Delete Product',
+    //
+    companyprofileupdate: 'Update Company Setting',
 
-    companyprofileupdate: 'Update Company Setting'
+    manageTables: 'Manage Tables',
+    createOrder: 'Create Order',
+    viewOrder: 'View Order',
+    updateOrderStatus: 'Update Order Status',
   };
+
+  const vendorPermissionKeys = [
+    'createVendors',
+    'updateVendors',
+    'deleteVendors',
+    'viewVendors',
+  ];
+  const productPermissionKeys = [
+    'createProduct',
+    'updateProduct',
+    'viewProduct',
+    'deleteProduct',
+  ];
 
   const staffPermissionKeys = [
     'staffCreate',
@@ -142,6 +177,9 @@ const Staff = () => {
     'staffDelete',
     'viewallstaff',
   ];
+
+  const orderPermissionKeys = ['createOrder', 'viewOrder', 'updateOrderStatus'];
+
   const billingPermissionKeys = [
     'addBilling',
     'editBilling',
@@ -282,6 +320,11 @@ const Staff = () => {
           viewCompanySummary: false,
 
           companyprofileupdate: false,
+
+          manageTables: false,
+          createOrder: false,
+          viewOrder: false,
+          updateOrderStatus: false,
         },
       });
       setIsAddDialogOpen(false);
@@ -362,6 +405,9 @@ const Staff = () => {
           viewMode={viewMode}
           setViewMode={setViewMode}
           staffPermissionKeys={staffPermissionKeys}
+          vendorPermissionKeys={vendorPermissionKeys}
+          productPermissionKeys={productPermissionKeys}
+          orderPermissionKeys={orderPermissionKeys}
           billingPermissionKeys={billingPermissionKeys}
           salaryPermissionKeys={salaryPermissionKeys}
         />
@@ -398,6 +444,9 @@ const Staff = () => {
         staffPermissionKeys={staffPermissionKeys}
         billingPermissionKeys={billingPermissionKeys}
         salaryPermissionKeys={salaryPermissionKeys}
+        orderPermissionKeys={orderPermissionKeys}
+        vendorPermissionKeys={vendorPermissionKeys}
+        productPermissionKeys={productPermissionKeys}
       />
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -415,6 +464,9 @@ const Staff = () => {
           staffPermissionKeys={staffPermissionKeys}
           billingPermissionKeys={billingPermissionKeys}
           salaryPermissionKeys={salaryPermissionKeys}
+          orderPermissionKeys={orderPermissionKeys}
+          vendorPermissionKeys={vendorPermissionKeys}
+          productPermissionKeys={productPermissionKeys}
         />
       </Dialog>
 

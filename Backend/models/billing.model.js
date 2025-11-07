@@ -1,14 +1,14 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema } from 'mongoose';
 
 const BillingSchema = new Schema(
   {
     billNumber: {
       type: String,
       unique: true,
-      required: [true, "Bill number is required"],
+      required: [true, 'Bill number is required'],
       uppercase: true,
       trim: true,
-      maxlength: [50, "Bill number cannot exceed 50 characters"],
+      maxlength: [50, 'Bill number cannot exceed 50 characters'],
     },
     companyId: { type: String, required: true },
     createdBy: { type: String },
@@ -17,30 +17,30 @@ const BillingSchema = new Schema(
       email: { type: String, trim: true },
       phone: { type: String, trim: true },
     },
+    OrderId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Orders',
+      required: true,
+    },
     items: [
       {
-        productId: {
+        ProductId: {
           type: Schema.Types.ObjectId,
-          ref: "Product",
+          ref: 'Product',
           required: true,
         },
+        OrderItemId: {
+          type: Schema.Types.ObjectId,
+          required: true,
+        },
+
         dynamicAttributes: {
           type: Map, // or Schema.Types.Mixed
           of: Schema.Types.Mixed,
           default: {},
         },
         itemName: { type: String, required: true, trim: true, maxlength: 100 },
-        categoryName: {
-          type: String,
-          required: true,
-          trim: true,
-          maxlength: 100,
-        },
-        subCategory: { type: String, trim: true, maxlength: 100 },
-        sku: {
-          type: String,
-          required: true,
-        },
+
         quantity: {
           type: Number,
           required: true,
@@ -48,26 +48,13 @@ const BillingSchema = new Schema(
           max: 10000,
           validate: {
             validator: Number.isInteger,
-            message: "Quantity must be an integer",
+            message: 'Quantity must be an integer',
           },
         },
         price: { type: Number, required: true, min: 0 },
-        costPrice: { type: Number, min: 0, default: 0 },
-        total: { type: Number, required: true, min: 0 },
-        status: {
-          type: String,
-          enum: [
-            "pending",
-            "processing",
-            "shipped",
-            "delivered",
-            "cancelled",
-            "returned_request",
-            "returned_accept",
-            "returned_reject",
-          ],
-          default: "pending",
-        },
+
+        total: { type: Number, min: 0, default: 0 },
+
         refundAmount: { type: Number, min: 0, default: 0 },
         refundHistory: [
           {
@@ -86,7 +73,7 @@ const BillingSchema = new Schema(
     total: { type: Number, required: true, min: 0 },
     paymentMethod: {
       type: String,
-      enum: ["cash", "credit_card", "bank_transfer"],
+      enum: ['cash', 'credit_card', 'bank_transfer'],
       required: true,
     },
     paymentNumber: { type: String, trim: true },
@@ -107,8 +94,8 @@ const BillingSchema = new Schema(
     ],
     status: {
       type: String,
-      enum: ["paid", "refunded", "partially_refunded"],
-      default: "paid",
+      enum: ['paid', 'refunded', 'partially_refunded'],
+      default: 'paid',
     },
     deleted: {
       type: Boolean,
@@ -125,94 +112,95 @@ const BillingSchema = new Schema(
 BillingSchema.index({ billNumber: 1 }, { unique: true });
 
 // Buyer details validation for non-cash payments
-BillingSchema.pre("validate", function (next) {
-  if (["credit_card", "bank_transfer"].includes(this.paymentMethod)) {
+BillingSchema.pre('validate', function (next) {
+  if (['credit_card', 'bank_transfer'].includes(this.paymentMethod)) {
     if (!this.paymentNumber?.trim()) {
       console.error(
-        "Schema validation error: Payment number is required for non-cash payment"
+        'Schema validation error: Payment number is required for non-cash payment'
       );
-      return next(new Error("Payment number is required for non-cash payment"));
+      return next(new Error('Payment number is required for non-cash payment'));
     }
   }
   next();
 });
 
 // Company consistency
-BillingSchema.pre("validate", async function (next) {
-  if (this.items?.length) {
-    try {
-      const productIds = this.items.map((it) => it.productId);
-      const products = await mongoose
-        .model("Product")
-        .find({ _id: { $in: productIds } })
-        .select("companyId");
-      const mismatch = products.find(
-        (prod) => prod.companyId.toString() !== this.companyId.toString()
+BillingSchema.pre('validate', async function (next) {
+  if (!this.items?.length) return next();
+
+  try {
+    const orderIds = this.items.map((it) => it.orderId).filter(Boolean);
+    if (!orderIds.length) return next();
+
+    const orders = await mongoose
+      .model('Orders') // <-- ensure model name matches your IndexModel.Orders
+      .find({ _id: { $in: orderIds } })
+      .select('companyId');
+
+    const mismatch = orders.find(
+      (o) => String(o.companyId) !== String(this.companyId)
+    );
+    if (mismatch) {
+      return next(
+        new Error('All items must belong to the same company as the bill')
       );
-      if (mismatch) {
-        console.error("Schema validation error: Product companyId mismatch", {
-          productId: mismatch._id,
-          companyId: this.companyId,
-        });
-        return next(
-          new Error("All items must belong to the same company as the bill")
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Schema validation error: Failed to validate product company",
-        error
-      );
-      return next(error);
     }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Prevent billNumber changes after creation
+BillingSchema.pre('save', function (next) {
+  if (!this.isNew && this.isModified('billNumber')) {
+    console.error('Schema validation error: Attempted to modify billNumber');
+    return next(new Error('Bill number cannot be modified after creation'));
   }
   next();
 });
 
-// Totals consistency
-BillingSchema.pre("validate", function (next) {
-  const items = this.items || [];
-  const sumEligible = items.reduce((sum, it) => {
-    return ["cancelled", "returned_accept"].includes(it.status)
-      ? sum
-      : sum + (it.total || 0);
+BillingSchema.pre('validate', function (next) {
+  const n = (v) => Number(v || 0);
+  const EPS = 0.01;
+
+  const subtotalFromItems = this.items.reduce((sum, it) => {
+    const s = String(it.status || '').toLowerCase();
+
+    // Exclude fully removed lines
+    if (['cancelled', 'returned_accept', 'refund_full'].includes(s)) return sum;
+
+    // For partials, subtract refundAmount
+    if (['returned_request', 'refund_partial'].includes(s)) {
+      const afterRefund = Math.max(0, n(it.total) - n(it.refundAmount));
+      return sum + afterRefund;
+    }
+
+    // Normal line
+    return sum + n(it.total);
   }, 0);
 
-  // Use a small epsilon to handle floating-point precision
-  const epsilon = 0.01;
-  if (Math.abs(sumEligible - (this.subtotal || 0)) > epsilon) {
-    console.error("Schema validation error: Subtotal mismatch", {
-      calculated: sumEligible,
-      provided: this.subtotal,
-    });
+  if (Math.abs(n(this.subtotal) - subtotalFromItems) > EPS) {
     return next(
       new Error(
-        "Subtotal must match the sum of non-cancelled and non-returned item totals"
+        'Subtotal must match the sum of non-cancelled and non-returned item totals'
       )
     );
   }
 
-  const computedTotal = Number(
-    ((this.subtotal || 0) + (this.taxAmount || 0)).toFixed(2)
-  );
-  if (Math.abs(computedTotal - (this.total || 0)) > epsilon) {
-    console.error("Schema validation error: Total mismatch", {
-      calculated: computedTotal,
-      provided: this.total,
-    });
-    return next(new Error("Total must equal subtotal + taxAmount"));
+  const taxAmount = +(n(this.subtotal) * (n(this.taxPercent) / 100)).toFixed(2);
+  const total = +(n(this.subtotal) + taxAmount).toFixed(2);
+
+  // Optional: also validate tax/total with EPS
+  if (Math.abs(n(this.taxAmount) - taxAmount) > EPS) {
+    return next(new Error('Tax amount mismatch'));
+  }
+  if (Math.abs(n(this.total) - total) > EPS) {
+    return next(new Error('Total mismatch'));
   }
 
-  next();
+  return next();
 });
 
-// Prevent billNumber changes after creation
-BillingSchema.pre("save", function (next) {
-  if (!this.isNew && this.isModified("billNumber")) {
-    console.error("Schema validation error: Attempted to modify billNumber");
-    return next(new Error("Bill number cannot be modified after creation"));
-  }
-  next();
-});
-
-export default mongoose.model("Bill", BillingSchema);
+export default mongoose.model('Bill', BillingSchema);

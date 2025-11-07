@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect,useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import {
   Dialog,
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader, AlertCircle } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import PropTypes from 'prop-types';
 
 RefundDialog.propTypes = {
@@ -32,6 +32,9 @@ RefundDialog.propTypes = {
     items: PropTypes.arrayOf(
       PropTypes.shape({
         productId: PropTypes.string,
+        ProductId: PropTypes.string, // allow capitalized variant
+        orderItemId: PropTypes.string, // include order item id
+        OrderItemId: PropTypes.string, // capitalized variant
         sku: PropTypes.string,
         itemName: PropTypes.string,
         categoryName: PropTypes.string,
@@ -71,66 +74,111 @@ export function RefundDialog({
   const [refundItems, setRefundItems] = useState([]);
   const [refundReason, setRefundReason] = useState('');
 
+  // Build a normalized list of bill items with availableToRefund and both ID casings
   const billItems = useMemo(() => {
     if (!bill?.items) return [];
-    return bill.items.map((item) => ({
-      ...item,
-      availableToRefund: item.quantity - (item.refundHistory?.reduce((sum, r) => sum + (r.refundQuantity || 0), 0) || 0),
-    }));
+    return bill.items.map((item) => {
+      const already =
+        item.refundHistory?.reduce((s, r) => s + (r.refundQuantity || 0), 0) ||
+        0;
+      const availableToRefund = Math.max(0, (item.quantity || 0) - already);
+      return {
+        ...item,
+        productIdNorm: String(item.productId || item.ProductId || ''), // normalized product id
+        orderItemIdNorm: String(item.orderItemId || item.OrderItemId || ''), // normalized order item id
+        availableToRefund,
+      };
+    });
   }, [bill]);
 
+  // Initialize selection depending on partial/full
   useEffect(() => {
-    if (bill && refundType === 'full') {
+    if (!billItems.length) {
+      setRefundItems([]);
+      return;
+    }
+    if (refundType === 'full') {
       setRefundItems(
-        billItems.map((item) => ({
-          productId: item.productId,
-          quantity: item.availableToRefund,
+        billItems.map((it) => ({
+          productId: it.productIdNorm || undefined,
+          orderItemId: it.orderItemIdNorm || undefined,
+          quantity: it.availableToRefund,
         }))
       );
     } else {
       setRefundItems(
-        billItems.map((item) => ({
-          productId: item.productId,
+        billItems.map((it) => ({
+          productId: it.productIdNorm || undefined,
+          orderItemId: it.orderItemIdNorm || undefined,
           quantity: 0,
         }))
       );
     }
-  }, [bill, billItems, refundType]);
+  }, [billItems, refundType]);
 
+  // Compute total based on current selections
   const totalRefundAmount = useMemo(() => {
-    return refundItems.reduce((sum, refundItem) => {
-      const billItem = billItems.find((i) => i.productId === refundItem.productId);
-      if (!billItem) return sum;
-      return sum + refundItem.quantity * (billItem.price || 0);
+    return refundItems.reduce((sum, ri) => {
+      const found = billItems.find(
+        (i) =>
+          (ri.productId && i.productIdNorm === ri.productId) ||
+          (ri.orderItemId && i.orderItemIdNorm === ri.orderItemId)
+      );
+      if (!found) return sum;
+      return sum + (Number(ri.quantity) || 0) * (Number(found.price) || 0);
     }, 0);
   }, [refundItems, billItems]);
 
-  const handleQuantityChange = (productId, value) => {
-    const billItem = billItems.find((i) => i.productId === productId);
-    if (!billItem) return;
-    const maxRefundable = billItem.availableToRefund;
-    const quantity = Math.max(0, Math.min(Number(value) || 0, maxRefundable));
+  // Change qty by productId/orderItemId
+  const handleQuantityChange = (keyObj, value) => {
+    const quantityRaw = Number(value);
+    const quantity = Number.isFinite(quantityRaw) ? quantityRaw : 0;
+
     setRefundItems((prev) =>
-      prev.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
-      )
+      prev.map((ri) => {
+        const same =
+          (keyObj.productId && ri.productId === keyObj.productId) ||
+          (keyObj.orderItemId && ri.orderItemId === keyObj.orderItemId);
+        if (!same) return ri;
+
+        const item = billItems.find(
+          (i) =>
+            (ri.productId && i.productIdNorm === ri.productId) ||
+            (ri.orderItemId && i.orderItemIdNorm === ri.orderItemId)
+        );
+        const maxRefundable = item?.availableToRefund ?? 0;
+        const clamped = Math.max(0, Math.min(quantity, maxRefundable));
+        return { ...ri, quantity: clamped };
+      })
     );
   };
 
+  // Submit: emit exactly what BillingPage expects ({ notes, lines })
   const handleRefund = () => {
-    if (refundType === 'partial' && !refundItems.some((item) => item.quantity > 0)) {
-
+    if (
+      refundType === 'partial' &&
+      !refundItems.some((x) => Number(x.quantity) > 0)
+    ) {
+      // nothing selected
       return;
     }
     if (!refundReason.trim()) {
-
       return;
     }
+
+    // Build lines exactly as the backend expects (BillingPage will map -> refundItems)
+    const lines = refundItems
+      .filter((x) => Number(x.quantity) > 0 && (x.productId || x.orderItemId))
+      .map((x) => ({
+        productId: x.productId, // string | undefined
+        orderItemId: x.orderItemId, // string | undefined
+        quantity: Number(x.quantity),
+        reason: refundReason.trim(),
+      }));
+
     onRefund(bill, {
-      refundType,
-      items: refundItems.filter((item) => item.quantity > 0),
-      refundReason,
-      totalRefundAmount,
+      notes: refundReason.trim(),
+      lines, // BillingPage.buildRefundPayload -> { notes, refundItems }
     });
   };
 
@@ -139,14 +187,16 @@ export function RefundDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {refundType === 'full' ? 'Full Refund' : 'Partial Refund'} - Bill #{bill?.billNumber}
+            {refundType === 'full' ? 'Full Refund' : 'Partial Refund'} — Bill #
+            {bill?.billNumber}
           </DialogTitle>
           <DialogDescription>
             {refundType === 'full'
-              ? 'Process a full refund for all items in the bill.'
+              ? 'Process a full refund for all refundable items.'
               : 'Select items and quantities to refund.'}
           </DialogDescription>
         </DialogHeader>
+
         <div className="space-y-6">
           {refundType === 'partial' && (
             <Table>
@@ -167,38 +217,53 @@ export function RefundDialog({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  billItems.map((item) => (
-                    <TableRow key={item.productId}>
-                      <TableCell>{item.itemName}</TableCell>
-                      <TableCell>{item.categoryName}</TableCell>
-                      <TableCell className="text-right">
-                        {item.availableToRefund}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={item.availableToRefund}
-                          value={
-                            refundItems.find((ri) => ri.productId === item.productId)?.quantity || 0
-                          }
-                          onChange={(e) =>
-                            handleQuantityChange(item.productId, e.target.value)
-                          }
-                          className="w-16 text-right"
-                          disabled={item.availableToRefund === 0}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {currencySymbol}
-                        {(refundItems.find((ri) => ri.productId === item.productId)?.quantity * (item.price || 0)).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  billItems.map((item) => {
+                    const key = {
+                      productId: item.productIdNorm,
+                      orderItemId: item.orderItemIdNorm,
+                    };
+                    const selected = refundItems.find(
+                      (ri) =>
+                        (ri.productId && ri.productId === key.productId) ||
+                        (ri.orderItemId && ri.orderItemId === key.orderItemId)
+                    );
+                    const qty = selected?.quantity || 0;
+                    const amount = (qty * (item.price || 0)).toFixed(2);
+
+                    return (
+                      <TableRow
+                        key={`${item.productIdNorm}-${item.orderItemIdNorm}`}
+                      >
+                        <TableCell>{item.itemName}</TableCell>
+                        <TableCell>{item.categoryName}</TableCell>
+                        <TableCell className="text-right">
+                          {item.availableToRefund}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={item.availableToRefund}
+                            value={qty}
+                            onChange={(e) =>
+                              handleQuantityChange(key, e.target.value)
+                            }
+                            className="w-16 text-right"
+                            disabled={item.availableToRefund === 0}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {currencySymbol}
+                          {item.price.toFixed(1)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
           )}
+
           <div className="space-y-2">
             <label
               className="text-sm font-medium text-foreground"
@@ -217,13 +282,16 @@ export function RefundDialog({
               <p className="text-xs text-red-500">Refund reason is required</p>
             )}
           </div>
+
           <div className="flex justify-between text-sm font-medium">
             <span>Total Refund Amount</span>
             <span>
-              {currencySymbol}{totalRefundAmount.toFixed(2)}
+              {currencySymbol}
+              {totalRefundAmount.toFixed(2)}
             </span>
           </div>
         </div>
+
         <DialogFooter className="mt-6">
           <Button
             variant="outline"
@@ -237,7 +305,8 @@ export function RefundDialog({
             disabled={
               refunding ||
               !refundReason.trim() ||
-              (refundType === 'partial' && !refundItems.some((item) => item.quantity > 0))
+              (refundType === 'partial' &&
+                !refundItems.some((x) => Number(x.quantity) > 0))
             }
           >
             {refunding ? (
