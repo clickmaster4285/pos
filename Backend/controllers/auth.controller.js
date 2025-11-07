@@ -172,11 +172,11 @@ const login = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature:
-            user.role !== "superAdmin" ? activePlans.limitations.features : [],
+            activePlans && user.role !== "superAdmin" ? activePlans.limitations.features : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
-        },
+        },  
         token: accessToken,
         refreshToken,
       },
