@@ -14,13 +14,13 @@ import {
 import { OAuth2Client } from "google-auth-library";
 import { v4 as uuidv4 } from "uuid";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
+import { userActivityLogger } from "../utils/logger.js";
 
 const googleClient = new OAuth2Client({
   clientId: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET, // ✅ must be defined
   redirectUri: process.env.GOOGLE_REDIRECT_URI || "postmessage", // ✅ use "postmessage" for code flow from frontend
 });
-
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
@@ -61,23 +61,27 @@ const setTokens = (res, accessToken, refreshToken) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password , googleId} = req.body;
-let user;
-    if( googleId ){
-      user = await User.findOne({ googleId: googleId , deleted: false }).select("+password");
+    const { email, password, googleId } = req.body;
+    let user;
+    if (googleId) {
+      user = await User.findOne({ googleId: googleId, deleted: false }).select(
+        "+password"
+      );
       if (!user) {
         return next(new ErrorResponse("Invalid Google credentials", 401));
       }
     }
 
-  if (!email || (!password && !googleId)) {
-  return next(new ErrorResponse("Please provide email and either password or Google ID", 400));
-}
+    if (!email || (!password && !googleId)) {
+      return next(
+        new ErrorResponse(
+          "Please provide email and either password or Google ID",
+          400
+        )
+      );
+    }
 
-
-    user = await User.findOne({ email, deleted: false }).select(
-      "+password"
-    );
+    user = await User.findOne({ email, deleted: false }).select("+password");
     if (!user) {
       user = await IndexModel.Company.findOne({
         contactEmail: email,
@@ -105,12 +109,12 @@ let user;
         message: "User or company is deactivated",
       });
     }
-    if(!googleId){
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return next(new ErrorResponse("Invalid credentials", 401));
+    if (!googleId) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return next(new ErrorResponse("Invalid credentials", 401));
+      }
     }
-  }
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
     const toolNameLogo = await fetchToolLogoName();
@@ -144,7 +148,15 @@ let user;
       }
     }
 
-    // console.log("the activePlans: ", activePlans)
+    userActivityLogger.info("Auth activity", {
+      userId: user.userId,
+      action: "POST /api/auth/login",
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
+      statusCode: 200,
+    });
+
     res.status(200).json({
       success: true,
       status: 200,
@@ -178,14 +190,17 @@ let user;
 const googleSignIn = async (req, res, next) => {
   try {
     const { idToken: code } = req.body; // ✅ your frontend sends { idToken: response.code }
-    if (!code) return next(new ErrorResponse("Authorization code required", 400));
+    if (!code)
+      return next(new ErrorResponse("Authorization code required", 400));
 
     // Exchange authorization code for tokens
     const { tokens } = await googleClient.getToken(code);
     const idToken = tokens.id_token;
 
     if (!idToken) {
-      return next(new ErrorResponse("Failed to retrieve ID token from Google", 400));
+      return next(
+        new ErrorResponse("Failed to retrieve ID token from Google", 400)
+      );
     }
 
     // Verify ID token (JWT)
@@ -197,17 +212,22 @@ const googleSignIn = async (req, res, next) => {
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
-    if (!email || !name) return next(new ErrorResponse("Email OR Name not provided by Google", 400));
+    if (!email || !name)
+      return next(
+        new ErrorResponse("Email OR Name not provided by Google", 400)
+      );
 
     // find or create user
-    let user = await User.findOne({ $or: [{ email }, { googleId }] }).select("+password");
+    let user = await User.findOne({ $or: [{ email }, { googleId }] }).select(
+      "+password"
+    );
     const isNewUser = !user;
 
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
       user = new User({
-        name: name ,
+        name: name,
         email,
         userId,
         companyId,
@@ -254,7 +274,6 @@ const googleSignIn = async (req, res, next) => {
   }
 };
 
-
 const logout = async (req, res, next) => {
   try {
     // 1. Delete refresh token from DB if exists
@@ -262,7 +281,22 @@ const logout = async (req, res, next) => {
     if (refreshToken) {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
-
+    userActivityLogger.info("Auth activity", {
+      userId: `Logout user token is: ${
+    req.cookies && req.session
+      ? `${JSON.stringify(req.cookies)} and ${JSON.stringify(req.session)}`
+      : req.cookies
+      ? JSON.stringify(req.cookies)
+      : req.session
+      ? JSON.stringify(req.session)
+      : "No cookies or session"
+  }`,
+      action: "DELETE /api/auth/logout",
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
+      statusCode: 200,
+    });
     // 2. Clear all cookies sent from client
     if (req.cookies) {
       Object.keys(req.cookies).forEach((cookieName) => {
@@ -282,7 +316,6 @@ const logout = async (req, res, next) => {
           });
         }
 
-        // 4. Tell browser to clear site data (cookies, storage, cache)
         return res
           .status(200)
           .set({
@@ -297,6 +330,7 @@ const logout = async (req, res, next) => {
       });
     } else {
       // If no session, just clear cookies + respond
+
       return res
         .status(200)
         .set({

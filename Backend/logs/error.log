@@ -1,0 +1,1 @@
+{"error":"Invalid credentials","ip":"::1","level":"error","message":"Application error","method":"POST","stack":"Error: Invalid credentials\n    at login (file:///D:/Projects/AutoMotive_Industry/AutoMotive_Industry_10_24_2025/Backend/controllers/auth.controller.js:115:21)","timestamp":"2025-11-07 11:40:21","url":"/api/auth/login","userId":"anonymous"}
