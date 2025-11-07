@@ -103,6 +103,10 @@ const userSchema = new mongoose.Schema({
     viewActiveLog: { type: Boolean, default: false },
     viewCompanySummary: { type: Boolean, default: false },
     companyprofileupdate: { type: Boolean, default: false },
+    manageTables: { type: Boolean, default: false },
+    createOrder: { type: Boolean, default: false },
+    viewOrder: { type: Boolean, default: false },
+    updateOrderStatus: { type: Boolean, default: false },
   },
   phone: {
     type: String,

@@ -25,11 +25,40 @@ const createCompany = async (req, res) => {
         error: "Admin name and email are required",
       });
     }
+
+    if (company.contactEmail) {
+      const isEmailAvailable = await IndexModel.Company.findOne({
+        contactEmail: company.contactEmail,
+      });
+      if (isEmailAvailable) {
+        return res.status(500).json({
+          success: false,
+          error: "company email already exists: try another email OR Contact support",
+        });
+      }
+    }
+
+    if (admin.email) {
+      const isEmailAvailable = await IndexModel.User.findOne({
+        email: admin.email,
+      });
+      if (isEmailAvailable) {
+        return res.status(500).json({
+          success: false,
+          error: "admin email already exists: try another email OR Contact support",
+        });
+      }
+    }
+
     let googleUserComID;
-    let companyId =  await generateUniqueCompanyId(company.name);
+    let companyId = await generateUniqueCompanyId(company.name);
     // === 2. Plan Validation ===
     const availablePlan = await IndexModel.Plan.findById(company.plan);
-    if (!availablePlan || availablePlan.deleted === true || availablePlan.isActive === false) {
+    if (
+      !availablePlan ||
+      availablePlan.deleted === true ||
+      availablePlan.isActive === false
+    ) {
       return res.status(400).json({
         success: false,
         error: "Plan does not exist or is deactivated: contact support",
@@ -133,6 +162,10 @@ const createCompany = async (req, res) => {
           viewActiveLog: true,
           viewCompanySummary: true,
           companyprofileupdate: true,
+          manageTables: true,
+          createOrder: true,
+          viewOrder: true,
+          updateOrderStatus: true,
         },
         history: [
           {
@@ -147,24 +180,31 @@ const createCompany = async (req, res) => {
     // === 6. Create Company ===
     const newCompany = new IndexModel.Company({
       name: company.name,
-      companyId: googleUser && Object.keys(googleUser).length >= 1 ? googleUserComID : companyId,
+      companyId:
+        googleUser && Object.keys(googleUser).length >= 1
+          ? googleUserComID
+          : companyId,
       contactEmail: company.contactEmail,
       contactPhone: company.contactPhone,
       address: company.address,
       industryName: company.industryName,
-      plan: {
-        planId: await generatePlanId(companyId, adminUserId),
-        status: "not started",
-        ...availablePlan.toObject(),
-        isActive: availablePlan.price === 0,
-      },
+      plan:
+    availablePlan.price === 0
+      ? {
+          planId: await generatePlanId(companyId, adminUserId),
+          status: "in progress",
+          ...availablePlan.toObject(),
+          isActive: true,
+        }
+      : undefined, // you can omit this or use `null` if preferred
       history: [
         {
           action: "Company created",
           performedBy: adminUserId,
         },
       ],
-      isActive: googleUser && Object.keys(googleUser).length >= 1 ? true : false,
+      isActive:
+        googleUser && Object.keys(googleUser).length >= 1 ? true : false,
       owner: adminUserId,
     });
 
@@ -196,7 +236,8 @@ const createCompany = async (req, res) => {
         await adminUser.save();
       } catch (saveError) {
         await IndexModel.Company.findByIdAndDelete(newCompany._id);
-        if (!isGoogleFlow) await IndexModel.User.findByIdAndDelete(adminUser._id);
+        if (!isGoogleFlow)
+          await IndexModel.User.findByIdAndDelete(adminUser._id);
         return res.status(500).json({
           success: false,
           error: "Failed to save OTP",
@@ -214,7 +255,8 @@ const createCompany = async (req, res) => {
       } catch (emailError) {
         // Rollback everything if email fails
         await IndexModel.Company.findByIdAndDelete(newCompany._id);
-        if (!isGoogleFlow) await IndexModel.User.findByIdAndDelete(adminUser._id);
+        if (!isGoogleFlow)
+          await IndexModel.User.findByIdAndDelete(adminUser._id);
         return res.status(500).json({
           success: false,
           error: "Failed to send verification email, creation rolled back",
@@ -230,8 +272,10 @@ const createCompany = async (req, res) => {
       : await IndexModel.User.findById(adminUser._id);
 
     if (!verifyCompany || !verifyAdmin) {
-      if (verifyCompany) await IndexModel.Company.findByIdAndDelete(newCompany._id);
-      if (verifyAdmin && !isGoogleFlow) await IndexModel.User.findByIdAndDelete(verifyAdmin._id);
+      if (verifyCompany)
+        await IndexModel.Company.findByIdAndDelete(newCompany._id);
+      if (verifyAdmin && !isGoogleFlow)
+        await IndexModel.User.findByIdAndDelete(verifyAdmin._id);
       return res.status(500).json({
         success: false,
         error: "Verification failed: incomplete creation detected, rolled back",
@@ -239,13 +283,18 @@ const createCompany = async (req, res) => {
     }
 
     // Populate response
-    const populatedCompany = await IndexModel.Company.findById(newCompany._id)
-      .populate("owner", "name email userId")
-      .populate("plan");
+    const populatedCompany = await IndexModel.Company.findById(newCompany._id).select(
+      "name companyId industryName contactEmail"
+    );
 
     return res.status(201).json({
       success: true,
       data: {
+        selectedPlan: 
+        {
+          planPrice: availablePlan.price,
+          planId: availablePlan._id
+        },
         companyId: populatedCompany,
         admin: {
           userId: adminUserId,
@@ -258,7 +307,6 @@ const createCompany = async (req, res) => {
         ? "Company created successfully. Google account is already verified."
         : "Company and admin created. Please verify your email with the OTP sent.",
     });
-
   } catch (error) {
     // === 10. Global Error Handling ===
     console.error("[createCompany] Error:", error);
@@ -274,8 +322,13 @@ const createCompany = async (req, res) => {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: `${field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
-          } already exists`,
+        error: `${
+          field === "email"
+            ? "Admin email"
+            : field === "companyId"
+            ? "Company ID"
+            : "Company name"
+        } already exists`,
       });
     }
 
@@ -546,9 +599,7 @@ const getAllCompany = async (req, res) => {
     // Map each company to include its admin (owner) details
     const companiesWithOwner = await Promise.all(
       companies.map(async (company) => {
-        const owner = await IndexModel.User.findOne(
-          { userId: company.owner },
-        );
+        const owner = await IndexModel.User.findOne({ userId: company.owner });
 
         return {
           ...company.toObject(),

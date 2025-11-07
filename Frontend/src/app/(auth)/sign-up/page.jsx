@@ -130,7 +130,8 @@ export default function RegisterPage() {
       };
 
 
-      await createCompany(payload).unwrap();
+      const result = await createCompany(payload).unwrap();
+      
       if(googleUser){
       await login({ email:payload.admin.email, password: payload.admin.password }).unwrap();
       }else{
