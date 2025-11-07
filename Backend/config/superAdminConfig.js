@@ -386,4 +386,40 @@ export const createCompanybySuperAdmin = async (req, res) => {
     });
   }
 };
+
+export const superAdminDashboard = async (req, res) => {
+  try {
+    const { role } = req.user;
+    if (role !== "superAdmin") {
+      return res.status(403).json({
+        message: "Unauthorized — only super admins can access this data",
+      });
+    }
+
+    // Fetch necessary data for the dashboard
+    const totalCompanies = await IndexModel.Company.find({ deleted: false });
+    const totalAdmins = await IndexModel.User.find({ role: "admin", deleted: false });
+    const pendingVerifications = await IndexModel.User.find({ isActive: false, deleted: false });
+    // const totalRevenue = await 
+    // const recentActivities = await IndexModel.ActivityLog.find({})
+    //   .sort({ createdAt: -1 })
+    //   .limit(10);
+
+    // Compile dashboard data
+    const dashboardData = {
+      totalCompanies: totalCompanies.length,
+      totalAdmins: totalAdmins.length,
+      pendingVerifications: pendingVerifications.length,
+      recentActivities: recentActivities.length,
+    };
+
+    return res.status(200).json({
+      message: "✅ SuperAdmin dashboard data fetched successfully",
+      data: dashboardData,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching SuperAdmin dashboard data:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+}
 export default createSuperAdmin;

@@ -1,0 +1,16 @@
+{"duration":"8ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 11:23:44","url":"/me"}
+{"duration":"145ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 11:40:09","url":"/me"}
+{"duration":"178ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":401,"timestamp":"2025-11-07 11:40:21","url":"/api/auth/login"}
+{"duration":"147ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":500,"timestamp":"2025-11-07 11:40:40","url":"/get-all-users"}
+{"duration":"8ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 12:01:30","url":"/me"}
+{"duration":"844ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":400,"timestamp":"2025-11-07 12:02:55","url":"/create-company"}
+{"duration":"2073ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":400,"timestamp":"2025-11-07 12:03:04","url":"/create-company"}
+{"duration":"464ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":400,"timestamp":"2025-11-07 12:03:57","url":"/create-company"}
+{"duration":"365ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":400,"timestamp":"2025-11-07 12:05:25","url":"/create-company"}
+{"duration":"1047ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":500,"timestamp":"2025-11-07 12:12:12","url":"/create-company"}
+{"duration":"7ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 12:19:22","url":"/me"}
+{"duration":"289ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 12:22:48","url":"/me"}
+{"duration":"3684ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":500,"timestamp":"2025-11-07 12:35:22","url":"/create-company"}
+{"duration":"426ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":500,"timestamp":"2025-11-07 12:36:10","url":"/create-company"}
+{"duration":"106ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 12:58:49","url":"/me"}
+{"duration":"72ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":401,"timestamp":"2025-11-07 12:58:49","url":"/get-company"}

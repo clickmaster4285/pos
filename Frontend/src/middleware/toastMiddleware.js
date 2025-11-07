@@ -182,7 +182,7 @@ export const toastMiddleware = (store) => (next) => (action) => {
           icon: 'check-circle',
           actions: [],
         },
-        // ordersApi
+        // orderApi
         createOrder: {
           type: 'success',
           title: 'Order Created',

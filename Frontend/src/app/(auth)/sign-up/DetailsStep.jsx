@@ -94,7 +94,6 @@ export default function DetailsStep({
             required
             disabled={isLoading}
           />
-  {console.log("readOnlyGoogle:", readOnlyGoogle)}
        
           <InputField
             label="Admin Email"

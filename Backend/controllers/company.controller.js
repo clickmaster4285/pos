@@ -25,6 +25,31 @@ const createCompany = async (req, res) => {
         error: 'Admin name and email are required',
       });
     }
+
+    if (company.contactEmail) {
+      const isEmailAvailable = await IndexModel.Company.findOne({
+        contactEmail: company.contactEmail,
+      });
+      if (isEmailAvailable) {
+        return res.status(500).json({
+          success: false,
+          error: "company email already exists: try another email OR Contact support",
+        });
+      }
+    }
+
+    if (admin.email) {
+      const isEmailAvailable = await IndexModel.User.findOne({
+        email: admin.email,
+      });
+      if (isEmailAvailable) {
+        return res.status(500).json({
+          success: false,
+          error: "admin email already exists: try another email OR Contact support",
+        });
+      }
+    }
+
     let googleUserComID;
     let companyId = await generateUniqueCompanyId(company.name);
     // === 2. Plan Validation ===
@@ -137,11 +162,6 @@ const createCompany = async (req, res) => {
           viewActiveLog: true,
           viewCompanySummary: true,
           companyprofileupdate: true,
-          //
-          manageTables: true,
-          createOrder: true,
-          viewOrder: true,
-          updateOrderStatus: true,
         },
         history: [
           {
@@ -166,7 +186,7 @@ const createCompany = async (req, res) => {
       industryName: company.industryName,
       plan: {
         planId: await generatePlanId(companyId, adminUserId),
-        status: 'not started',
+        status: "not started",
         ...availablePlan.toObject(),
         isActive: availablePlan.price === 0,
       },
@@ -257,12 +277,17 @@ const createCompany = async (req, res) => {
 
     // Populate response
     const populatedCompany = await IndexModel.Company.findById(newCompany._id)
-      .populate('owner', 'name email userId')
-      .populate('plan');
+      .populate("owner", "name email userId")
+      .populate("plan");
 
     return res.status(201).json({
       success: true,
       data: {
+        selectedPlan: 
+        {
+          planPrice: availablePlan.price,
+          planId: availablePlan._id
+        },
         companyId: populatedCompany,
         admin: {
           userId: adminUserId,
@@ -290,13 +315,8 @@ const createCompany = async (req, res) => {
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: `${
-          field === 'email'
-            ? 'Admin email'
-            : field === 'companyId'
-            ? 'Company ID'
-            : 'Company name'
-        } already exists`,
+        error: `${field === "email" ? "Admin email" : field === "companyId" ? "Company ID" : "Company name"
+          } already exists`,
       });
     }
 

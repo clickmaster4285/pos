@@ -18,6 +18,12 @@ import cron from "node-cron";
 import IndexModel from "./models/indexModel.js";
 // import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
 import bodyParser from "body-parser";
+import { 
+  requestLogger, 
+  userActivityLoggerMiddleware, 
+  errorLoggerMiddleware 
+} from "./middleware/loggerMiddleware.js";
+import { exceptionLogger } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +65,10 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan(NODE_ENV === "development" ? "dev" : "combined"));
 app.use(cookieParser());
+
+// Add logging middleware (NEW - added after existing middleware)
+app.use(requestLogger);
+app.use(userActivityLoggerMiddleware);
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -110,6 +120,8 @@ if (NODE_ENV === "production") {
   });
 }
 
+// Add error logger middleware before existing error handlers (NEW)
+app.use(errorLoggerMiddleware);
 app.use(notFound);
 app.use(errorHandler);
 
@@ -162,6 +174,11 @@ cron.schedule("* * * * *", async () => {
     }
   } catch (err) {
     console.error("Cron job error (unverified admins):", err);
+    exceptionLogger.error('Cron job error (unverified admins)', {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -200,6 +217,11 @@ cron.schedule("* * * * *", async () => {
     }
   } catch (err) {
     console.error("Cron job error (plan validation):", err);
+    exceptionLogger.error('Cron job error (plan validation)', {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -219,6 +241,11 @@ cron.schedule("* * * * *", async () => {
     }
   } catch (err) {
     console.error("Cron job error (delete unverified users):", err);
+    exceptionLogger.error('Cron job error (delete unverified users)', {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -230,6 +257,11 @@ cron.schedule("0 0 * * *", async () => {
     console.log(`Deleted ${expiredTokens.deletedCount} expired refresh tokens`);
   } catch (err) {
     console.error("Cron job error (delete expired refresh tokens):", err);
+    exceptionLogger.error('Cron job error (delete expired refresh tokens)', {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -240,6 +272,11 @@ cron.schedule("0 0 * * *", async () => {
         sessionStore.clear((err) => {
           if (err) {
             console.error("Error clearing expired sessions:", err);
+            exceptionLogger.error('Error clearing expired sessions', {
+              error: err.message,
+              stack: err.stack,
+              timestamp: new Date().toISOString()
+            });
             reject(err);
           } else {
             console.log("Cleared expired sessions");
@@ -250,15 +287,30 @@ cron.schedule("0 0 * * *", async () => {
     }
   } catch (err) {
     console.error("Cron job error (clear sessions):", err);
+    exceptionLogger.error('Cron job error (clear sessions)', {
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
 process.on("unhandledRejection", (err) => {
+  exceptionLogger.error('Unhandled Rejection', { 
+    error: err.message, 
+    stack: err.stack,
+    timestamp: new Date().toISOString()
+  });
   console.error("Unhandled Rejection:", err);
   server.close(() => process.exit(1));
 });
 
 process.on("uncaughtException", (err) => {
+  exceptionLogger.error('Uncaught Exception', { 
+    error: err.message, 
+    stack: err.stack,
+    timestamp: new Date().toISOString()
+  });
   console.error("Uncaught Exception:", err);
   server.close(() => process.exit(1));
 });

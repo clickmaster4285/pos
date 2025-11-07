@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { useContext } from 'react';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
 
-import { useGetOrdersQuery } from '@/features/ordersApi';
+import { useGetOrdersQuery } from '@/features/orderApi';
 import { useGetBillsQuery } from '@/features/billingApi';
 import { useGetAllProductsQuery } from '@/features/productApi';
 
