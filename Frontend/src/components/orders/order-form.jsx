@@ -476,13 +476,13 @@ const forcedOrderType = policy.forced;   // string | null
 
       {/* Submit */}
       <div className="flex items-center justify-end gap-2">
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="min-w-36 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 disabled:opacity-60"
+          
         >
           {submitting ? 'Saving...' : 'Create Order'}
-        </button>
+        </Button>
       </div>
     </form>
   );

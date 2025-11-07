@@ -458,7 +458,7 @@ export default function Sidebar() {
                           href={href}
                           className={`group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
                             active
-                              ? 'bg-gradient-to-r from-secondary-foreground to-secondary-foreground text-primary font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+                              ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
                               : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
                           } ${collapsed ? 'justify-center' : ''}`}
                           aria-current={active ? 'page' : undefined}

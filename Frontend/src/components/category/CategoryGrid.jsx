@@ -66,7 +66,7 @@ export function CategoryGrid({
             {/* Top row: icon + name + status + menu */}
             <div className="flex items-start gap-3">
               <div
-                className="h-10 w-10 rounded-xl bg-primary text-background grid place-items-center shrink-0"
+                className="h-10 w-10 rounded-xl bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card grid place-items-center shrink-0"
                 onClick={() => onOpenSheet(category)}
               >
                 <Tag className="h-5 w-5" />
@@ -79,12 +79,12 @@ export function CategoryGrid({
                     onClick={() => onOpenSheet(category)}
                   >
                     <h3 className="font-semibold text-md text-foreground truncate">
-                      {safe(category.categoryName) || "Untitled category"}
+                      {safe(category.categoryName) || 'Untitled category'}
                     </h3>
                     <p className="mt-1 text-xs text-muted-foreground truncate">
                       {category.subCategory?.length
-                        ? category.subCategory.join(", ")
-                        : "No subcategories"}
+                        ? category.subCategory.join(', ')
+                        : 'No subcategories'}
                     </p>
                   </div>
 
@@ -94,7 +94,7 @@ export function CategoryGrid({
                       className="h-6 px-2 text-[10px] shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {category.isActive ? "Active" : "Inactive"}
+                      {category.isActive ? 'Active' : 'Inactive'}
                     </Badge>
 
                     <DropdownMenu>
@@ -146,8 +146,8 @@ export function CategoryGrid({
                                 />
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                Toggle to{" "}
-                                {category.isActive ? "deactivate" : "activate"}{" "}
+                                Toggle to{' '}
+                                {category.isActive ? 'deactivate' : 'activate'}{' '}
                                 this category.
                               </p>
                               <Button
@@ -160,10 +160,10 @@ export function CategoryGrid({
                                 disabled={isPending}
                               >
                                 {isPending
-                                  ? "Updating…"
+                                  ? 'Updating…'
                                   : category.isActive
-                                  ? "Deactivate"
-                                  : "Activate"}
+                                  ? 'Deactivate'
+                                  : 'Activate'}
                               </Button>
                             </div>
                           </HoverCardContent>
@@ -211,7 +211,7 @@ export function CategoryGrid({
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
                   <span className="truncate">
-                    {safe(category.description) || "—"}
+                    {safe(category.description) || '—'}
                   </span>
                 </div>
               </div>
@@ -223,8 +223,8 @@ export function CategoryGrid({
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground">
                   <span className="truncate">
                     {category.subCategory?.length
-                      ? category.subCategory.join(", ")
-                      : "—"}
+                      ? category.subCategory.join(', ')
+                      : '—'}
                   </span>
                 </div>
               </div>
@@ -235,7 +235,7 @@ export function CategoryGrid({
                 </p>
                 <div className="mt-1 flex items-center gap-2 text-sm text-foreground min-w-0">
                   <span className="truncate">
-                    {category.tags?.length ? category.tags.join(", ") : "—"}
+                    {category.tags?.length ? category.tags.join(', ') : '—'}
                   </span>
                 </div>
               </div>
