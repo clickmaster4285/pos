@@ -48,13 +48,10 @@ function CheckoutForm({
     setPaymentSuccess(false);
   }, [priceId]);
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setPaymentSuccess(false);
-
- 
 
     if (!stripe || !elements || !priceId) {
       setError('Please select a plan and ensure payment is ready');
@@ -62,7 +59,6 @@ function CheckoutForm({
     }
 
     if (!currentPlanId) {
-   
       setError('No pending company plan entry. Please reselect a plan.');
       return;
     }
@@ -82,7 +78,6 @@ function CheckoutForm({
         planId: currentPlanId,
       }).unwrap();
 
-
       const { clientSecret } = response;
 
       // 2) Confirm card payment
@@ -94,43 +89,36 @@ function CheckoutForm({
       });
 
       if (result.error) {
-       
         setError(result.error.message || 'Payment failed.');
       } else if (result.paymentIntent.status === 'succeeded') {
-     
         setPaymentSuccess(true);
 
-        // 3) Flip plans on the server (new endpoint)
+        // 3) Upgrade plan on the server
         try {
           const upgradePayload = {
-            companyId: companyData?.data?.companyId, // e.g. "CMNGBLJ0"
-            pricePlanMongoId: priceId, // selected plan _id
-            planId: currentPlanId, // your company-level plan id
+            companyId: companyData?.data?.companyId,
+            pricePlanMongoId: priceId,
+            planId: currentPlanId,
             paymentIntentId: result.paymentIntent.id,
           };
-        
 
-          const upgradeRes = await confirmAndUpgradePlan(
-            upgradePayload
-          ).unwrap();
-       
+          await confirmAndUpgradePlan(upgradePayload).unwrap();
         } catch (err) {
           console.error('Failed to upgrade plan:', err);
           setError(err?.data?.error || 'Plan upgrade failed.');
         }
 
-        // 4) Notify parent (you already refresh UI there)
+        // 4) Notify parent
         if (onPaymentComplete) onPaymentComplete();
       }
     } catch (err) {
-     
       setError(err?.data?.error || 'Failed to process payment');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Only show message if not in plan selection mode and no plan is selected
+  // Show message if no plan selected and not in selection mode
   if (!priceId && !showPlanSelection) {
     return (
       <Card>
@@ -159,8 +147,7 @@ function CheckoutForm({
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-600" />
               <AlertDescription className="text-green-700">
-                Payment and Plan Upgrade completed successfully! The page will
-                refresh shortly.
+                Payment and Plan Upgrade completed successfully! The page will refresh shortly.
               </AlertDescription>
             </div>
           </Alert>
@@ -239,17 +226,11 @@ function CheckoutForm({
                     className="text-sm text-gray-600 cursor-pointer"
                   >
                     I agree to the{' '}
-                    <a
-                      href="/terms"
-                      className="text-primary/60 hover:underline"
-                    >
+                    <a href="/terms" className="text-primary/60 hover:underline">
                       Terms and Conditions
                     </a>{' '}
                     and{' '}
-                    <a
-                      href="/privacy"
-                      className="text-primary/60 hover:underline"
-                    >
+                    <a href="/privacy" className="text-primary/60 hover:underline">
                       Privacy Policy
                     </a>
                   </Label>
@@ -314,7 +295,6 @@ export default function PaymentForm({
 }) {
   const { data: publishKey } = useGetStripPublishKeyQuery();
 
-  // ✅ keep Elements stable
   const stripePromise = useMemo(() => {
     if (!publishKey?.data) return null;
     return loadStripe(publishKey.data);
@@ -327,8 +307,6 @@ export default function PaymentForm({
       </Alert>
     );
   }
-
-  
 
   return (
     <Elements stripe={stripePromise}>

@@ -1,5 +1,4 @@
 import IndexModel from "../models/indexModel.js";
-import {generatePlanId} from "../utils/generatePlanIdPurchased.js"
 
 const createPlan = async (req, res, next) => {
   try {
@@ -115,86 +114,34 @@ const getAllPlans = async (req, res) => {
   }
 };
 
-const changePlan = async (req, res) => {
+// GET ALL PLANS
+const getAllPlansforUser = async (req, res) => {
   try {
-    const { changingPlanId, newPlanId } = req.body;
+    const { companyId } = req.user;
 
-    // 1️⃣ Find the company
-    const company = await IndexModel.Company.findOne({
-      companyId: req.user.companyId,
-      deleted: false,
-      isActive: true,
-    });
-
+    // find the company
+    const company = await IndexModel.Company.findOne({ companyId });
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
 
-    // 2️⃣ Remove only plans that are "not started"
-    const beforeCount = company.plan.length;
+    // check if company already has a free plan
+    const hasFreePlan = company.plan?.some((plan) => plan.price === 0);
 
-    company.plan = company.plan.filter((p) => {
-      const isTarget =
-      (p.id.toString() === changingPlanId ||
-      p.id.toString() === newPlanId) &&
-      p.status === "not started";
-      return !isTarget; // keep everything else
-      });
-      
-    const removedCount = beforeCount - company.plan.length;
+    // base filter
+    const filter = { deleted: false, isActive: true };
 
-    // 3️⃣ Fetch new plan from Plan collection (ignore isActive)
-    const newPlan = await IndexModel.Plan.findOne({
-      _id: newPlanId,
-      deleted: false,
-      isActive: true,
-    });
-
-    if (!newPlan) {
-      return res.status(404).json({ message: "New plan not found" });
+    // if company already has free plan, exclude free plans from the list
+    if (hasFreePlan) {
+      filter.price = { $ne: 0 };
     }
 
-    // 4️⃣ Add new plan only if it’s different
-    // const isAlreadyExist = company.plan.some(
-    //   (p) =>
-    //     p.id.toString() === newPlan._id.toString() &&
-    //     p.status !== "not started"
-    // );
+    const plans = await IndexModel.Plan.find(filter);
 
-    // if (!isAlreadyExist) {
-      const newPlanObj = newPlan.toObject();
-      // delete newPlanObj._id; // prevent duplicate key issue
-
-      company.plan.push({
-        ...newPlanObj,
-        isActive: newPlan.price === 0,
-        status: "not started",
-        planId: await generatePlanId(req.user.companyId, req.user.userId),
-      });
-    // }
-
-      // console.log("thje company.plan: ", company)
-
-    // 5️⃣ Save company
-    await company.save();
-
-    // 6️⃣ Respond success
-    return res.status(200).json({
-      success: true,
-      message:
-        removedCount > 0
-          ? `Removed ${removedCount} 'not started' plan(s) and added new plan successfully`
-          : "Plan changed successfully",
-      updatedPlans: company.plan,
-    });
+    res.status(200).json(plans);
   } catch (error) {
-    console.error("Error changing plan:", error);
-    return res.status(400).json({
-      success: false,
-      message: "Error changing plan",
-      error: error.message,
-    });
+    res.status(400).json({ message: "Error fetching plans", error: error.message });
   }
 };
 
-export default { createPlan, updatePlan, deletePlan, getAllPlans, changePlan };
+export default { createPlan, updatePlan, deletePlan, getAllPlans, changePlan , getAllPlansforUser};

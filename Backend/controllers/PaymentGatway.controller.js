@@ -24,16 +24,6 @@ const createPaymentIntent = async (req, res) => {
       return res.status(400).json({ error: "Invalid Plan selected" });
     }
 
-    const company = await IndexModel.Company.findOne({ companyId });
-    if (!company) {
-      return res.status(404).json({ error: "Company not found" });
-    }
-
-    const currentPlan = company.plan.find(p => p.planId || p._id === planId);
-    if (!currentPlan) {
-      return res.status(404).json({ error: "Selected plan not found in company" });
-    }
-
     const paymentIntent = await stripe.paymentIntents.create({
       amount: availablePlan.price * 100,
       currency: currency,
