@@ -16,8 +16,24 @@ export default function useScopedFields(industry, mode /* 'order' | 'item' */) {
       item: ['brand', 'size', 'color'],
     },
     pharmacy: {
-      order: ['doctorName', 'prescriptionRef', 'orderType'],
-      item: ['batchNo', 'expiryDate'],
+      order: [ 'orderType'],
+      item: ['brand', 'expiryDate', 'dosage', 'form'],
+    },
+    electronics: {
+      order: ['orderType'],
+      item: [
+        'brand',
+        'model',
+        'warranty',
+        'powerConsumption',
+        'voltage',
+        'color',
+        'specifications',
+      ],
+    },
+    'general shop': {
+      order: ['orderType'],
+      item: ['weight', 'dimensions', 'shelfLife', 'storageConditions'],
     },
   };
 

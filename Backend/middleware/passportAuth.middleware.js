@@ -1,7 +1,7 @@
-import dotenv from "dotenv";
-import passport from "passport";
-import IndexModel from "../models/indexModel.js";
-import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
+import dotenv from 'dotenv';
+import passport from 'passport';
+import IndexModel from '../models/indexModel.js';
+import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -21,11 +21,11 @@ passport.use(
         isActive: true,
       });
       if (!user) {
-        return done(null, false, { message: "User not found" });
+        return done(null, false, { message: 'User not found' });
       }
       return done(null, user);
-      } catch (error) {
-      return done(error, false, { message: "Error during authentication" });
+    } catch (error) {
+      return done(error, false, { message: 'Error during authentication' });
     }
   })
 );

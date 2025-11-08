@@ -123,9 +123,9 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Make the dialog a column and cap its height */}
-      <DialogContent className="bg-card max-h-[85vh] p-0 flex flex-col">
+      <DialogContent className="bg-background max-h-[85vh] p-0 flex flex-col">
         {/* Header stays as-is, sticky at the top */}
-        <DialogHeader className="sticky top-0 bg-card z-10 px-6 pt-6">
+        <DialogHeader className="sticky top-0 z-10 px-6 pt-6">
           <DialogTitle className="text-2xl font-bold text-foreground">
             Process Payment
           </DialogTitle>
@@ -138,7 +138,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-6 mt-4">
             {/* Staff Info */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+            <div className="bg-card rounded-lg p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Employee:</span>
                 <span className="text-sm font-semibold text-foreground">
@@ -174,7 +174,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                 type="month"
                 value={cycleMonth}
                 onChange={(e) => setCycleMonth(e.target.value)}
-                className="bg-background"
+                className=""
               />
               <p className="text-xs text-muted-foreground">
                 Default is the current month. You can pick any month and year.
@@ -189,7 +189,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
 
               {/* Bonus */}
               <div
-                className={`flex items-center space-x-3 bg-background border rounded-lg p-4 transition-colors cursor-pointer ${
+                className={`flex items-center space-x-3 bg-card border rounded-lg p-4 transition-colors cursor-pointer ${
                   paymentType === 'bonus'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50'
@@ -220,7 +220,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
 
               {/* Deduction */}
               <div
-                className={`flex items-center space-x-3 bg-background border rounded-lg p-4 transition-colors cursor-pointer ${
+                className={`flex items-center space-x-3 bg-card border rounded-lg p-4 transition-colors cursor-pointer ${
                   paymentType === 'decrement'
                     ? 'border-primary bg-primary/5'
                     : 'border-border hover:border-primary/50'
@@ -269,7 +269,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                   if (v !== 'custom') setCustomMethod('');
                 }}
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className="bg-card">
                   <SelectValue placeholder="Select method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -286,7 +286,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                   placeholder="Enter custom method (e.g., Bank Transfer, JazzCash)"
                   value={customMethod}
                   onChange={(e) => setCustomMethod(e.target.value)}
-                  className="bg-background"
+                  className="bg-card"
                 />
               )}
             </div>
@@ -300,7 +300,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                 <Input
                   value={base.toFixed(2)}
                   readOnly
-                  className="bg-background mt-2"
+                  className="bg-card mt-2"
                 />
               </div>
 
@@ -316,7 +316,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                     placeholder="0.00"
                     value={bonusAmount}
                     onChange={(e) => setBonusAmount(e.target.value)}
-                    className="bg-background mt-2"
+                    className="bg-card mt-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave as 0 if you only want to process base salary
@@ -336,7 +336,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                     placeholder="0.00"
                     value={decrementAmount}
                     onChange={(e) => setDecrementAmount(e.target.value)}
-                    className="bg-background mt-2"
+                    className="bg-card mt-2"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Leave as 0 if you only want to process base salary
@@ -354,7 +354,7 @@ export function PaymentDialog({ open, onOpenChange, staff, onSubmit }) {
                   placeholder="Add a note…"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="bg-background mt-2"
+                  className="bg-card mt-2"
                 />
               </div>
 

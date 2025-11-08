@@ -37,19 +37,19 @@ const createCompany = async (req, res) => {
         });
       }
     }
-
-    if (admin.email) {
-      const isEmailAvailable = await IndexModel.User.findOne({
-        email: admin.email,
-      });
-      if (isEmailAvailable) {
-        return res.status(500).json({
-          success: false,
-          error: "admin email already exists: try another email OR Contact support",
+    if (!googleUser) {
+      if (admin.email) {
+        const isEmailAvailable = await IndexModel.User.findOne({
+          email: admin.email,
         });
+        if (isEmailAvailable) {
+          return res.status(500).json({
+            success: false,
+            error: "admin email already exists: try another email OR Contact support",
+          });
+        }
       }
     }
-
     let googleUserComID;
     let companyId = await generateUniqueCompanyId(company.name);
     // === 2. Plan Validation ===
