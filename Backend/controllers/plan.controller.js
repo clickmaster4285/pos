@@ -144,4 +144,4 @@ const getAllPlansforUser = async (req, res) => {
   }
 };
 
-export default { createPlan, updatePlan, deletePlan, getAllPlans, changePlan , getAllPlansforUser};
+export default { createPlan, updatePlan, deletePlan, getAllPlans,  getAllPlansforUser};
