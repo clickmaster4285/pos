@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 const EmailChangeSchema = new mongoose.Schema(
   {
@@ -63,8 +63,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['superAdmin', 'admin', 'staff', 'user'],
-    default: 'user',
+    enum: ["superAdmin", "admin", "staff", "user"],
+    default: "user",
   },
   subRole: {
     type: String,
@@ -73,6 +73,7 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
   permissions: {
+    updateCompanySettings: { type: Boolean, default: false },
     approveRequests: { type: Boolean, default: false },
     assignTasks: { type: Boolean, default: false },
     manageAppointments: { type: Boolean, default: false },
@@ -107,6 +108,22 @@ const userSchema = new mongoose.Schema({
     createOrder: { type: Boolean, default: false },
     viewOrder: { type: Boolean, default: false },
     updateOrderStatus: { type: Boolean, default: false },
+    createIngredient: { type: Boolean, default: false },
+    updateIngredient: { type: Boolean, default: false },
+    viewIngredient: { type: Boolean, default: false },
+    deleteIngredient: { type: Boolean, default: false },
+    createCategory: { type: Boolean, default: false },
+    updateCategory: { type: Boolean, default: false },
+    viewCategory: { type: Boolean, default: false },
+    deleteCategory: { type: Boolean, default: false },
+    createCourier: { type: Boolean, default: false },
+    updateCourier: { type: Boolean, default: false },
+    viewCourier: { type: Boolean, default: false },
+    deleteCourier: { type: Boolean, default: false },
+    createShipment: { type: Boolean, default: false },
+    updateShipment: { type: Boolean, default: false },
+    viewShipment: { type: Boolean, default: false },
+    deleteShipment: { type: Boolean, default: false },
   },
   phone: {
     type: String,
@@ -131,8 +148,8 @@ const userSchema = new mongoose.Schema({
   status: {
     isaccepted: {
       type: String,
-      enum: ['true', 'false', 'pending'],
-      default: 'pending',
+      enum: ["true", "false", "pending"],
+      default: "pending",
     },
     performedBy: {
       type: String,
@@ -204,7 +221,7 @@ const userSchema = new mongoose.Schema({
   addressBookId: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Address',
+      ref: "Address",
     },
   ],
   security: { type: SecuritySchema, default: {} },
@@ -218,21 +235,21 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-userSchema.pre('save', async function (next) {
-  if (this.isModified('password')) {
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   this.updatedAt = Date.now();
   next();
 });
 
-userSchema.pre('save', async function (next) {
+userSchema.pre("save", async function (next) {
   this.updatedAt = Date.now();
 
-  if (!this.isModified('password')) return next();
+  if (!this.isModified("password")) return next();
 
   // Prevent double-hash if already hashed
-  if (typeof this.password === 'string' && this.password.startsWith('$2')) {
+  if (typeof this.password === "string" && this.password.startsWith("$2")) {
     return next();
   }
 
@@ -241,4 +258,4 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model("User", userSchema);

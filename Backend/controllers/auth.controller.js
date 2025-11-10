@@ -171,11 +171,13 @@ const login = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature:
-            activePlans && user.role !== "superAdmin" ? activePlans.limitations.features : [],
+            activePlans && user.role !== "superAdmin"
+              ? activePlans.limitations.features
+              : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
-        },  
+        },
         token: accessToken,
         refreshToken,
       },
@@ -234,6 +236,59 @@ const googleSignIn = async (req, res, next) => {
         role: "admin",
         verified: true,
         picture,
+        permissions: {
+          approveRequests: true,
+          assignTasks: true,
+          manageAppointments: true,
+          createProduct: true,
+          updateProduct: true,
+          viewProduct: true,
+          deleteProduct: true,
+          managePlans: true,
+          manageTeams: true,
+          createVendors: true,
+          updateVendors: true,
+          deleteVendors: true,
+          viewVendors: true,
+          staffCreate: true,
+          staffDelete: true,
+          staffUpdate: true,
+          viewReports: true,
+          viewallstaff: true,
+          editBilling: true,
+          deleteBilling: true,
+          addBilling: true,
+          viewBilling: true,
+          createPayment: true,
+          viewAllStaffSalaries: true,
+          updateSalary: true,
+          deletePayment: true,
+          staffSummary: true,
+          viewActiveLog: true,
+          viewCompanySummary: true,
+          companyprofileupdate: true,
+          manageTables: true,
+          createOrder: true,
+          viewOrder: true,
+          updateOrderStatus: true,
+          createIngredient: true,
+          updateIngredient: true,
+          viewIngredient: true,
+          deleteIngredient: true,
+          createCategory: true,
+          updateCategory: true,
+          viewCategory: true,
+          deleteCategory: true,
+          updateCompanySettings: true,
+          createCourier: true,
+          updateCourier: true,
+          viewCourier: true,
+          deleteCourier: true,
+          createShipment: true,
+          updateShipment: true,
+          viewShipment: true,
+          deleteShipment: true,
+        },
         password: Math.random().toString(36).slice(-10) + "!@#",
         status: { isaccepted: true, performedBy: "google-oauth" },
       });
@@ -282,14 +337,14 @@ const logout = async (req, res, next) => {
     }
     userActivityLogger.info("Auth activity", {
       userId: `Logout user token is: ${
-    req.cookies && req.session
-      ? `${JSON.stringify(req.cookies)} and ${JSON.stringify(req.session)}`
-      : req.cookies
-      ? JSON.stringify(req.cookies)
-      : req.session
-      ? JSON.stringify(req.session)
-      : "No cookies or session"
-  }`,
+        req.cookies && req.session
+          ? `${JSON.stringify(req.cookies)} and ${JSON.stringify(req.session)}`
+          : req.cookies
+          ? JSON.stringify(req.cookies)
+          : req.session
+          ? JSON.stringify(req.session)
+          : "No cookies or session"
+      }`,
       action: "DELETE /api/auth/logout",
       ip: req.ip,
       userAgent: req.get("User-Agent"),
