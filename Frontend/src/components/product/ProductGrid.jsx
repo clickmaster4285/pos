@@ -63,8 +63,6 @@ export function ProductGrid({
       </p>
     );
   }
-  console.log('products', products);
-
 
   const user = useSelector((state) => state.auth.user);
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -224,7 +222,7 @@ export function ProductGrid({
                 <h3 className="font-semibold text-lg text-foreground line-clamp-2 leading-tight">
                   {safe(product.productName) || 'Untitled product'}
                 </h3>
-                {hasCategoriesFeature(user) && (
+                {!isRestaurant && hasCategoriesFeature(user) && (
                   <p className="text-sm text-muted-foreground truncate">
                     {product.subCategoryName || 'No subcategory'}
                   </p>
@@ -232,7 +230,7 @@ export function ProductGrid({
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {hasCategoriesFeature(user) && (
+                {!isRestaurant && hasCategoriesFeature(user) && (
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
                       Category
@@ -243,7 +241,7 @@ export function ProductGrid({
                   </div>
                 )}
 
-                {hasVendorsFeature(user) && (
+                {!isRestaurant && hasVendorsFeature(user) && (
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
                       Vendor
@@ -260,7 +258,7 @@ export function ProductGrid({
                       Ingredients
                     </p>
                     <p className="text-foreground line-clamp-2 text-xs">
-                      {products.ingredient
+                      {product.ingredient
                         ?.map((i) => `${i.quantity} ${i.ingredientName}`)
                         .join(', ') || '—'}
                     </p>

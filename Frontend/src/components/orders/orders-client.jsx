@@ -23,7 +23,8 @@ import { OrdersTable } from './orders-table';
 import { OrdersGrid } from './orders-grid';
 import OrderForm from './order-form';
 import OrderDetailsSheet from './OrderDetailsSheet';
-import { PaginationControls } from './pagination-controls';
+
+import Pagination from '@/components/ui/Pagination';
 import {
   useGetOrdersQuery,
   useCreateOrderMutation,
@@ -80,8 +81,8 @@ function getRange(rangeKey) {
 export default function OrdersClient() {
   /* --------------------------- state --------------------------- */
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [view, setView] = useState('grid');
-  const pageSize = 10;
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -411,9 +412,6 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
     }
   };
 
-
-
-
   // Request return for delivered items
   const onRequestReturn = async (order) => {
     const id = order._id || order.id;
@@ -560,7 +558,6 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
-                    
                     setEditing(null); // only create for now
                     setOpen(true);
                   }}
@@ -714,11 +711,15 @@ ${a.addressLine1}${line2}, ${a.city}, ${a.state} ${a.postalCode}, ${a.country}`;
           />
         )}
 
-        <PaginationControls
+        <Pagination
           page={page}
           pageSize={pageSize}
           total={total}
           onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1); // reset to first page when page size changes
+          }}
         />
 
         <OrderDetailsSheet

@@ -40,7 +40,7 @@ export default function Pagination({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
+        {!(page <=1)  &&  <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange?.(1)}
@@ -48,7 +48,7 @@ export default function Pagination({
           >
             First
           </Button>
-
+}
           <Button
             variant="outline"
             size="sm"
@@ -69,14 +69,14 @@ export default function Pagination({
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          <Button
+       { !(page >= totalPages) &&  <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange?.(totalPages)}
             disabled={page >= totalPages}
           >
             Last
-          </Button>
+          </Button>}
         </div>
       </div>
     </div>

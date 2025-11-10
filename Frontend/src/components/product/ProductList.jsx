@@ -69,13 +69,15 @@ export function ProductList({
       <div
         className={`grid ${
           hasVendorsFeature(user) ? 'grid-cols-22' : 'grid-cols-20'
-        } items-center px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground bg-muted/30`}
+        } items-center px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground `}
       >
         <div className="col-span-3 flex items-center gap-2">
           <span>Product</span>
         </div>
-        <div className="col-span-2">Category</div>
-        {hasVendorsFeature(user) && <div className="col-span-2">Vendor</div>}
+        {!isRestaurant && <div className="col-span-2">Category</div>}
+        {!isRestaurant && hasVendorsFeature(user) && (
+          <div className="col-span-2">Vendor</div>
+        )}
         {isRestaurant && <div className="col-span-3">Ingredients</div>}
         <div className="col-span-2">SKU</div>
         <div className="col-span-2">Price</div>
@@ -124,23 +126,24 @@ export function ProductList({
                 <p className="text-sm font-medium text-foreground truncate leading-tight">
                   {p.productName}
                 </p>
-                <p className="text-xs text-muted-foreground truncate mt-1">
-                  {p.subCategoryName || '—'}
-                </p>
+                {!isRestaurant && (
+                  <p className="text-xs text-muted-foreground truncate mt-1">
+                    {p.subCategoryName || '—'}
+                  </p>
+                )}
               </div>
             </div>
-
-            <div className="col-span-2" onClick={() => onOpenSheet(p)}>
-              <p className="text-sm text-foreground truncate">
-                {p.category || '—'}
-              </p>
-            </div>
-
-            {hasVendorsFeature(user) && (
+            {!isRestaurant && (
               <div className="col-span-2" onClick={() => onOpenSheet(p)}>
                 <p className="text-sm text-foreground truncate">
-                  {p.vendor}
+                  {p.category || '—'}
                 </p>
+              </div>
+            )}
+
+            {!isRestaurant && hasVendorsFeature(user) && (
+              <div className="col-span-2" onClick={() => onOpenSheet(p)}>
+                <p className="text-sm text-foreground truncate">{p.vendor}</p>
               </div>
             )}
 

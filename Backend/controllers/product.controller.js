@@ -283,27 +283,37 @@ const getAllProducts = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Collect all ingredient IDs across products
+    // ================== INGREDIENTS ==================
+    // Collect ingredientId from each ingredient object
     const allIngredientIds = [
-      ...new Set(products.flatMap((p) => p.ingredient || [])),
+      ...new Set(
+        products
+          .flatMap((p) => p.ingredient || [])
+          .map((ing) => ing.ingredientId)
+          .filter(Boolean)
+          .map((id) => id.toString())
+      ),
     ];
 
-    // Fetch ingredient names
-    const ingredients = await Ingredient.find({
-      _id: { $in: allIngredientIds },
-    })
-      .select('name')
-      .lean();
+    let ingredientMap = {};
 
-    const ingredientMap = Object.fromEntries(
-      ingredients.map((ing) => [ing._id.toString(), ing.name])
-    );
+    if (allIngredientIds.length) {
+      const ingredients = await Ingredient.find({
+        _id: { $in: allIngredientIds },
+      })
+        .select('name') // or 'ingredientName' if that's your field in Ingredient model
+        .lean();
 
-    // ===== VENDORS =====
+      ingredientMap = Object.fromEntries(
+        ingredients.map((ing) => [ing._id.toString(), ing.name])
+      );
+    }
+
+    // ================== VENDORS ==================
     const vendorIds = [
       ...new Set(
         products
-          .map((p) => p.vendor) // field name from your DB
+          .map((p) => p.vendor)
           .filter(Boolean)
           .map((id) => id.toString())
       ),
@@ -311,7 +321,7 @@ const getAllProducts = async (req, res) => {
 
     const vendors = vendorIds.length
       ? await Vendor.find({ _id: { $in: vendorIds } })
-          .select('name') // or 'vendorName' if that's your field
+          .select('name') // or vendorName
           .lean()
       : [];
 
@@ -319,12 +329,11 @@ const getAllProducts = async (req, res) => {
       vendors.map((v) => [v._id.toString(), v.name])
     );
 
-   
-    // ===== CATEGORIES =====
+    // ================== CATEGORIES ==================
     const categoryIds = [
       ...new Set(
         products
-          .map((p) => p.category) // "category" field from product
+          .map((p) => p.category)
           .filter(Boolean)
           .map((id) => id.toString())
       ),
@@ -332,32 +341,46 @@ const getAllProducts = async (req, res) => {
 
     const categories = categoryIds.length
       ? await Category.find({ _id: { $in: categoryIds } })
-          .select('categoryName') // 👈 use the correct field
+          .select('categoryName')
           .lean()
       : [];
 
     const categoryMap = Object.fromEntries(
-      categories.map((c) => [c._id.toString(), c.categoryName]) // 👈 use categoryName
+      categories.map((c) => [c._id.toString(), c.categoryName])
     );
 
-    // Replace ingredient IDs with names
+    // ================== BUILD RESPONSE ==================
     const populatedProducts = products.map((p) => ({
       ...p,
-      ingredient: (p.ingredient || []).map((id) => ({
-        // _id: id,
-        name: ingredientMap[id] || 'Unknown',
+
+      // keep full ingredient object, just add a unified "name" field
+      ingredient: (p.ingredient || []).map((ing) => ({
+        ...ing,
+        // priority:
+        // 1) ingredientName from product
+        // 2) Ingredient collection by ingredientId
+        // 3) "Unknown"
+        name:
+          ing.ingredientName ||
+          (ing.ingredientId
+            ? ingredientMap[ing.ingredientId.toString()] || 'Unknown'
+            : 'Unknown'),
       })),
+
       vendorName: p.vendor ? vendorMap[p.vendor.toString()] || 'Unknown' : null,
+
       categoryName: p.category
         ? categoryMap[p.category.toString()] || 'Unknown'
         : null,
     }));
-    // console.log("the populatedProducts: ",JSON.stringify(populatedProducts))
-    res.status(200).json({ success: true, data: populatedProducts });
+
+    return res.status(200).json({ success: true, data: populatedProducts });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('getAllProducts error:', err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 const getProductById = async (req, res) => {
   try {
