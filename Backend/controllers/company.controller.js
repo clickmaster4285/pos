@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { upload } from "../config/multer.js";
 import path from "path";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
+import mongoose from 'mongoose';
 
 const createCompany = async (req, res) => {
   try {
@@ -210,6 +211,7 @@ const createCompany = async (req, res) => {
       plan:
         availablePlan.price === 0
           ? {
+              _id: new mongoose.Types.ObjectId(),
               planId: availablePlan._id,
               companyPlanId: await generatePlanId(companyId, adminUserId),
               status: "in progress",
