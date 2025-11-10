@@ -1,4 +1,4 @@
-// components/PlanCard.jsx
+// src/components/plans/PlanCard.jsx
 import {
   Card,
   CardContent,
@@ -99,13 +99,10 @@ export function PlanCard({ plan, onEdit, onDelete }) {
           {plan.description}
         </CardDescription>
 
-        {/* {plan.description.length > 150
-          ? plan.description.slice(0, 150) + '...'
-          : plan.description} */}
-
         <div className="flex items-center justify-between">
           <div className="text-2xl font-bold text-primary">
-            <Label className={'mb-2'}>Price</Label>${plan.price}
+            <Label className={'mb-2'}>Price</Label>
+            {new Intl.NumberFormat('en-US', { style: 'currency', currency: plan.currencyCode }).format(plan.price)}
             <span className="text-sm font-normal text-muted-foreground"></span>
           </div>
         </div>

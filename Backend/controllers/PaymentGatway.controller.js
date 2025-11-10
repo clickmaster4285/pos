@@ -1,11 +1,12 @@
 import IndexModel from '../models/indexModel.js';
 import Stripe from "stripe";
 import mongoose from 'mongoose';
+import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 
 const createPaymentIntent = async (req, res) => {
   try {
     const { userId, companyId, email } = req.user;
-    const { priceId, currency, planId } = req.body;
+    const { priceId, planId } = req.body;
       const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
     
     const stripe = new Stripe(adminUser.stripeConfig.secretKey, {
@@ -23,26 +24,15 @@ const createPaymentIntent = async (req, res) => {
     if (!availablePlan) {
       return res.status(400).json({ error: "Invalid Plan selected" });
     }
-
-    const company = await IndexModel.Company.findOne({ companyId });
-    if (!company) {
-      return res.status(404).json({ error: "Company not found" });
-    }
-
-    const currentPlan = company.plan.find(p => p.planId || p._id === planId);
-    if (!currentPlan) {
-      return res.status(404).json({ error: "Selected plan not found in company" });
-    }
-
+    const companyPlanId = await generatePlanId(companyId, userId);
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: availablePlan.price * 100,
-      currency: currency,
+      amount: availablePlan.price*100, // amount in smallest currency unit
+      currency: availablePlan.currencyCode,
       payment_method_types: ["card"],
-      metadata: { userId, companyId, planId },
+      metadata: { userId, companyId, planId, companyPlanId },
       description: `Payment for ${availablePlan.name}`,
     });
-
-    res.json({ clientSecret: paymentIntent.client_secret, planName: availablePlan.name });
+    res.json({ clientSecret: paymentIntent.client_secret, planName: availablePlan.name, companyPlanId:companyPlanId });
   } catch (error) {
     console.error("❌ Error creating payment intent:", error.message);
     res.status(500).json({ error: "Failed to create payment intent" });
@@ -79,7 +69,7 @@ const getstrippublishkey = async (req, res) => {
 
 const confirmAndUpgradePlan = async (req, res) => {
   try {
-    const { companyId, pricePlanMongoId, planId, paymentIntentId } = req.body;
+    const { companyId, pricePlanMongoId, planId, paymentIntentId, companyPlanId } = req.body;
     const { userId } = req.user || {};
 
     if (!companyId || !pricePlanMongoId || !planId || !paymentIntentId) {
@@ -132,6 +122,7 @@ const confirmAndUpgradePlan = async (req, res) => {
     const newCompanyPlan = {
       _id: new mongoose.Types.ObjectId(),
       planId, // your company-level plan id string
+      companyPlanId: companyPlanId,
       name: pricePlan.name,
       description: pricePlan.description,
       price: pricePlan.price,
@@ -181,7 +172,7 @@ const confirmAndUpgradePlan = async (req, res) => {
       {
         $push: {
           subscription: {
-            planId,
+            planId:companyPlanId,
             status: 'complete',
             paymentIntentId,
             companyId,

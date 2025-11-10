@@ -35,7 +35,7 @@ const stripWebhook = async (req, res) => {
       console.log("✅ Payment succeeded:", paymentIntent.id);
       try {
         console.log("the paymentIntent.metadata are: ", paymentIntent.metadata);
-        const { userId, companyId, planId } = paymentIntent.metadata;
+        const { userId, companyId, planId, companyPlanId } = paymentIntent.metadata;
 
         // Update company plan isActive status
         await IndexModel.Company.updateOne(
@@ -45,10 +45,11 @@ const stripWebhook = async (req, res) => {
               "plan.$.isActive": true,
               "plan.$.updatedAt": new Date(),
               "plan.$.status": "in progress",
+              "plan.$.companyPlanId": companyPlanId,
             },
             $push: {
               subscription: {
-                planId,
+                planId:companyPlanId,
                 status: "complete",
                 paymentIntentId: paymentIntent.id,
                 companyId,
