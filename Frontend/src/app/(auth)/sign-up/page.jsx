@@ -133,14 +133,14 @@ export default function RegisterPage() {
       const result = await createCompany(payload).unwrap();
       
      if (googleUser) {
-        if (result.data.selectedPlan.planPrice === 0) {  // selectedPlan.planPrice, selectedPlan.planId: _id
+        // if (result.data.selectedPlan.planPrice === 0) {  // selectedPlan.planPrice, selectedPlan.planId: _id
           await login({
             email: payload.admin.email,
             password: payload.admin.password,
           }).unwrap();
-        } else {
+        // } else {
           setPaymentModelOpen(true);
-        }
+        // }
       } else {
         router.push(
           `/verify-email?email=${encodeURIComponent(formData.adminEmail)}&planPrice=${result.data.selectedPlan.planPrice}&planId=${result.data.selectedPlan.planId}`

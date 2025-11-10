@@ -85,6 +85,7 @@ function CheckoutForm({
         payment_method: {
           card: elements.getElement(CardElement),
           billing_details: { name: 'Customer Name' },
+          
         },
       });
 
@@ -92,7 +93,6 @@ function CheckoutForm({
         setError(result.error.message || 'Payment failed.');
       } else if (result.paymentIntent.status === 'succeeded') {
         setPaymentSuccess(true);
-
         // 3) Upgrade plan on the server
         try {
           const upgradePayload = {
@@ -100,6 +100,7 @@ function CheckoutForm({
             pricePlanMongoId: priceId,
             planId: currentPlanId,
             paymentIntentId: result.paymentIntent.id,
+            companyPlanId: response.companyPlanId
           };
 
           await confirmAndUpgradePlan(upgradePayload).unwrap();
