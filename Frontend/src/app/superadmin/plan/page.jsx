@@ -1,3 +1,4 @@
+// src/app/plans/page.jsx (PlanManagement)
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -25,14 +26,15 @@ export default function PlanManagement() {
     name: '',
     description: '',
     price: 0,
-    validateDays: 0, // optional
+    currencyCode: 'USD',
+    validateDays: 0,
     limitations: {
       maxStaff: 0,
       maxProductItems: 0,
       maxVendors: 0,
-      features: [], // array of strings
+      features: [],
     },
-    isActive: true, // boolean
+    isActive: true,
   });
 
   const { data: apiPlans = [], isLoading, error } = useGetAllPlansQuery();
@@ -48,6 +50,7 @@ export default function PlanManagement() {
       description: p.description ?? '',
       validateDays: p.validateDays ?? '',
       price: Number(p.price ?? 0),
+      currencyCode: p.currencyCode ?? 'USD',
       maxVehicles: p.limitations?.maxProductItems ?? 0,
       maxUsers: p.limitations?.maxStaff ?? 0,
       maxVendors: p.limitations?.maxVendors ?? 0,
@@ -81,14 +84,15 @@ export default function PlanManagement() {
       name: '',
       description: '',
       price: 0,
-      validateDays: 0, // optional
+      currencyCode: 'USD',
+      validateDays: 0,
       limitations: {
         maxStaff: 0,
         maxProductItems: 0,
         maxVendors: 0,
-        features: [], // array of strings
+        features: [],
       },
-      isActive: true, // boolean
+      isActive: true,
     });
   };
 
@@ -98,6 +102,7 @@ export default function PlanManagement() {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
+        currencyCode: formData.currencyCode,
         validateDays: Number(formData.validateDays || 0),
         limitations: {
           maxStaff: Number(formData.limitations.maxStaff || 0),
@@ -126,6 +131,7 @@ export default function PlanManagement() {
       name: plan.name ?? '',
       description: plan.description ?? '',
       price: Number(plan.price ?? 0),
+      currencyCode: plan.currencyCode ?? 'USD',
       validateDays: Number(plan.validateDays ?? 0),
       limitations: {
         maxStaff: Number(plan.maxUsers ?? plan.limitations?.maxStaff ?? 0),
@@ -135,7 +141,6 @@ export default function PlanManagement() {
         maxVendors: Number(
           plan.maxVendors ?? plan.limitations?.maxVendors ?? 0
         ),
-        // Prefer plan.features if PlanCard flattens it; otherwise use nested:
         features: Array.isArray(plan.features)
           ? plan.features
           : Array.isArray(plan.limitations?.features)
@@ -155,6 +160,7 @@ export default function PlanManagement() {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
+        currencyCode: formData.currencyCode,
         validateDays: Number(formData.validateDays || 0),
         limitations: {
           maxStaff: Number(formData.limitations.maxStaff || 0),

@@ -1,22 +1,20 @@
+// PaymentGateway.jsx
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
-import { useGetAllPlansQuery, useChangePlanMutation } from '@/features/planApi';
+import { useGetAllPlansQuery } from '@/features/planApi';   // <-- add import
 import PlanSelection from './PlanSelection';
 import PaymentForm from './PaymentForm';
-import { useGetCompanyQuery } from '@/features/CompanyApi';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTryFreePlanMutation } from '@/features/CompanyApi';
 
 export default function PaymentGateway({ initialPlanId = '' }) {
-  const [isSelectingPlan, setIsSelectingPlan] = useState(false);
-  const [isPlanChanged, setIsPlanChanged] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [currentPlanId, setCurrentPlanId] = useState('');
+  const [isPlanSelected, setIsPlanSelected] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-
-  // prevent auto-select from overriding a manual pick
-  const [hasUserSelected, setHasUserSelected] = useState(false);
-  // debounce/guard rapid clicks
   const [isPlanSwitching, setIsPlanSwitching] = useState(false);
 
   const {
@@ -26,231 +24,167 @@ export default function PaymentGateway({ initialPlanId = '' }) {
     refetch: refetchPlans,
   } = useGetAllPlansQuery();
 
-  const {
-    data: mycompany,
-    isLoading: companyLoading,
-    refetch: refetchCompany,
-  } = useGetCompanyQuery();
-
   const { user } = useContext(AuthContext);
-  const [changePlan, { isLoading: isChangingPlan }] = useChangePlanMutation();
 
-  // Last pending company-plan (status: not started)
-  const lastSelectedPlan = mycompany?.data?.plan?.find(
-    (plan) => plan.status === 'not started'
-  );
+  // NEW -------------------------------------------------
+  const [tryFreePlan, { isLoading: freeLoading, isSuccess: freeSuccess, error: freeError }] =
+    useTryFreePlanMutation();
+  // -----------------------------------------------------
 
-  // Catalog plan id user is about to pay for
-  const [selectedPlan, setSelectedPlan] = useState(lastSelectedPlan?._id || '');
-  // Company plan "token id" (string) used by backend (sent as currentPlanId to PaymentForm)
-  const [selectedPlanId, setSelectedPlanId] = useState(
-    lastSelectedPlan?.planId || ''
-  );
-
-  const selectedPlanData = plans?.find((p) => p._id === selectedPlan);
-  const companyData = mycompany?.data;
-  const isCurrentPlanActive = companyData?.plan?.[0]?.isActive;
-
-  // Helpers for header only
-  const activeCompanyPlan = companyData?.plan?.find((p) => p.isActive) || null;
-  const latestCompanyPlan = companyData?.plan?.length
-    ? [...companyData.plan].sort(
-        (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
-      )[0]
-    : null;
-  const currentCompanyPlanToShow =
-    activeCompanyPlan || latestCompanyPlan || null;
-
-  // Respect the plan chosen in parent (only once)
+  // Auto-select plan if initialPlanId is passed
   useEffect(() => {
-    if (initialPlanId && !hasUserSelected) {
-      setSelectedPlan(initialPlanId);
-
-      // try to find a pending company plan for this catalog id
-      const pendingCP = mycompany?.data?.plan?.find(
-        (p) => p.planId === initialPlanId && p.status === 'not started'
-      );
-      const parentCurrentPlanId = pendingCP?.planId || initialPlanId;
-      setSelectedPlanId(parentCurrentPlanId);
-
-      setHasUserSelected(true);
+    if (initialPlanId && !isPlanSelected) {
+      const plan = plans.find(p => p._id === initialPlanId);
+      if (plan) {
+        setSelectedPlan(initialPlanId);
+        setCurrentPlanId(initialPlanId);
+        setIsPlanSelected(true);
+      }
     }
-  }, [initialPlanId, hasUserSelected, mycompany?.data?.plan]);
+  }, [initialPlanId, plans, isPlanSelected]);
 
-  // Refresh page after successful payment
+  // Refresh after payment OR free-plan success
   useEffect(() => {
-    if (paymentCompleted) {
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+    if (paymentCompleted || freeSuccess) {
+      setTimeout(() => window.location.reload(), 1500);
     }
-  }, [paymentCompleted]);
+  }, [paymentCompleted, freeSuccess]);
 
   const handlePlanSelect = async (planId) => {
-    if (isPlanSwitching) return; // guard rapid clicks
+    if (isPlanSwitching) return;
     setIsPlanSwitching(true);
 
-    setHasUserSelected(true);
-    setSelectedPlan(planId);
-
-    // set a safe fallback immediately so PaymentForm has something
-    const prePending = mycompany?.data?.plan?.find(
-      (p) => p.planId === planId && p.status === 'not started'
-    );
-    const preCurrentPlanId = prePending?.planId || planId;
-    setSelectedPlanId(preCurrentPlanId);
-
-    const newPlan = plans.find((p) => p._id === planId);
-
-    if (
-      newPlan &&
-      lastSelectedPlan &&
-      planId !== lastSelectedPlan._id &&
-      !isCurrentPlanActive
-    ) {
+    const plan = plans.find(p => p._id === planId);
+    if (plan?.price === 0) {
+      // ---- FREE PLAN LOGIC ----
       try {
-        const response = await changePlan({
-          changingPlanId: lastSelectedPlan._id,
-          newPlanId: planId,
-        }).unwrap();
-
-        const newCompanyPlan =
-          response.updatedPlans.find(
-            (p) => p.planId === response.newPlanId && p.status === 'not started'
-          ) ||
-          response.updatedPlans.find(
-            (p) => p.planId === planId && p.status === 'not started'
-          );
-
-        const finalCurrentPlanId =
-          newCompanyPlan?.planId || response?.newPlanId || planId;
-
-        setSelectedPlanId(finalCurrentPlanId);
-
-        setIsPlanChanged(true);
-
-        await refetchPlans();
-        await refetchCompany();
-      } catch (error) {
-        console.error('Failed to change plan:', error);
+        await tryFreePlan(planId).unwrap();
+        // success → page will reload via useEffect above
+      } catch (e) {
+        console.error('Free plan error', e);
+        // you can show a toast / alert here if you want
       } finally {
         setIsPlanSwitching(false);
       }
-    } else {
-      setIsPlanSwitching(false);
+      return;
     }
 
-    setIsSelectingPlan(false);
+    // ---- PAID PLAN LOGIC ----
+    setSelectedPlan(planId);
+    setCurrentPlanId(planId);
+    setIsPlanSelected(true);
+    setIsPlanSwitching(false);
   };
 
   const handleBackToPlans = () => {
-    if (!isCurrentPlanActive) {
-      setSelectedPlan('');
-      setSelectedPlanId('');
-      setIsSelectingPlan(true);
-      setIsPlanChanged(false);
-      // keep hasUserSelected = true so auto-select doesn’t override
-    }
+    setSelectedPlan('');
+    setCurrentPlanId('');
+    setIsPlanSelected(false);
   };
 
   const handlePaymentComplete = () => {
     setPaymentCompleted(true);
   };
 
+  const selectedPlanData = plans.find(p => p._id === selectedPlan);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12">
       <div className="container mx-auto px-6 max-w-5xl">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-            Manage Your Subscription Plan
-          </h1>
-          {(hasUserSelected || isSelectingPlan) && selectedPlanData?.name ? (
-            <p className="text-lg text-gray-600 mt-3">
-              Selected Plan:{' '}
-              <span className="font-semibold">{selectedPlanData.name}</span>
-              <span className="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                Pending change
-              </span>
-            </p>
-          ) : currentCompanyPlanToShow ? (
-            <p className="text-lg text-gray-600 mt-3">
-              Current Plan:{' '}
-              <span className="font-semibold">
-                {currentCompanyPlanToShow.name}
-              </span>
-              {currentCompanyPlanToShow.isActive && (
-                <span className="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                  Active
-                </span>
-              )}
-            </p>
-          ) : null}
-        </div>
 
-        {paymentCompleted && (
-          <Alert className="mb-8 bg-green-50 border-green-200">
-            <AlertDescription className="text-green-700">
-              Payment completed successfully! Refreshing page...
-            </AlertDescription>
-          </Alert>
+        {/* Full Plan Selection View */}
+        {!isPlanSelected && (
+          <>
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                Choose Your Subscription Plan
+              </h1>
+              <p className="text-lg text-gray-600 mt-3">
+                Pick the perfect plan to grow your business
+              </p>
+            </div>
+
+            <PlanSelection
+              plans={plans}
+              selectedPlan={selectedPlan}
+              onPlanSelect={handlePlanSelect}
+              isLoading={isPlansLoading}
+              isChangingPlan={isPlanSwitching || freeLoading}
+            />
+          </>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {isSelectingPlan && !isCurrentPlanActive && (
-            <div className="space-y-6">
-              <PlanSelection
-                plans={plans}
-                selectedPlan={selectedPlan}
-                onPlanSelect={handlePlanSelect}
-                isLoading={isPlansLoading}
-                isChangingPlan={isChangingPlan || isPlanSwitching}
-              />
+        {/* Payment Form View (after plan selected) */}
+        {isPlanSelected && selectedPlanData?.price !== 0 && (
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Complete Your Payment
+              </h1>
+              <p className="text-lg text-gray-600 mt-2">
+                Selected Plan:{' '}
+                <span className="font-semibold">{selectedPlanData?.name}</span>
+                <span className="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                  {initialPlanId ? 'Ready for Payment' : 'Pending change'}
+                </span>
+              </p>
             </div>
-          )}
 
-          <div className="space-y-6">
-            {!isCurrentPlanActive && !isSelectingPlan && (
-              <Button
-                onClick={handleBackToPlans}
-                className="w-full sm:w-auto bg-gray-700 text-white hover:bg-gray-800 transition-colors"
-                disabled={
-                  isPlansLoading ||
-                  companyLoading ||
-                  isCurrentPlanActive ||
-                  isChangingPlan ||
-                  isPlanSwitching
-                }
-              >
-                Select Another Plan
-              </Button>
+            {paymentCompleted && (
+              <Alert className="mb-6 bg-green-50 border-green-200">
+                <AlertDescription className="text-green-700">
+                  Payment completed successfully! Refreshing page...
+                </AlertDescription>
+              </Alert>
             )}
 
-            {/* Keep PaymentForm on its own row/stack */}
-            <div className="w-full">
-              <PaymentForm
-                priceId={selectedPlan}
-                plan={selectedPlanData}
-                isLoading={isPlansLoading || isChangingPlan || isPlanSwitching}
-                showPlanSelection={isSelectingPlan}
-                currentPlanId={selectedPlanId}
-                isPlanChanged={isPlanChanged}
-                onPaymentComplete={handlePaymentComplete}
-              />
+            {/* Back Button */}
+            <div className="mb-6">
+              <Button
+                onClick={handleBackToPlans}
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={isPlansLoading || isPlanSwitching}
+              >
+                ← Select Another Plan
+              </Button>
             </div>
-          </div>
-        </div>
 
-        <div className="mt-12 text-center text-gray-600">
-          <p className="text-sm">
-            Need help choosing a plan?{' '}
-            <a
-              href="/contact"
-              className="text-blue-600 hover:underline font-medium"
-            >
-              Contact our sales team
-            </a>
-          </p>
-        </div>
+            {/* Payment Form */}
+            <PaymentForm
+              priceId={selectedPlan}
+              plan={selectedPlanData}
+              isLoading={isPlansLoading || isPlanSwitching}
+              showPlanSelection={false}
+              currentPlanId={currentPlanId}
+              isPlanChanged={!!initialPlanId}
+              onPaymentComplete={handlePaymentComplete}
+            />
+          </div>
+        )}
+
+        {/* FREE PLAN SUCCESS MESSAGE */}
+        {freeSuccess && (
+          <div className="max-w-2xl mx-auto text-center mt-12">
+            <Alert className="bg-green-50 border-green-200">
+              <AlertDescription className="text-green-700">
+                Free plan activated! Refreshing page...
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {/* Footer Help */}
+        {!isPlanSelected && (
+          <div className="mt-16 text-center text-gray-600">
+            <p className="text-sm">
+              Need help choosing a plan?{' '}
+              <a href="/contact" className="text-blue-600 hover:underline font-medium">
+                Contact our sales team
+              </a>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

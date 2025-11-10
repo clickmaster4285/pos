@@ -242,7 +242,6 @@ export const createCompanybySuperAdmin = async (req, res) => {
     const companyId = await generateUniqueCompanyId(company.name);
 
     const user_Id = await generateUniqueUserId(admin.name);
-    console.log("thecompanyId was that: ", companyId, user_Id)
     // Create company
     const newCompany = new IndexModel.Company({
       name: company.name,

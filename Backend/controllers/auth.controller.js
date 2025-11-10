@@ -12,7 +12,6 @@ import {
   fetchIndustryName,
 } from "../utils/fetchToolLogoName.js";
 import { OAuth2Client } from "google-auth-library";
-import { v4 as uuidv4 } from "uuid";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 import { userActivityLogger } from "../utils/logger.js";
 
@@ -172,11 +171,11 @@ const login = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature:
-            user.role !== "superAdmin" ? activePlans.limitations.features : [],
+            activePlans && user.role !== "superAdmin" ? activePlans.limitations.features : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
-        },
+        },  
         token: accessToken,
         refreshToken,
       },

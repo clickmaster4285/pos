@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [googleUser, setGoogleUser] = useState(null);
   const [login] = useLoginMutation();
-
+  const [paymentModelOpen, setPaymentModelOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: plans = [], isLoading: isPlansLoading } = useGetAllPlansQuery();
@@ -132,10 +132,19 @@ export default function RegisterPage() {
 
       const result = await createCompany(payload).unwrap();
       
-      if(googleUser){
-      await login({ email:payload.admin.email, password: payload.admin.password }).unwrap();
-      }else{
-        router.push(`/verify-email?email=${encodeURIComponent(formData.adminEmail)}`);
+     if (googleUser) {
+        // if (result.data.selectedPlan.planPrice === 0) {  // selectedPlan.planPrice, selectedPlan.planId: _id
+          await login({
+            email: payload.admin.email,
+            password: payload.admin.password,
+          }).unwrap();
+        // } else {
+          setPaymentModelOpen(true);
+        // }
+      } else {
+        router.push(
+          `/verify-email?email=${encodeURIComponent(formData.adminEmail)}&planPrice=${result.data.selectedPlan.planPrice}&planId=${result.data.selectedPlan.planId}`
+        );
       }
 // router.push("/admin/dashboard");
       } catch (err) {

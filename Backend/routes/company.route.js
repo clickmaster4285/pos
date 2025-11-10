@@ -70,4 +70,11 @@ router.post(
   authenticateToken,
   Indexcontroller.Company.verifyCompanyEmailChange
 );
+
+router.put(
+  '/try-free-plan',
+  passport.authenticate('jwt', { session: false }),
+  authenticateToken,
+  Indexcontroller.Company.tryFreePlan
+);
 export default router;

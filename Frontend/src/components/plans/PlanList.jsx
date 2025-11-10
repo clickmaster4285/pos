@@ -1,3 +1,4 @@
+// src/components/plans/PlanList.jsx
 'use client';
 
 import { useState } from 'react';
@@ -51,7 +52,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
   return (
     <>
       <Card className="divide-y border-border">
-        {/* Header */}
         <div className="hidden sm:grid grid-cols-24 items-center px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           <div className="col-span-5">Plan</div>
           <div className="col-span-3">Price</div>
@@ -63,13 +63,11 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
           <div className="col-span-2 text-right">Actions</div>
         </div>
 
-        {/* Rows */}
         {plans.map((p) => (
           <div
             key={p.id}
             className="grid grid-cols-1 sm:grid-cols-24 items-center px-4 py-3 gap-y-3 hover:bg-accent/30 transition-colors"
           >
-            {/* Plan */}
             <div className="sm:col-span-5">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg shrink-0">
@@ -90,7 +88,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
                     ) : null}
                   </div>
 
-                  {/* View description button (opens dialog) */}
                   {p.description ? (
                     <Button
                       variant="link"
@@ -109,21 +106,18 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
               </div>
             </div>
 
-            {/* Price */}
             <div className="sm:col-span-3">
               <div className="text-sm font-medium">
-                ₨ {Number(p.price || 0).toLocaleString()}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: p.currencyCode }).format(Number(p.price || 0))}
               </div>
             </div>
 
-            {/* Type */}
             <div className="sm:col-span-3">
               <div className="text-sm text-muted-foreground">
                 {p.type || 'Basic'}
               </div>
             </div>
 
-            {/* Features (badges) */}
             <div className="sm:col-span-5">
               {Array.isArray(p.features) && p.features.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
@@ -149,7 +143,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
               )}
             </div>
 
-            {/* Max Staff */}
             <div className="sm:col-span-2">
               <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3 text-secondary-foreground" />
@@ -159,7 +152,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
               </div>
             </div>
 
-            {/* Max Vendors */}
             <div className="sm:col-span-2">
               <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Building2 className="h-3 w-3 text-secondary-foreground" />
@@ -169,7 +161,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
               </div>
             </div>
 
-            {/* Max Product + Actions */}
             <div className="sm:col-span-4 flex items-center justify-between gap-3">
               <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Package className="h-3 w-3 text-secondary-foreground" />
@@ -213,7 +204,6 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
         ))}
       </Card>
 
-      {/* Description Dialog */}
       <Dialog open={descOpen} onOpenChange={setDescOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

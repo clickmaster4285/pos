@@ -1,4 +1,6 @@
+// src/models/PlanSchema.js (or wherever your schema is)
 import mongoose, { Schema } from "mongoose";
+import cc from "currency-codes";
 
 const ALLOWED_FEATURES = [
   "Staff",
@@ -12,6 +14,8 @@ const ALLOWED_FEATURES = [
   "Courier & Shipment",
   "Settings"
 ];
+
+const VALID_CURRENCY_CODES = cc.codes();
 
 const PlanSchema = new Schema(
   {
@@ -34,6 +38,16 @@ const PlanSchema = new Schema(
     price: {
       type: Number,
       required: [true, "Price is required"],
+    },
+    currencyCode: {
+      type: String,
+      required: [true, "Currency is required"],
+      uppercase: true,
+      trim: true,
+      enum: {
+        values: VALID_CURRENCY_CODES,
+        message: "Invalid currency code. Choose from the list.",
+      },
     },
     validateDays: Number,
     limitations: {
@@ -86,9 +100,6 @@ const PlanSchema = new Schema(
   }
 );
 
-// Indexes for better query performance
-// PlanSchema.index({ name: 1 });
-// PlanSchema.index({ createdBy: 1, isActive: 1 });
 PlanSchema.index({ name: 1 }, { unique: true, partialFilterExpression: { deleted: false } });
 
 export default mongoose.model("Plan", PlanSchema);
