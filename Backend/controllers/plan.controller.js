@@ -6,7 +6,14 @@ const createPlan = async (req, res, next) => {
       res.status(403);
       throw new Error("Not authorized, admin access required");
     }
-    const { name, description, price, limitations, validateDays, currencyCode } = req.body;
+    const {
+      name,
+      description,
+      price,
+      limitations,
+      validateDays,
+      currencyCode,
+    } = req.body;
 
     const planExists = await IndexModel.Plan.findOne({ name, deleted: false });
     if (planExists) {
@@ -137,8 +144,18 @@ const getAllPlansforUser = async (req, res) => {
 
     res.status(200).json(plans);
   } catch (error) {
-    res.status(400).json({ message: "Error fetching plans", error: error.message });
+    res
+      .status(400)
+      .json({ message: "Error fetching plans", error: error.message });
   }
 };
 
-export default { createPlan, updatePlan, deletePlan, getAllPlans,  getAllPlansforUser};
+
+
+export default {
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getAllPlans,
+  getAllPlansforUser,
+};

@@ -186,15 +186,16 @@ const createCompany = async (req, res) => {
       contactPhone: company.contactPhone,
       address: company.address,
       industryName: company.industryName,
-     plan:
-    availablePlan.price === 0
-      ? {
-          planId: await generatePlanId(companyId, adminUserId),
-          status: "in progress",
-          ...availablePlan.toObject(),
-          isActive: true,
-        }
-      : undefined, // you can omit this or use `null` if preferred
+      plan:
+        availablePlan.price === 0
+          ? {
+              planId: availablePlan._id,
+              companyPlanId: await generatePlanId(companyId, adminUserId),
+              status: "in progress",
+              ...availablePlan.toObject(),
+              isActive: true,
+            }
+          : undefined, // you can omit this or use `null` if preferred
       history: [
         {
           action: "Company created",
@@ -856,6 +857,71 @@ export const verifyCompanyEmailChange = async (req, res) => {
   }
 };
 
+
+const tryFreePlan = async (req, res) => {
+  try {
+    const { companyId, userId } = req.user;
+    const { planId } = req.body;
+
+    if (!planId) {
+      return res.status(400).json({ error: "Plan is required" });
+    }
+
+    // Fetch company
+    const company = await IndexModel.Company.findOne({
+      companyId,
+      deleted: false,
+      isActive: true,
+    });
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Company not found or inactive",
+      });
+    }
+
+    // Fetch plan
+    const plan = await IndexModel.Plan.findOne({
+      _id: planId,
+      deleted: false,
+      isActive: true,
+    });
+
+    if (!plan) {
+      return res.status(400).json({ error: "Invalid plan selected" });
+    }
+
+    // Check if free plan is already purchased
+    if (plan.price === 0) {
+      const freePlanPurchased = company.plan.some((p) => p.price === 0);
+      if (freePlanPurchased) {
+        return res.status(400).json({ error: "Free plan already purchased" });
+      }
+    }
+
+
+    // Add plan to company's plans
+    company.plan.push({
+      planId: plan._id,
+      companyPlanId: await generatePlanId(companyId, userId),
+      status: "in progress",
+      ...plan.toObject(),
+      isActive: true,
+    });
+
+    await company.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Free plan added successfully",
+      plan: plan,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error processing plan", error: error.message });
+  }
+};
 export default {
   createCompany,
   getCompany,
@@ -865,4 +931,5 @@ export default {
   updateCompanySettings,
   initiateCompanyEmailChange,
   verifyCompanyEmailChange,
+  tryFreePlan,
 };

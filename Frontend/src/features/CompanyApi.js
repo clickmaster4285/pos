@@ -235,6 +235,24 @@ export const companyApi = createApi({
             ]
           : [{ type: 'Company', id: 'LIST' }],
     }),
+
+    tryFreePlan: builder.mutation({
+      query: (planId) => ({
+        url: '/try-free-plan',
+        method: 'PUT',
+        body: { planId },
+      }),
+      transformResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 200,
+      }),
+      transformErrorResponse: (res, meta) => ({
+        ...res,
+        status: meta?.response?.status || 400,
+      }),
+      // After a free plan is added we need the company data refreshed
+      invalidatesTags: [{ type: 'Company', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -248,4 +266,5 @@ export const {
   useGetCompanyQuery,
   useInitiateEmailChangeMutation,
   useVerifyEmailChangeMutation,
+  useTryFreePlanMutation,
 } = companyApi;

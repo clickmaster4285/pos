@@ -1,12 +1,14 @@
+// PaymentGateway.jsx
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
-import { useGetAllPlansQuery } from '@/features/planApi';
+import { useGetAllPlansQuery } from '@/features/planApi';   // <-- add import
 import PlanSelection from './PlanSelection';
 import PaymentForm from './PaymentForm';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTryFreePlanMutation } from '@/features/CompanyApi';
 
 export default function PaymentGateway({ initialPlanId = '' }) {
   const [selectedPlan, setSelectedPlan] = useState('');
@@ -24,6 +26,11 @@ export default function PaymentGateway({ initialPlanId = '' }) {
 
   const { user } = useContext(AuthContext);
 
+  // NEW -------------------------------------------------
+  const [tryFreePlan, { isLoading: freeLoading, isSuccess: freeSuccess, error: freeError }] =
+    useTryFreePlanMutation();
+  // -----------------------------------------------------
+
   // Auto-select plan if initialPlanId is passed
   useEffect(() => {
     if (initialPlanId && !isPlanSelected) {
@@ -36,19 +43,33 @@ export default function PaymentGateway({ initialPlanId = '' }) {
     }
   }, [initialPlanId, plans, isPlanSelected]);
 
-  // Refresh after payment
+  // Refresh after payment OR free-plan success
   useEffect(() => {
-    if (paymentCompleted) {
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+    if (paymentCompleted || freeSuccess) {
+      setTimeout(() => window.location.reload(), 1500);
     }
-  }, [paymentCompleted]);
+  }, [paymentCompleted, freeSuccess]);
 
   const handlePlanSelect = async (planId) => {
     if (isPlanSwitching) return;
     setIsPlanSwitching(true);
 
+    const plan = plans.find(p => p._id === planId);
+    if (plan?.price === 0) {
+      // ---- FREE PLAN LOGIC ----
+      try {
+        await tryFreePlan(planId).unwrap();
+        // success → page will reload via useEffect above
+      } catch (e) {
+        console.error('Free plan error', e);
+        // you can show a toast / alert here if you want
+      } finally {
+        setIsPlanSwitching(false);
+      }
+      return;
+    }
+
+    // ---- PAID PLAN LOGIC ----
     setSelectedPlan(planId);
     setCurrentPlanId(planId);
     setIsPlanSelected(true);
@@ -88,13 +109,13 @@ export default function PaymentGateway({ initialPlanId = '' }) {
               selectedPlan={selectedPlan}
               onPlanSelect={handlePlanSelect}
               isLoading={isPlansLoading}
-              isChangingPlan={isPlanSwitching}
+              isChangingPlan={isPlanSwitching || freeLoading}
             />
           </>
         )}
 
         {/* Payment Form View (after plan selected) */}
-        {isPlanSelected && (
+        {isPlanSelected && selectedPlanData?.price !== 0 && (
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-gray-900">
@@ -139,6 +160,17 @@ export default function PaymentGateway({ initialPlanId = '' }) {
               isPlanChanged={!!initialPlanId}
               onPaymentComplete={handlePaymentComplete}
             />
+          </div>
+        )}
+
+        {/* FREE PLAN SUCCESS MESSAGE */}
+        {freeSuccess && (
+          <div className="max-w-2xl mx-auto text-center mt-12">
+            <Alert className="bg-green-50 border-green-200">
+              <AlertDescription className="text-green-700">
+                Free plan activated! Refreshing page...
+              </AlertDescription>
+            </Alert>
           </div>
         )}
 
