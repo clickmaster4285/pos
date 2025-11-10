@@ -164,6 +164,27 @@ const createCompany = async (req, res) => {
           viewActiveLog: true,
           viewCompanySummary: true,
           companyprofileupdate: true,
+          manageTables: true,
+          createOrder: true,
+          viewOrder: true,
+          updateOrderStatus: true,
+          createIngredient: true,
+          updateIngredient: true,
+          viewIngredient: true,
+          deleteIngredient: true,
+          createCategory: true,
+          updateCategory: true,
+          viewCategory: true,
+          deleteCategory: true,
+          updateCompanySettings: true,
+          createCourier: true,
+          updateCourier: true,
+          viewCourier: true,
+          deleteCourier: true,
+          createShipment: true,
+          updateShipment: true,
+          viewShipment: true,
+          deleteShipment: true,
         },
         history: [
           {
@@ -857,7 +878,6 @@ export const verifyCompanyEmailChange = async (req, res) => {
   }
 };
 
-
 const tryFreePlan = async (req, res) => {
   try {
     const { companyId, userId } = req.user;
@@ -900,7 +920,6 @@ const tryFreePlan = async (req, res) => {
       }
     }
 
-
     // Add plan to company's plans
     company.plan.push({
       planId: plan._id,
@@ -919,7 +938,9 @@ const tryFreePlan = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error processing plan", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error processing plan", error: error.message });
   }
 };
 export default {

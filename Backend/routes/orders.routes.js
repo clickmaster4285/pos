@@ -18,13 +18,13 @@ router.post(
 router.get(
   '/get-all-order',
   passport.authenticate('jwt', { session: false }),
-//  checkPermissionsValidation('viewOrder'),
+ checkPermissionsValidation('viewOrder'),
   Indexcontroller.Orders.listCompanyOrders
 );
 router.get(
   '/get-order-by-id/:id',
   passport.authenticate('jwt', { session: false }),
- // checkPermissionsValidation('viewOrder'),
+ checkPermissionsValidation('viewOrder'),
   Indexcontroller.Orders.getOrderById
 );
 

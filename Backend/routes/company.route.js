@@ -6,6 +6,7 @@ import ErrorResponse from '../utils/errorResponse.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { upload } from '../config/multer.js';
 import {fetchToolLogoName} from "../utils/fetchToolLogoName.js";
+import { checkPermissionsValidation } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ router.post(
   '/create-company',
   Indexcontroller.Company.createCompany
 );
+
 router.get(
   '/get-all-company',
   passport.authenticate('jwt', { session: false }),
@@ -54,6 +56,7 @@ router.put(
   '/update-company-settings',
   passport.authenticate('jwt', { session: false }),
   upload.single('companyLogo'),
+    checkPermissionsValidation("updateCompanySettings"),
   Indexcontroller.Company.updateCompanySettings
 );
 
@@ -61,6 +64,7 @@ router.post(
   '/company-email-change',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
+    checkPermissionsValidation("updateCompanySettings"),
   Indexcontroller.Company.initiateCompanyEmailChange
 );
 
@@ -75,6 +79,7 @@ router.put(
   '/try-free-plan',
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
+    checkPermissionsValidation("updateCompanySettings"),
   Indexcontroller.Company.tryFreePlan
 );
 export default router;

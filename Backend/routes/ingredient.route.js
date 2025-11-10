@@ -12,8 +12,7 @@ router.post(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('createProduct'),
-//   checkplan('Product'),
+  checkPermissionsValidation('createIngredient'),
   IndexController.Ingredient.createIngredient
 );
 
@@ -22,7 +21,7 @@ router.get(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('viewProduct'),
+  checkPermissionsValidation('viewIngredient'),
   IndexController.Ingredient.getAllIngredients
 );
 
@@ -31,7 +30,7 @@ router.get(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('viewProduct'),
+  checkPermissionsValidation('viewIngredient'),
   IndexController.Ingredient.getIngredientById
 );
 
@@ -40,8 +39,7 @@ router.patch(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('updateProduct'),
-//   checkplan('Product'),
+  checkPermissionsValidation('updateIngredient'),
   IndexController.Ingredient.updateIngredient
 );
 
@@ -50,8 +48,7 @@ router.delete(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('deleteProduct'),
-//   checkplan('Product'),
+  checkPermissionsValidation('deleteIngredient'),
   IndexController.Ingredient.deleteIngredient
 );
 
@@ -60,8 +57,7 @@ router.patch(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('updateProduct'),
-//   checkplan('Product'),
+  checkPermissionsValidation('updateIngredient'),
   IndexController.Ingredient.toggleIngredientStatus
 );
 
@@ -70,8 +66,7 @@ router.patch(
   passport.authenticate('jwt', { session: false }),
   authenticateToken,
   checkPlanIsActive,
-//   checkPermissionsValidation('createProduct'),
-//   checkplan('Product'),
+  checkPermissionsValidation('updateIngredient'),
   IndexController.Ingredient.updateIngredientStock
 );
 
