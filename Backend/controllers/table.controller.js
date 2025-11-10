@@ -50,7 +50,6 @@ const createTable = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
-
 const listTables = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -92,15 +91,65 @@ const listTables = async (req, res) => {
     for (const ord of activeOrders) {
       const tableNo = ord?.dynamicAttributes?.tableNo;
       if (tableNo && !orderMap.has(tableNo)) {
-        orderMap.set(tableNo, ord); // store first unpaid order found
+        orderMap.set(String(tableNo), ord); // store first unpaid order found
       }
     }
 
-    // attach isOccupied & order summary to each table
+    const now = Date.now();
+
     const enriched = tables.map((t) => {
+      // ---- auto update reservation status based on timings ----
+      const reservations = (t.reservations || [])
+        .slice() // copy before sort
+        .sort(
+          (a, b) =>
+            new Date(a.startISO).getTime() - new Date(b.startISO).getTime()
+        )
+        .map((r) => {
+          const startMs = r.startISO ? new Date(r.startISO).getTime() : null;
+          const endMs = r.endISO ? new Date(r.endISO).getTime() : null;
+
+          let computedStatus = r.status || 'upcoming';
+
+          // don't auto-change canceled ones
+          if (r.status !== 'canceled' && startMs && endMs) {
+            if (now >= startMs && now < endMs) {
+              computedStatus = 'active';
+            } else if (now >= endMs) {
+              computedStatus = 'past'; // or 'completed' if you prefer
+            } else {
+              computedStatus = 'upcoming';
+            }
+          }
+
+          return {
+            ...r,
+            status: computedStatus, // override for UI
+            computedStatus, // optional: keep separate field
+          };
+        });
+
       const activeOrder = orderMap.get(String(t._id)) || null;
+
+      // ---- derive table state from reservations + orders ----
+      const hasActiveReservation = reservations.some(
+        (r) => r.status === 'active'
+      );
+
+      let effectiveState = t.state || 'available';
+
+      if (hasActiveReservation) {
+        // table reserved for current time window
+        effectiveState = 'reserved';
+      } else if (effectiveState === 'reserved') {
+        // no active res and no active order: free table up in the response
+        effectiveState = 'available';
+      }
+
       return {
         ...t,
+        state: effectiveState, // 👈 auto-updated state in response
+        reservations, // updated, sorted, auto-status reservations
         isOccupied: !!activeOrder,
         activeOrder: activeOrder
           ? {
@@ -122,6 +171,7 @@ const listTables = async (req, res) => {
   }
 };
 
+
 // const listTables = async (req, res) => {
 //   try {
 //     const companyId = req.user?.companyId;
@@ -132,60 +182,47 @@ const listTables = async (req, res) => {
 //     if (state) q.state = state;
 //     if (name) q.name = new RegExp(String(name).trim(), 'i');
 
-//     // Fetch all tables first
+//     // get all tables
 //     const tables = await IndexModel.Table.find(q).sort({ name: 1 }).lean();
 
-//     // Fetch all unpaid Dine-In orders (for occupancy detection)
-//     const activeOrders = await IndexModel.Order.find({
+//     if (!tables.length) {
+//       return res.json({ success: true, data: [] });
+//     }
+
+//     // get all active (unpaid) dine-in orders for this company
+//     const activeOrders = await IndexModel.Orders.find({
 //       companyId,
 //       deleted: { $ne: true },
 //       'dynamicAttributes.orderType': /dine/i,
 //       'dynamicAttributes.paymentStatus': { $ne: 'paid' },
 //     })
-//       .select(
-//         '_id orderNo dynamicAttributes.tableNo dynamicAttributes.paymentStatus dynamicAttributes.waiterName dynamicAttributes.waiterId dynamicAttributes.orderStatus dynamicAttributes.subTotal'
-//       )
+//       .select([
+//         '_id',
+//         'orderNo',
+//         'dynamicAttributes.tableNo',
+//         'dynamicAttributes.paymentStatus',
+//         'dynamicAttributes.orderStatus',
+//         'dynamicAttributes.waiterId',
+//         'dynamicAttributes.waiterName',
+//         'dynamicAttributes.subTotal',
+//       ])
 //       .lean();
 
-//     // Build a quick lookup: tableNo → order
-//     const occupiedMap = new Map();
-//     activeOrders.forEach((order) => {
-//       const tableNo = order?.dynamicAttributes?.tableNo;
-//       if (tableNo) {
-//         occupiedMap.set(String(tableNo), order);
+//     // map orders by tableNo
+//     const orderMap = new Map();
+//     for (const ord of activeOrders) {
+//       const tableNo = ord?.dynamicAttributes?.tableNo;
+//       if (tableNo && !orderMap.has(tableNo)) {
+//         orderMap.set(tableNo, ord); // store first unpaid order found
 //       }
-//     });
+//     }
 
-//     // Prepare bulk updates for state syncing
-//     const bulkOps = [];
-
-//     const result = tables.map((t) => {
-//       const activeOrder = occupiedMap.get(String(t._id)) || null;
-//       const isOccupied = !!activeOrder;
-
-//       // ✅ If occupied but table.state != 'occupied', update in DB
-//       if (isOccupied && t.state !== 'occupied') {
-//         bulkOps.push({
-//           updateOne: {
-//             filter: { _id: t._id },
-//             update: { $set: { state: 'occupied', updatedAt: new Date() } },
-//           },
-//         });
-//       }
-
-//       // ✅ If not occupied but table.state == 'occupied', free it
-//       if (!isOccupied && t.state === 'occupied') {
-//         bulkOps.push({
-//           updateOne: {
-//             filter: { _id: t._id },
-//             update: { $set: { state: 'available', updatedAt: new Date() } },
-//           },
-//         });
-//       }
-
+//     // attach isOccupied & order summary to each table
+//     const enriched = tables.map((t) => {
+//       const activeOrder = orderMap.get(String(t._id)) || null;
 //       return {
 //         ...t,
-//         isOccupied,
+//         isOccupied: !!activeOrder,
 //         activeOrder: activeOrder
 //           ? {
 //               _id: activeOrder._id,
@@ -194,26 +231,18 @@ const listTables = async (req, res) => {
 //               orderStatus: activeOrder.dynamicAttributes?.orderStatus,
 //               waiterId: activeOrder.dynamicAttributes?.waiterId,
 //               waiterName: activeOrder.dynamicAttributes?.waiterName,
-//               subTotal: activeOrder.dynamicAttributes?.subTotal || 0,
+//               subTotal: activeOrder.dynamicAttributes?.subTotal,
 //             }
 //           : null,
 //       };
 //     });
 
-//     // ✅ Perform state updates in bulk (only if needed)
-//     if (bulkOps.length > 0) {
-//       await IndexModel.Table.bulkWrite(bulkOps);
-//     }
-
-//     return res.json({ success: true, data: result });
+//     return res.json({ success: true, data: enriched });
 //   } catch (err) {
 //     return res.status(500).json({ success: false, error: err.message });
 //   }
 // };
 
-/**
- * Get table by id
- */
 const getTable = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -459,7 +488,7 @@ const setReservation = async (req, res) => {
         _id: id,
         companyId,
         deleted: { $ne: true },
-        // Reject when there's any overlapping reservation that isn't canceled/completed
+        // ⬇️ THIS is the no-overlap logic
         reservations: {
           $not: {
             $elemMatch: {
@@ -472,15 +501,13 @@ const setReservation = async (req, res) => {
       },
       {
         $push: { reservations: newRes },
-        // state logic: don't downgrade occupied; only mark reserved if window is active and not occupied
         $set: (() => {
           const s = {};
           const now = new Date();
           const activeNow = now >= start && now < end;
           s.updatedBy = userId;
           s.updatedAt = now;
-          // We'll preserve waiter; we only touch state if not occupied.
-          s.state = undefined; // default no change via $set unless needed
+          s.state = undefined;
           return s;
         })(),
       },
@@ -563,6 +590,7 @@ const cancelReservation = async (req, res) => {
     const { id, resId } = req.params; // table id, reservation id
 
     if (!companyId) return badReq(res, 'Missing company scope');
+
     if (
       !mongoose.Types.ObjectId.isValid(id) ||
       !mongoose.Types.ObjectId.isValid(resId)
@@ -570,22 +598,30 @@ const cancelReservation = async (req, res) => {
       return badReq(res, 'Invalid id(s)');
     }
 
+    const resObjectId = new mongoose.Types.ObjectId(resId);
+
     const updated = await IndexModel.Table.findOneAndUpdate(
       {
         _id: id,
         companyId,
         deleted: { $ne: true },
-        'reservations._id': resId,
-        'reservations.status': { $in: ['upcoming', 'active'] },
       },
       {
         $set: {
-          'reservations.$.status': 'canceled',
+          'reservations.$[r].status': 'canceled',
           updatedBy: userId,
           updatedAt: new Date(),
         },
       },
-      { new: true }
+      {
+        new: true,
+        arrayFilters: [
+          {
+            'r._id': resObjectId,
+            'r.status': { $in: ['upcoming', 'active'] },
+          },
+        ],
+      }
     );
 
     if (!updated) {

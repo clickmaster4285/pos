@@ -379,9 +379,7 @@ export function OrdersTable({
               {/* Payment */}
               <div className="col-span-2 min-w-0 space-y-1">
                 <p className="font-medium truncate">{totalStr}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  Method: {titleCase(o.paymentMethod || '—')}
-                </p>
+                
                 <Badge variant="secondary" className="capitalize mt-1">
                   {paymentStatus}
                 </Badge>

@@ -2,7 +2,7 @@
 import IndexModel from '../models/indexModel.js';
 import { generateOrderNumber } from '../utils/generateOrderNumber.js';
 import mongoose from 'mongoose';
-
+import { fetchIndustryName } from '../utils/fetchToolLogoName.js';
 const { ObjectId } = mongoose.Types;
 /* ------------------------- helpers ------------------------- */
 const recalcTotals = (order) => {
@@ -40,6 +40,15 @@ const addHistory = (order, action, performedBy, details = '') => {
 const createOrder = async (req, res) => {
   try {
     const { companyId } = req.user;
+
+    const industryName = await fetchIndustryName(req.user.companyId);
+    console.log('industryName', industryName);
+
+    const isRestaurant =
+      String(industryName || '')
+        .trim()
+        .toLowerCase() === 'restaurant';
+
     if (!companyId)
       return res
         .status(400)
@@ -157,7 +166,7 @@ const createOrder = async (req, res) => {
     /* ===== Verify ingredient stock ===== */
     const ingIds = Object.keys(ingredientDemand);
 
-    if (ingIds.length) {
+    if (isRestaurant && ingIds.length) {
       const ingDocs = await IndexModel.Ingredient.find(
         {
           _id: { $in: ingIds },
@@ -226,24 +235,27 @@ const createOrder = async (req, res) => {
     }
 
     // --- Pre-check stock: ensure sufficient quantity per product (sum duplicates) ---
-    const wantedByProduct = items.reduce((acc, it) => {
-      const id = String(it.productId);
-      acc[id] = (acc[id] || 0) + Number(it.qty);
-      return acc;
-    }, {});
 
-    const stockProducts = await IndexModel.Product.find(
-      { _id: { $in: Object.keys(wantedByProduct) } },
-      { _id: 1, productName: 1, quantity: 1 }
-    ).lean();
+    if (!isRestaurant) {
+      const wantedByProduct = items.reduce((acc, it) => {
+        const id = String(it.productId);
+        acc[id] = (acc[id] || 0) + Number(it.qty);
+        return acc;
+      }, {});
 
-    for (const p of stockProducts) {
-      const need = wantedByProduct[String(p._id)] || 0;
-      if (Number(p.quantity) < need) {
-        return res.status(400).json({
-          success: false,
-          error: `Insufficient stock for ${p.productName}. Available ${p.quantity}, requested ${need}`,
-        });
+      const stockProducts = await IndexModel.Product.find(
+        { _id: { $in: Object.keys(wantedByProduct) } },
+        { _id: 1, productName: 1, quantity: 1 }
+      ).lean();
+
+      for (const p of stockProducts) {
+        const need = wantedByProduct[String(p._id)] || 0;
+        if (Number(p.quantity) < need) {
+          return res.status(400).json({
+            success: false,
+            error: `Insufficient stock for ${p.productName}. Available ${p.quantity}, requested ${need}`,
+          });
+        }
       }
     }
 
@@ -276,74 +288,82 @@ const createOrder = async (req, res) => {
 
     //--------- inventory deduction in bulk ...------------------------
     const now = new Date();
-    const bulkOps = items.map((it) => ({
-      updateOne: {
-        filter: {
-          _id: new ObjectId(it.productId),
-          companyId,
-          deleted: { $ne: true },
-          isActive: { $ne: false },
-          quantity: { $gte: Number(it.qty) },
-        },
-        update: {
-          $inc: { quantity: -Number(it.qty), totalOrdered: Number(it.qty) },
-          $push: {
-            history: {
-              action: `Order ${orderNo}: -${it.qty} ${it.name}`,
-              performedBy,
-              at: now,
-            },
-          },
-          $set: { updatedAt: now },
-        },
-      },
-    }));
-
-    if (bulkOps.length) {
-      const invResult = await IndexModel.Product.bulkWrite(bulkOps, {
-        ordered: true,
-      });
-      const matched = invResult.matchedCount ?? invResult.result?.nMatched ?? 0;
-      if (matched !== bulkOps.length)
-        throw new Error('Stock update failed for one or more items');
-    }
-
-    /* ===== Ingredient stock deduction (bulk) ===== */
-    const ingredientBulkOps = Object.entries(ingredientDemand).map(
-      ([ingId, need]) => ({
+    if (!isRestaurant) {
+      const bulkOps = items.map((it) => ({
         updateOne: {
           filter: {
-            _id: new ObjectId(ingId),
+            _id: new ObjectId(it.productId),
             companyId,
             deleted: { $ne: true },
             isActive: { $ne: false },
-            currentStock: { $gte: need },
+            quantity: { $gte: Number(it.qty) },
           },
           update: {
-            $inc: { currentStock: -need },
+            $inc: { quantity: -Number(it.qty), totalOrdered: Number(it.qty) },
             $push: {
               history: {
-                action: 'CONSUMED',
+                action: `Order ${orderNo}: -${it.qty} ${it.name}`,
                 performedBy,
-                timestamp: now,
-                details: `Order ${orderNo}: -${need}`,
+                at: now,
               },
             },
             $set: { updatedAt: now },
           },
         },
-      })
-    );
+      }));
 
-    if (ingredientBulkOps.length) {
-      const ingResult = await IndexModel.Ingredient.bulkWrite(
-        ingredientBulkOps,
-        { ordered: true }
+      if (bulkOps.length) {
+        const invResult = await IndexModel.Product.bulkWrite(bulkOps, {
+          ordered: true,
+        });
+        const matched =
+          invResult.matchedCount ?? invResult.result?.nMatched ?? 0;
+        if (matched !== bulkOps.length)
+          throw new Error('Stock update failed for one or more items');
+      }
+    }
+
+    /* ===== Ingredient stock deduction (bulk) ===== */
+
+    if (isRestaurant) {
+      const ingredientBulkOps = Object.entries(ingredientDemand).map(
+        ([ingId, need]) => ({
+          updateOne: {
+            filter: {
+              _id: new ObjectId(ingId),
+              companyId,
+              deleted: { $ne: true },
+              isActive: { $ne: false },
+              currentStock: { $gte: need },
+            },
+            update: {
+              $inc: { currentStock: -need },
+              $push: {
+                history: {
+                  action: 'CONSUMED',
+                  performedBy,
+                  timestamp: now,
+                  details: `Order ${orderNo}: -${need}`,
+                },
+              },
+              $set: { updatedAt: now },
+            },
+          },
+        })
       );
-      const matchedIng =
-        ingResult.matchedCount ?? ingResult.result?.nMatched ?? 0;
-      if (matchedIng !== ingredientBulkOps.length) {
-        throw new Error('Ingredient stock update failed for one or more items');
+
+      if (ingredientBulkOps.length) {
+        const ingResult = await IndexModel.Ingredient.bulkWrite(
+          ingredientBulkOps,
+          { ordered: true }
+        );
+        const matchedIng =
+          ingResult.matchedCount ?? ingResult.result?.nMatched ?? 0;
+        if (matchedIng !== ingredientBulkOps.length) {
+          throw new Error(
+            'Ingredient stock update failed for one or more items'
+          );
+        }
       }
     }
 
@@ -386,6 +406,7 @@ const createOrder = async (req, res) => {
 const listCompanyOrders = async (req, res) => {
   try {
     const { companyId } = req.user;
+
     const subRole = req.user.subRole;
     if (!companyId) {
       return res

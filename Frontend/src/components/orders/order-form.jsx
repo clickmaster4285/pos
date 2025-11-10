@@ -192,7 +192,6 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
   const orderTypeOptions = policy.options;
   // enforce forced orderType when policy requires it
 
-
   // helpers to mutate state
   const update = (patch) => setValues((v) => ({ ...v, ...patch }));
   const updateItem = (idx, patch) =>
@@ -225,16 +224,30 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
     setValues((v) => ({ ...v, items: v.items.filter((_, i) => i !== idx) }));
 
   // select product → also pre-fill allowed item-scoped dynamicAttributes
+
   const onProductSelect = (idx, id) => {
     const nextInv = invById.get(id);
     const price = Number(nextInv?.sellingPrice ?? 0);
     const name = nextInv?.productName || '';
+
     const allowed = new Set(itemScopedFields.map((f) => f.name));
-    const dynSrc = nextInv?.dynamicAttributes || {};
+    const dynSrc = nextInv?.metaData || {};
     const dyn = {};
     Object.entries(dynSrc).forEach(([k, v]) => {
       if (allowed.has(k)) dyn[k] = v;
     });
+
+    // 🔹 Only true when explicitly marked as required
+    const metaSrc = nextInv?.metaData || {};
+    const rawFlag = metaSrc.prescriptionRequired;
+    const requiresPrescription =
+      rawFlag === true || rawFlag === 'true' || rawFlag === 'yes';
+
+    if (requiresPrescription) {
+      dyn.requiresPrescription = true;
+    }
+
+  
 
     const qty = Number(values.items[idx]?.qty || 0);
     updateItem(idx, {
@@ -297,16 +310,20 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
       const qtyNum = Number(row.qty);
       const qtyOk = Number.isInteger(qtyNum) && qtyNum > 0;
 
+      //checking for quantity
+
       const inv = row.productId ? invById.get(String(row.productId)) : null;
-      const stockOk = !inv || qtyNum <= Number(inv?.quantity ?? Infinity);
+      const stockOk =
+        isRestaurant || !inv || qtyNum <= Number(inv?.quantity ?? Infinity);
 
       const itemErr = {
         name: nameOk ? '' : 'Item name is required',
         price: priceOk ? '' : 'Price must be a non-negative number',
         qty: qtyOk ? '' : 'Qty must be a positive integer',
-        stock: stockOk ? '' : `Only ${inv?.quantity ?? 0} in stock`,
+        stock:
+          isRestaurant || stockOk ? '' : `Only ${inv?.quantity ?? 0} in stock`,
       };
-
+      //-------------
       if (itemErr.name || itemErr.price || itemErr.qty || itemErr.stock) {
         nextErrors.items[idx] = itemErr;
       }
@@ -376,7 +393,6 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
     const table = Array.isArray(tables)
       ? tables.find((t) => String(t?._id) === String(tableId))
       : null;
- 
 
     const assignedWaiterId = table?.assignedWaiterId
       ? String(table.assignedWaiterId)
@@ -399,8 +415,8 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
     }));
   };
 
-const forcedOrderType = policy.forced;   // string | null
-  const lockOrderType = policy.lock;  
+  const forcedOrderType = policy.forced; // string | null
+  const lockOrderType = policy.lock;
 
   useEffect(() => {
     if (!forcedOrderType) return; // restaurant staff case (free selection)
@@ -476,11 +492,7 @@ const forcedOrderType = policy.forced;   // string | null
 
       {/* Submit */}
       <div className="flex items-center justify-end gap-2">
-        <Button
-          type="submit"
-          disabled={submitting}
-          
-        >
+        <Button type="submit" disabled={submitting}>
           {submitting ? 'Saving...' : 'Create Order'}
         </Button>
       </div>

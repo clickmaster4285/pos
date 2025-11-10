@@ -71,10 +71,13 @@ export const tableApi = createApi({
 
     // DELETE /api/table/remove-table/:id
     removeTable: builder.mutation({
-      query: (id) => ({
-        url: `/remove-table/${id}`,
-        method: 'DELETE',
-      }),
+      query: (id) => {
+        console.log("id", id)
+        return {
+          url: `/remove-table/${id}`,
+          method: 'DELETE',
+        };
+      },
       invalidatesTags: (result, error, id) => [
         { type: 'Table', id },
         { type: 'Table', id: 'LIST' },
@@ -122,12 +125,16 @@ export const tableApi = createApi({
     }),
 
     // POST /api/table/cancel-reservation/:id
+    // in tableApi.js / tableApi.ts
+
     cancelReservation: builder.mutation({
-      // body: { makeAvailable?: boolean }
-      query: ({ id, makeAvailable }) => ({
-        url: `/cancel-reservation/${id}`,
+    
+      query: ({ id, resId, makeAvailable }) => ({
+        url: `/cancel-reservation/${id}/${resId}`,
         method: 'POST',
-        body: { makeAvailable },
+        // only send body if you actually use makeAvailable on backend
+        body:
+          typeof makeAvailable === 'boolean' ? { makeAvailable } : undefined,
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: 'Table', id },

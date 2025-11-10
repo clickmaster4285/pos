@@ -34,7 +34,7 @@ export default function PlanSelection({
       </div>
     );
   }
-  
+
   const getPlanFeatures = (plan) => [
     `${plan.limitations?.maxStaff || 0} Staff Members`,
     `${plan.limitations?.maxVendors || 0} Vendors`,
@@ -53,7 +53,6 @@ export default function PlanSelection({
         </p>
       </div>
 
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans?.map((plan, index) => (
           <Card
@@ -67,7 +66,7 @@ export default function PlanSelection({
           >
             {index === 0 && (
               <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-primary text-secondary-foreground flex items-center gap-1">
+                <Badge className="bg-primary text-card flex items-center gap-1">
                   <Star className="w-3 h-3" />
                   Popular
                 </Badge>
@@ -112,8 +111,8 @@ export default function PlanSelection({
               <Button
                 className={`w-full mt-6 ${
                   selectedPlan === plan._id
-                    ? 'bg-primary text-secondary-foreground  hover:bg-primary/80'
-                    : 'bg-primary text-secondary-foreground  hover:bg-primary/80'
+                    ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90  text-card  '
+                    : 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card  '
                 } ${isChangingPlan ? 'opacity-50 cursor-not-allowed' : ''}`}
                 variant={selectedPlan === plan._id ? 'default' : 'outline'}
                 disabled={isChangingPlan}

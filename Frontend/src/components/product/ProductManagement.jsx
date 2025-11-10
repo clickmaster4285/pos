@@ -33,9 +33,10 @@ function normalizeProduct(p, hasCategories, hasVendors) {
   return {
     id: getId(p),
     productName: norm(p?.productName),
-    categoryName: hasCategories ? norm(p?.category?.categoryName || p?.category) : '',
+    category: hasCategories ? p?.categoryName : '',
+
     subCategoryName: hasCategories ? norm(p?.subCategoryName) : '',
-    vendor: hasVendors ? norm(p?.vendor?.vendorName || p?.vendor) : '',
+    vendor: hasVendors ? p?.vendorName : '-',
     SKU: norm(p?.SKU),
     sellingPrice: p?.sellingPrice || 0,
     quantity: p?.quantity || 0,
@@ -44,7 +45,7 @@ function normalizeProduct(p, hasCategories, hasVendors) {
     isActive: !!p?.isActive,
     createdAt: p?.createdAt || null,
     updatedAt: p?.updatedAt || null,
-    imgUrl: Array.isArray(p?.imgUrl) ? p.imgUrl : (p?.imgUrl ? [p.imgUrl] : []),
+    imgUrl: Array.isArray(p?.imgUrl) ? p.imgUrl : p?.imgUrl ? [p.imgUrl] : [],
     metaData: p?.metaData || {},
     ingredient: (p?.ingredient || []).map((ing) => ({
       ingredientId: ing.ingredientId?._id || ing.ingredientId,
@@ -239,21 +240,41 @@ export function ProductManagement() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
               <Filter className="h-4 w-4" />
-              {statusFilter === 'all' ? 'All Status' : statusFilter === 'active' ? 'Active' : 'Inactive'}
+              {statusFilter === 'all'
+                ? 'All Status'
+                : statusFilter === 'active'
+                ? 'Active'
+                : 'Inactive'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setStatusFilter('all')}>All Status</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter('active')}>Active</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>Inactive</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+              All Status
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('active')}>
+              Active
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>
+              Inactive
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant={view === 'grid' ? 'default' : 'outline'} onClick={() => setView('grid')} className="gap-2">
-          <LayoutGrid className="h-4 w-4" /><span className="hidden sm:inline">Grid</span>
+        <Button
+          variant={view === 'grid' ? 'default' : 'outline'}
+          onClick={() => setView('grid')}
+          className="gap-2"
+        >
+          <LayoutGrid className="h-4 w-4" />
+          <span className="hidden sm:inline">Grid</span>
         </Button>
-        <Button variant={view === 'list' ? 'default' : 'outline'} onClick={() => setView('list')} className="gap-2">
-          <List className="h-4 w-4" /><span className="hidden sm:inline">List</span>
+        <Button
+          variant={view === 'list' ? 'default' : 'outline'}
+          onClick={() => setView('list')}
+          className="gap-2"
+        >
+          <List className="h-4 w-4" />
+          <span className="hidden sm:inline">List</span>
         </Button>
       </div>
 
@@ -278,6 +299,8 @@ export function ProductManagement() {
               pendingId={pendingId}
               onOpenSheet={openProductDetailsSheet}
               onAddStock={handleAddStock}
+              hasVendors={hasVendorsFeature}
+              hasCategories={hasCategoriesFeature}
             />
           ) : (
             <ProductList
@@ -291,12 +314,15 @@ export function ProductManagement() {
               pendingId={pendingId}
               onOpenSheet={openProductDetailsSheet}
               onAddStock={handleAddStock}
+              hasVendors={hasVendorsFeature}
+              hasCategories={hasCategoriesFeature}
             />
           )}
 
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} products
+              Showing {(page - 1) * pageSize + 1} to{' '}
+              {Math.min(page * pageSize, total)} of {total} products
             </div>
             <Pagination
               page={page}

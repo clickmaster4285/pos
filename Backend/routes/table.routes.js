@@ -69,7 +69,7 @@ router.post(
   Indexcontroller.Table.setReservation
 );
 router.post(
-  '/cancel-reservation/:id',
+  '/cancel-reservation/:id/:resId',
   passport.authenticate('jwt', { session: false }),
    checkPermissionsValidation('manageTables'),
   authenticateToken,

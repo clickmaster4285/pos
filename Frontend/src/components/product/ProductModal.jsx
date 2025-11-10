@@ -519,12 +519,13 @@ export const ProductModal = memo(function ProductModal({
                   onChange={(e) => handleChange('productName', e.target.value)}
                   required
                   disabled={isReadOnly}
+                  placeholder={"Enter Product Name"}
                 />
               </div>
 
               {/* ---- Images ---- */}
               <div className="space-y-2">
-                <Label>Images *</Label>
+                <Label>Images</Label>
                 <div className="flex flex-wrap gap-2">
                   {formData.imgUrl.map((url, i) => (
                     <div key={`existing-${i}`} className="relative">
@@ -597,10 +598,7 @@ export const ProductModal = memo(function ProductModal({
                     multiple
                     onChange={handleImageChange}
                     className="hidden"
-                    required={
-                      formData.imgUrl.length === 0 &&
-                      formData.productImage.length === 0
-                    }
+                 
                   />
                 )}
               </div>
@@ -705,9 +703,11 @@ export const ProductModal = memo(function ProductModal({
               {industryFields.some((f) => f.name === 'SKU') &&
                 renderField(industryFields.find((f) => f.name === 'SKU'))}
 
+              
               {/* ---- Dynamic Industry Fields ---- */}
               {dynamicFields.map(renderField)}
             </div>
+
 
             {/* ==================== FULL-WIDTH INGREDIENTS ==================== */}
             {industryFields.some((f) => f.type === 'ingredients-array') && (
@@ -796,7 +796,7 @@ export const ProductModal = memo(function ProductModal({
 
             {/* ==================== TAGS (FULL-WIDTH) ==================== */}
             <div className="space-y-2">
-              <Label>Tags *</Label>
+              <Label>Tags</Label>
               <div className="flex gap-2">
                 <Input
                   value={newTag}
@@ -832,7 +832,7 @@ export const ProductModal = memo(function ProductModal({
 
             {/* ==================== DESCRIPTION (FULL-WIDTH) ==================== */}
             <div className="space-y-2">
-              <Label>Description *</Label>
+              <Label>Description</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}

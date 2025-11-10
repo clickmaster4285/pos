@@ -1,29 +1,29 @@
-import dotenv from "dotenv";
-import express from "express";
-import connectDB from "./config/db.js";
-import cors from "cors";
-import path from "path";
-import helmet from "helmet";
-import morgan from "morgan";
-import compression from "compression";
-import http from "http";
-import https from "https";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import createSuperAdmin from "./config/superAdminConfig.js";
-import apiRouter from "./routes/indexRouter.js";
-import { notFound, errorHandler } from "./middleware/errorHandler.js";
-import cookieParser from "cookie-parser";
-import cron from "node-cron";
-import IndexModel from "./models/indexModel.js";
+import dotenv from 'dotenv';
+import express from 'express';
+import connectDB from './config/db.js';
+import cors from 'cors';
+import path from 'path';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import compression from 'compression';
+import http from 'http';
+import https from 'https';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import createSuperAdmin from './config/superAdminConfig.js';
+import apiRouter from './routes/indexRouter.js';
+import { notFound, errorHandler } from './middleware/errorHandler.js';
+import cookieParser from 'cookie-parser';
+import cron from 'node-cron';
+import IndexModel from './models/indexModel.js';
 // import ZKDeviceService from "./utils/zkDeviceService.js"; // Added missing import
-import bodyParser from "body-parser";
-import { 
-  requestLogger, 
-  userActivityLoggerMiddleware, 
-  errorLoggerMiddleware 
-} from "./middleware/loggerMiddleware.js";
-import { exceptionLogger } from "./utils/logger.js";
+import bodyParser from 'body-parser';
+import {
+  requestLogger,
+  userActivityLoggerMiddleware,
+  errorLoggerMiddleware,
+} from './middleware/loggerMiddleware.js';
+import { exceptionLogger } from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,65 +31,65 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = express();
-const HOST = process.env.HOST || "localhost";
+const HOST = process.env.HOST || 'localhost';
 const PORT = Number(process.env.PORT || 5000);
-const NODE_ENV = process.env.NODE_ENV || "development";
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 await connectDB();
 await createSuperAdmin();
 
-const allowedOrigins = (process.env.FRONTEND_URL || "https://localhost:3000")
-  .split(",")
+const allowedOrigins = (process.env.FRONTEND_URL || 'https://localhost:3000')
+  .split(',')
   .map((s) => s.trim());
 
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-app.set("trust proxy", true);
+app.set('trust proxy', true);
 app.use(
-  "/api/strip/strip-webhook",
-  bodyParser.raw({ type: "application/json" })
+  '/api/strip/strip-webhook',
+  bodyParser.raw({ type: 'application/json' })
 );
 
 // Keep express.json as requested
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: '10mb' }));
 // Keep express.urlencoded commented out as per your instruction
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(helmet());
 app.use(compression());
-app.use(morgan(NODE_ENV === "development" ? "dev" : "combined"));
+app.use(morgan(NODE_ENV === 'development' ? 'dev' : 'combined'));
 app.use(cookieParser());
 
 // Add logging middleware (NEW - added after existing middleware)
 app.use(requestLogger);
 app.use(userActivityLoggerMiddleware);
 
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   res.status(200).json({
-    status: "OK",
+    status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: NODE_ENV,
-    version: process.env.npm_package_version || "1.0.0",
+    version: process.env.npm_package_version || '1.0.0',
   });
 });
 
-app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
-app.use("/api", apiRouter);
+app.use('/Uploads', express.static(path.join(__dirname, 'Uploads')));
+app.use('/api', apiRouter);
 
 // Automatically start real-time listeners for all devices
 // const startRealTimeListeners = async () => {
 //   try {
 //     // console.log("🔄 Starting real-time attendance listeners for all ZK devices...");
-    
-//     const devices = await IndexModel.AttendanceDevice.find({ 
-//       deleted: false 
+
+//     const devices = await IndexModel.AttendanceDevice.find({
+//       deleted: false
 //     });
 
 //     let successful = 0;
@@ -113,10 +113,10 @@ app.use("/api", apiRouter);
 //   }
 // };
 
-if (NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "public")));
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "public", "index.html"));
+if (NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'public')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
   });
 }
 
@@ -135,10 +135,10 @@ if (fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH)) {
     cert: fs.readFileSync(CERT_PATH),
   };
   server = https.createServer(options, app);
-  console.log("🔒 HTTPS server enabled");
+  console.log('🔒 HTTPS server enabled');
 } else {
   server = http.createServer(app);
-  console.log("🔓 HTTP server enabled (certs not found)");
+  console.log('🔓 HTTP server enabled (certs not found)');
 }
 
 const originalWrite = process.stdout.write;
@@ -148,17 +148,20 @@ process.stdout.write = function (chunk, encoding, callback) {
 };
 
 server.listen(PORT, HOST, () => {
-  const scheme = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? "https" : "http";
-  console.log(`🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`);
+  const scheme =
+    fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? 'https' : 'http';
+  console.log(
+    `🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`
+  );
   // startRealTimeListeners();
 });
 
 //unverified remove admin + there company
-cron.schedule("* * * * *", async () => {
+cron.schedule('* * * * *', async () => {
   try {
     const now = Date.now();
     const unverifiedAdmins = await IndexModel.User.find({
-      role: "admin",
+      role: 'admin',
       verified: false,
       verificationExpiry: { $lt: now },
     });
@@ -173,20 +176,20 @@ cron.schedule("* * * * *", async () => {
       console.log(`Deleted unverified admin: ${admin.userId}`);
     }
   } catch (err) {
-    console.error("Cron job error (unverified admins):", err);
+    console.error('Cron job error (unverified admins):', err);
     exceptionLogger.error('Cron job error (unverified admins)', {
       error: err.message,
       stack: err.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 //status update of plan according to there validation days
-cron.schedule("* * * * *", async () => {
+cron.schedule('* * * * *', async () => {
   try {
     const now = Date.now();
-    const companies = await IndexModel.Company.find({ "plan.isActive": true });
+    const companies = await IndexModel.Company.find({ 'plan.isActive': true });
 
     for (const company of companies) {
       let plansUpdated = false;
@@ -216,22 +219,22 @@ cron.schedule("* * * * *", async () => {
       }
     }
   } catch (err) {
-    console.error("Cron job error (plan validation):", err);
+    console.error('Cron job error (plan validation):', err);
     exceptionLogger.error('Cron job error (plan validation)', {
       error: err.message,
       stack: err.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 // unverified remove random user
-cron.schedule("* * * * *", async () => {
+cron.schedule('* * * * *', async () => {
   try {
     const now = Date.now();
     const unverifiedUsers = await IndexModel.User.find({
       verified: false,
-      role: "user",
+      role: 'user',
       verificationExpiry: { $lte: now },
     });
 
@@ -240,82 +243,82 @@ cron.schedule("* * * * *", async () => {
       console.log(`Deleted unverified user: ${user.userId}`);
     }
   } catch (err) {
-    console.error("Cron job error (delete unverified users):", err);
+    console.error('Cron job error (delete unverified users):', err);
     exceptionLogger.error('Cron job error (delete unverified users)', {
       error: err.message,
       stack: err.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
-cron.schedule("0 0 * * *", async () => {
+cron.schedule('0 0 * * *', async () => {
   try {
     const expiredTokens = await RefreshToken.deleteMany({
       expiresAt: { $lte: new Date() },
     });
     console.log(`Deleted ${expiredTokens.deletedCount} expired refresh tokens`);
   } catch (err) {
-    console.error("Cron job error (delete expired refresh tokens):", err);
+    console.error('Cron job error (delete expired refresh tokens):', err);
     exceptionLogger.error('Cron job error (delete expired refresh tokens)', {
       error: err.message,
       stack: err.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
-cron.schedule("0 0 * * *", async () => {
+cron.schedule('0 0 * * *', async () => {
   try {
     if (sessionStore) {
       await new Promise((resolve, reject) => {
         sessionStore.clear((err) => {
           if (err) {
-            console.error("Error clearing expired sessions:", err);
+            console.error('Error clearing expired sessions:', err);
             exceptionLogger.error('Error clearing expired sessions', {
               error: err.message,
               stack: err.stack,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             });
             reject(err);
           } else {
-            console.log("Cleared expired sessions");
+            console.log('Cleared expired sessions');
             resolve();
           }
         });
       });
     }
   } catch (err) {
-    console.error("Cron job error (clear sessions):", err);
+    console.error('Cron job error (clear sessions):', err);
     exceptionLogger.error('Cron job error (clear sessions)', {
       error: err.message,
       stack: err.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
-process.on("unhandledRejection", (err) => {
-  exceptionLogger.error('Unhandled Rejection', { 
-    error: err.message, 
+process.on('unhandledRejection', (err) => {
+  exceptionLogger.error('Unhandled Rejection', {
+    error: err.message,
     stack: err.stack,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
-  console.error("Unhandled Rejection:", err);
+  console.error('Unhandled Rejection:', err);
   server.close(() => process.exit(1));
 });
 
-process.on("uncaughtException", (err) => {
-  exceptionLogger.error('Uncaught Exception', { 
-    error: err.message, 
+process.on('uncaughtException', (err) => {
+  exceptionLogger.error('Uncaught Exception', {
+    error: err.message,
     stack: err.stack,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
-  console.error("Uncaught Exception:", err);
+  console.error('Uncaught Exception:', err);
   server.close(() => process.exit(1));
 });
 
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received. Shutting down gracefully");
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully');
   server.close(() => process.exit(0));
 });

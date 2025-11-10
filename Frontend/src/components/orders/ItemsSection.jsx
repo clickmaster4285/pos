@@ -188,6 +188,12 @@ export default function ItemsSection({
 
               {/* Line total + remove */}
               <div className="sm:col-span-12 flex items-end justify-between gap-2 sm:justify-end">
+                {/* 🔹 Prescription badge */}
+                {it.dynamicAttributes?.requiresPrescription && (
+                  <span className="mt-1 inline-flex items-center rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
+                    Prescription Required
+                  </span>
+                )}
                 <div className="rounded-md px-2 py-1 text-sm font-medium flex gap-2">
                   <Label className="text-sm text-primary">Total: </Label>
                   <span> {currency(lineTotal)}</span>

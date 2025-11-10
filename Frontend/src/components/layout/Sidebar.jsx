@@ -24,6 +24,7 @@ import {
   ChevronRight,
   UserSquare2,
   Utensils,
+  ListChecks,
 } from 'lucide-react';
 
 const iconMap = {
@@ -49,6 +50,7 @@ const iconMap = {
   Couriers: ShoppingCart,
   Warehouse: Truck,
   'Profile Setting': UserSquare2,
+  Ingredient: ListChecks,
 };
 
 function SidebarFooter({ userName, userRole }) {
@@ -277,12 +279,17 @@ export default function Sidebar() {
         icon: iconMap['Settings'],
         compulsory: true,
       },
-      {
-        href: '/admin/ingredient',
-        label: 'ingredient',
-        icon: iconMap['Settings'],
-        compulsory: true,
-      },
+
+      ...(industry?.toLowerCase() === 'restaurant'
+        ? [
+            {
+              href: '/admin/ingredient',
+              label: 'Ingredient',
+              icon: iconMap['Ingredient'],
+              compulsory: true,
+            },
+          ]
+        : []),
     ];
 
     const optionalAdminLinks = [

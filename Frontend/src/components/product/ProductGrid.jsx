@@ -28,6 +28,7 @@ import {
 import { useSelector } from 'react-redux';
 import { ProductImageCarousel } from './ProductImageCarousel';
 
+import { use } from 'react';
 const hasVendorsFeature = (user) =>
   user?.extraFeature?.includes('Vendors') ?? false;
 const hasCategoriesFeature = (user) =>
@@ -52,6 +53,8 @@ export function ProductGrid({
   pendingId,
   onOpenSheet,
   onAddStock,
+  hasVendors,
+  hasCategories,
 }) {
   if (!products?.length) {
     return (
@@ -60,9 +63,13 @@ export function ProductGrid({
       </p>
     );
   }
-  console.log('products', products);
+
   const user = useSelector((state) => state.auth.user);
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  const industry = user?.industryName || '';
+  const industryLC = (industry || '').toLowerCase();
+  const isRestaurant = industryLC === 'restaurant';
 
   const getVendorName = (vendorId) => {
     const vendor = vendors.find((v) => v._id === vendorId);
@@ -215,7 +222,7 @@ export function ProductGrid({
                 <h3 className="font-semibold text-lg text-foreground line-clamp-2 leading-tight">
                   {safe(product.productName) || 'Untitled product'}
                 </h3>
-                {hasCategoriesFeature(user) && (
+                {!isRestaurant && hasCategoriesFeature(user) && (
                   <p className="text-sm text-muted-foreground truncate">
                     {product.subCategoryName || 'No subcategory'}
                   </p>
@@ -223,18 +230,18 @@ export function ProductGrid({
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                {hasCategoriesFeature(user) && (
+                {!isRestaurant && hasCategoriesFeature(user) && (
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
                       Category
                     </p>
                     <p className="text-foreground truncate">
-                      {safe(product.category) || '—'}
+                      {product.category || '—'}
                     </p>
                   </div>
                 )}
 
-                {hasVendorsFeature(user) && (
+                {!isRestaurant && hasVendorsFeature(user) && (
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
                       Vendor
@@ -245,16 +252,18 @@ export function ProductGrid({
                   </div>
                 )}
 
-                <div className="col-span-2">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
-                    Ingredients
-                  </p>
-                  <p className="text-foreground line-clamp-2 text-xs">
-                    {products.ingredient
-                      ?.map((i) => `${i.quantity} ${i.ingredientName}`)
-                      .join(', ') || '—'}
-                  </p>
-                </div>
+                {isRestaurant && (
+                  <div className="col-span-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                      Ingredients
+                    </p>
+                    <p className="text-foreground line-clamp-2 text-xs">
+                      {product.ingredient
+                        ?.map((i) => `${i.quantity} ${i.ingredientName}`)
+                        .join(', ') || '—'}
+                    </p>
+                  </div>
+                )}
                 <div className="col-span-2">
                   <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">
                     Extra

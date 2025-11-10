@@ -12,7 +12,9 @@ import TableGrid from './TableGrid';
 import TableDetailsPanel from './TableDetailsPanel';
 import TableModel from '@/components/tables/TableModel';
 
-import { useListTablesQuery } from '@/features/tableApi';
+import {
+  useListTablesQuery
+} from '@/features/tableApi';
 import { useGetAllStaffQuery } from '@/features/staffApi';
 import { orderApi } from '@/features/orderApi';
 
@@ -34,8 +36,8 @@ export const STATE_META = {
   },
   reserved: {
     label: 'Reserved',
-    tint: 'bg-primary/10 text-primary/70',
-    dot: 'bg-primary/50',
+    tint: 'bg-purple-100 text-purple-700',
+    dot: 'bg-purple-500',
   },
 };
 
@@ -93,7 +95,7 @@ export default function TablesBoard() {
     () => apiTables.find((t) => getId(t) === selectedTableId) || null,
     [apiTables, selectedTableId]
   );
-
+ 
   // Buckets
   const byState = useMemo(() => {
     const group = {
@@ -159,14 +161,14 @@ export default function TablesBoard() {
                 </div>
               ) : (
                 <Tabs defaultValue="all">
-                  <TabsList className="grid grid-cols-5 w-full">
+                  <TabsList className="grid grid-cols-4 w-full">
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="available">Available</TabsTrigger>
                     <TabsTrigger value="occupied">Occupied</TabsTrigger>
                     <TabsTrigger value="reserved">Reserved</TabsTrigger>
-                    <TabsTrigger value="awaiting_payment">
+                    {/* <TabsTrigger value="awaiting_payment">
                       Awaiting Payment
-                    </TabsTrigger>
+                    </TabsTrigger> */}
                   </TabsList>
 
                   {[
