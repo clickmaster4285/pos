@@ -281,3 +281,7 @@
 {"duration":"34ms","ip":"::1","level":"warn","message":"Request rejected","method":"DELETE","statusCode":400,"timestamp":"2025-11-10 11:51:57","url":"/remove-table/[object%20Object]"}
 {"duration":"46ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":404,"timestamp":"2025-11-10 12:00:25","url":"/get-all-shippment-address"}
 {"duration":"72ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":404,"timestamp":"2025-11-10 12:02:18","url":"/get-all-shippment-address"}
+{"duration":"56ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":404,"timestamp":"2025-11-10 12:10:36","url":"/get-all-shippment-address"}
+{"duration":"22ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":404,"timestamp":"2025-11-10 12:14:32","url":"/get-all-shippment-address"}
+{"duration":"53ms","ip":"::1","level":"warn","message":"Request rejected","method":"POST","statusCode":500,"timestamp":"2025-11-10 12:17:12","url":"/create-product"}
+{"duration":"34ms","ip":"::1","level":"warn","message":"Request rejected","method":"GET","statusCode":404,"timestamp":"2025-11-10 12:30:35","url":"/get-all-shippment-address"}
