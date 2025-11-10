@@ -2,12 +2,11 @@ import IndexModel from "../models/indexModel.js";
 
 const createPlan = async (req, res, next) => {
   try {
-    // Check if user is Admin
     if (!req.user || req.user.role !== "superAdmin") {
       res.status(403);
       throw new Error("Not authorized, admin access required");
     }
-    const { name, description, price, limitations, validateDays } = req.body;
+    const { name, description, price, limitations, validateDays, currencyCode } = req.body;
 
     const planExists = await IndexModel.Plan.findOne({ name, deleted: false });
     if (planExists) {
@@ -21,6 +20,7 @@ const createPlan = async (req, res, next) => {
       price,
       limitations,
       validateDays,
+      currencyCode,
       createdBy: req.user.userId,
       isActive: true,
     });
@@ -37,7 +37,6 @@ const createPlan = async (req, res, next) => {
 const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
-    // Check if user is Admin
     if (!req.user || req.user.role !== "superAdmin") {
       res.status(403);
       throw new Error("Not authorized, admin access required");
@@ -70,7 +69,6 @@ const updatePlan = async (req, res, next) => {
 
 const deletePlan = async (req, res, next) => {
   try {
-    // Check if user is Admin
     if (!req.user || req.user.role !== "superAdmin") {
       res.status(403);
       throw new Error("Not authorized, superAdmin access required");
@@ -97,7 +95,6 @@ const deletePlan = async (req, res, next) => {
     next(error);
   }
 };
-
 // GET ALL PLANS
 const getAllPlans = async (req, res) => {
   try {

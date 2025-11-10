@@ -41,6 +41,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "cookies-next": "^6.1.0",
+    "currency-codes": "^2.2.0",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.23.12",
     "html2canvas": "^1.4.1",

@@ -84,7 +84,7 @@ export default function PlanSelection({
                     </h3>
                     <div className="mt-2">
                       <span className="text-3xl font-bold text-gray-900">
-                        Rs {plan.price}
+                        {plan.currencyCode} {plan.price}
                       </span>
                       <span className="text-gray-600">
                         /{plan.interval || 'month'}

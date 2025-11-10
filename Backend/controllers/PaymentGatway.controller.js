@@ -6,7 +6,7 @@ import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 const createPaymentIntent = async (req, res) => {
   try {
     const { userId, companyId, email } = req.user;
-    const { priceId, currency, planId } = req.body;
+    const { priceId, planId } = req.body;
       const adminUser = await IndexModel.User.findOne({role:"superAdmin", deleted: false}).lean();
     
     const stripe = new Stripe(adminUser.stripeConfig.secretKey, {
@@ -26,8 +26,8 @@ const createPaymentIntent = async (req, res) => {
     }
     const companyPlanId = await generatePlanId(companyId, userId);
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: availablePlan.price * 100,
-      currency: currency,
+      amount: availablePlan.price*100, // amount in smallest currency unit
+      currency: availablePlan.currencyCode,
       payment_method_types: ["card"],
       metadata: { userId, companyId, planId, companyPlanId },
       description: `Payment for ${availablePlan.name}`,

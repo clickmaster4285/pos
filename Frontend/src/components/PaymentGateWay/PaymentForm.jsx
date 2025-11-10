@@ -74,7 +74,7 @@ function CheckoutForm({
       // 1) Create PaymentIntent
       const response = await createPaymentIntent({
         priceId,
-        currency: 'PKR',
+        // currency: 'PKR',
         planId: currentPlanId,
       }).unwrap();
 
@@ -162,7 +162,7 @@ function CheckoutForm({
             <div className="flex justify-between items-center mt-2">
               <span className="text-gray-600">{plan.name} Plan</span>
               <span className="font-semibold text-gray-900">
-                Rs {plan.price}
+                {plan.currencyCode} {plan.price}
               </span>
             </div>
             <div className="flex justify-between items-center mt-1 text-sm text-gray-600">
@@ -276,7 +276,7 @@ function CheckoutForm({
                 Payment Successful
               </div>
             ) : (
-              `Pay Rs ${plan?.price || ''} Now`
+              `Pay ${plan.currencyCode} ${plan?.price || ''} Now`
             )}
           </Button>
         </form>
