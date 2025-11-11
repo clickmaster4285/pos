@@ -22,6 +22,7 @@ import SuperAdmin from './superAdmin.route.js';
 import Landing from './landing.route.js';
 import Orders from './orders.routes.js';
 import Table from './table.routes.js';
+import dataManagementRoutes from './dataManagementRoutes.js';
 
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import passport from '../middleware/passportAuth.middleware.js';
@@ -86,5 +87,6 @@ router.use('/table', Table);
 
 // superAdmin config route
 router.use('/superadmin', SuperAdmin);
+router.use('/dataManagementRoutes/superadmin', dataManagementRoutes);
 
 export default router;

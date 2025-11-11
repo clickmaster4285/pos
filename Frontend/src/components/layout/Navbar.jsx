@@ -1,4 +1,4 @@
-// File: navbar.js
+// File: Navbar.jsx
 'use client';
 import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
@@ -11,36 +11,58 @@ import {
   FiGlobe,
   FiSettings,
   FiLogOut,
+  FiDownload,
+  FiUpload,
+  FiDatabase,
+  FiAlertCircle,
 } from 'react-icons/fi';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { useLogoutMutation } from '@/features/authApi';
+import { 
+  useExportDataMutation, 
+  useImportDataMutation, 
+  useGetBackupInfoQuery,
+} from '@/features/dataManagementApi';
 import { Button } from '../ui/button';
 import Link from 'next/link';
 
-export default function Navbar({ setErrorMessage }) {
+export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  
   const profileRef = useRef(null);
   const notificationsRef = useRef(null);
+  const dataMenuRef = useRef(null);
+  const fileInputRef = useRef(null);
+  
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const user = useSelector((state) => state.auth.user);
   const [logout] = useLogoutMutation();
+  
+  // Data management mutations and queries
+  const [exportData] = useExportDataMutation();
+  const [importData] = useImportDataMutation();
+  const { data: backupInfo, refetch: refetchBackupInfo } = useGetBackupInfoQuery(undefined, {
+    skip: user?.role !== 'superAdmin',
+  });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
       }
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target)
-      ) {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
         setIsNotificationsOpen(false);
+      }
+      if (dataMenuRef.current && !dataMenuRef.current.contains(event.target)) {
+        setIsDataMenuOpen(false);
       }
     };
 
@@ -48,29 +70,102 @@ export default function Navbar({ setErrorMessage }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const notifications = [
-    { id: 1, text: 'New message from Sarah', time: '10 min ago', read: false },
-    {
-      id: 2,
-      text: 'Your post was liked by 25 people',
-      time: '1 hour ago',
-      read: true,
-    },
-    { id: 3, text: 'New feature available', time: '2 days ago', read: true },
-  ];
+  // Enhanced Export Handler
+  const handleExportData = async () => {
+    if (!user?.role || user.role !== 'superAdmin') {
+      setErrorMessage('Only super admins can export data');
+      return;
+    }
 
-  const handleLogOut = async () => {
+    setIsExporting(true);
     try {
-      await logout().unwrap();
-      setIsProfileOpen(false);
-      router.push('/login');
+      const result = await exportData({}).unwrap();
+      if (result.success) {
+        setSuccessMessage('Data exported successfully! The download should start automatically.');
+        refetchBackupInfo(); // Refresh backup info
+      }
     } catch (error) {
-      console.error('Logout failed:', error);
-      setErrorMessage('Logout failed. Please try again.');
+      console.error('Export failed:', error);
+      setErrorMessage(error?.data?.message || 'Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+      setIsDataMenuOpen(false);
     }
   };
 
-  // Construct the settings route based on role and subRole
+  // Enhanced Import Handler
+  const handleImportData = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!user?.role || user.role !== 'superAdmin') {
+      setErrorMessage('Only super admins can import data');
+      return;
+    }
+
+    if (!file.name.endsWith('.zip')) {
+      setErrorMessage('Please select a valid ZIP backup file');
+      return;
+    }
+
+    // Check file size (500MB limit)
+    if (file.size > 500 * 1024 * 1024) {
+      setErrorMessage('File size exceeds 500MB limit');
+      return;
+    }
+
+    setIsImporting(true);
+    setImportProgress(0);
+    
+    const formData = new FormData();
+    formData.append('backupFile', file);
+
+    try {
+      // Simulate progress (plain JS interval)
+      const progressInterval = setInterval(() => {
+        setImportProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
+      const result = await importData(formData).unwrap();
+      
+      clearInterval(progressInterval);
+      setImportProgress(100);
+      
+      if (result.success) {
+        setSuccessMessage(`Data imported successfully! ${result.importedCollections?.length || 0} collections restored.`);
+        refetchBackupInfo(); // Refresh backup info
+        
+        // Refresh the page after successful import to ensure clean state
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      setErrorMessage(error?.data?.message || 'Import failed. Please check the backup file and try again.');
+    } finally {
+      setIsImporting(false);
+      setImportProgress(0);
+      setIsDataMenuOpen(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const getSettingsRoute = () => {
     if (!user?.role) return '/settings/profile';
     if (user.role === 'superAdmin') return '/superadmin/profile-setting';
@@ -78,14 +173,25 @@ export default function Navbar({ setErrorMessage }) {
     if (user.role === 'staff' && user.subRole) {
       return `/staff/${encodeURIComponent(user.subRole)}/profile-setting`;
     }
-    return '/staff/profile-setting'; // Fallback for staff without subRole
+    return '/staff/profile-setting';
   };
+
+  const handleLogOut = async () => {
+    try {
+      await logout().unwrap();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const unreadNotificationsCount = 2; // Replace with actual count
 
   return (
     <nav className="p-3 w-full bg-sidebar border-b border-gray-200">
-      <div className="h-14 flex justify-between px-6 relative ">
+      <div className="h-14 flex justify-between px-6 relative">
         {/* Mobile menu button */}
-        <div className="flex ">
+        <div className="flex">
           <Button
             className="md:hidden text-primary-700 mr-4 text-xl"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -99,7 +205,7 @@ export default function Navbar({ setErrorMessage }) {
             <input
               type="text"
               placeholder="Search vehicles, dealers, reports..."
-              className="border-none outline-none flex-1 text-sm"
+              className="border-none outline-none flex-1 text-sm bg-transparent"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -108,6 +214,120 @@ export default function Navbar({ setErrorMessage }) {
 
         {/* Desktop navigation */}
         <div className="flex items-center gap-3">
+          {/* Data Management Menu - Only for Super Admin */}
+          {user?.role === 'superAdmin' && (
+            <div className="relative" ref={dataMenuRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
+                title="Data Management"
+              >
+                <FiDatabase className="w-5 h-5" />
+              </Button>
+
+              {isDataMenuOpen && (
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl overflow-hidden z-50 border border-gray-200">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <FiDatabase className="w-5 h-5 text-blue-600 mr-2" />
+                        <h3 className="text-sm font-semibold text-gray-800">Data Management</h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Export Section */}
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Export All Data</span>
+                      <FiDownload className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Download complete database and uploads as ZIP file
+                    </p>
+                    <button
+                      onClick={handleExportData}
+                      disabled={isExporting}
+                      className="w-full flex items-center justify-center py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {isExporting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <FiDownload className="mr-2 w-4 h-4" />
+                          Export Now
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Import Section */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Import Backup</span>
+                      <FiUpload className="w-4 h-4 text-green-600" />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Restore from previously exported ZIP backup
+                    </p>
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".zip"
+                      onChange={handleImportData}
+                      className="hidden"
+                      disabled={isImporting}
+                    />
+                    
+                    <button
+                      onClick={triggerFileInput}
+                      disabled={isImporting}
+                      className="w-full flex items-center justify-center py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mb-3"
+                    >
+                      {isImporting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        <>
+                          <FiUpload className="mr-2 w-4 h-4" />
+                          Choose Backup File
+                        </>
+                      )}
+                    </button>
+
+                    {/* Progress bar */}
+                    {isImporting && (
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${importProgress}%` }}
+                        ></div>
+                      </div>
+                    )}
+
+                    {/* Warning */}
+                    <div className="flex items-start p-2 bg-yellow-50 rounded border border-yellow-200">
+                      <FiAlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-yellow-700">
+                        This will replace all current data. Make sure you have a backup.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Notifications */}
           <div className="relative" ref={notificationsRef}>
             <Button
@@ -117,46 +337,12 @@ export default function Navbar({ setErrorMessage }) {
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             >
               <FiBell className="w-5 h-5" />
-              {notifications.filter((n) => !n.read).length > 0 && (
+              {unreadNotificationsCount > 0 && (
                 <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {notifications.filter((n) => !n.read).length}
+                  {unreadNotificationsCount}
                 </span>
               )}
             </Button>
-
-            {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-72 rounded-md shadow-lg overflow-hidden z-50 border border-gray-200">
-                <div className="px-4 py-2 border-b border-gray-200 bg-primary-50 text-gray-700 font-medium">
-                  Notifications
-                </div>
-                {notifications.length > 0 ? (
-                  notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer ${
-                        !notification.read ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <p className="text-sm text-gray-800">
-                        {notification.text}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {notification.time}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-4 py-3 text-sm text-gray-500">
-                    No new notifications
-                  </div>
-                )}
-                <div className="px-4 py-2 border-t border-gray-200 text-center bg-gray-50">
-                  <button className="text-sm text-blue-600 hover:text-blue-800">
-                    View all notifications
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Profile */}
@@ -179,72 +365,63 @@ export default function Navbar({ setErrorMessage }) {
                 </div>
               )}
             </button>
-
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-gray-200">
-                <div className="py-1">
-                  <Link
-                    href={getSettingsRoute()}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      <FiUser className="mr-2" />
-                      View Profile
-                    </div>
-                  </Link>
-                  <Link
-                    href={getSettingsRoute()}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center">
-                      <FiSettings className="mr-2" />
-                      Settings
-                    </div>
-                  </Link>
-                  <button
-                    onClick={handleLogOut}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-200"
-                  >
-                    <div className="flex items-center">
-                      <FiLogOut className="mr-2" />
-                      Logout
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 space-y-3 shadow-lg z-40">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="bg-gray-100 text-gray-700 placeholder-gray-400 rounded-md py-2 px-4 pl-10 w-full outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-              />
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
+            {/* Mobile Data Management - Only for Super Admin */}
+            {user?.role === 'superAdmin' && (
+              <div className="border-t border-gray-200 pt-3">
+                <div className="text-sm font-medium text-gray-700 mb-2">Data Management</div>
+                
+                <button
+                  onClick={handleExportData}
+                  disabled={isExporting}
+                  className="w-full flex items-center justify-between py-3 px-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm font-medium transition-colors duration-200 disabled:opacity-50 mb-2"
+                >
+                  <div className="flex items-center">
+                    <FiDownload className="mr-2" />
+                    Export All Data
+                  </div>
+                  {isExporting && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>}
+                </button>
 
-            <div className="flex flex-col space-y-2 text-gray-700">
-              <button className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200">
-                <FiGlobe className="mr-3" />
-                <span>Language</span>
-              </button>
-              <button
-                className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              >
-                <FiBell className="mr-3" />
-                <span>Notifications</span>
-                {notifications.filter((n) => !n.read).length > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notifications.filter((n) => !n.read).length}
-                  </span>
+                <button
+                  onClick={triggerFileInput}
+                  disabled={isImporting}
+                  className="w-full flex items-center justify-between py-3 px-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm font-medium transition-colors duration-200 disabled:opacity-50"
+                >
+                  <div className="flex items-center">
+                    <FiUpload className="mr-2" />
+                    Import Backup
+                  </div>
+                  {isImporting && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>}
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip"
+                  onChange={handleImportData}
+                  className="hidden"
+                  disabled={isImporting}
+                />
+
+                {isImporting && (
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${importProgress}%` }}
+                    ></div>
+                  </div>
                 )}
-              </button>
+              </div>
+            )}
+
+            {/* Other mobile menu items */}
+            <div className="flex flex-col space-y-2 text-gray-700">
               <Link
                 href={getSettingsRoute()}
                 className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200"
@@ -253,16 +430,11 @@ export default function Navbar({ setErrorMessage }) {
                 <span>Settings</span>
               </Link>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLogOut();
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 border-t border-gray-200"
+                onClick={handleLogOut}
+                className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200 text-left"
               >
-                <div className="flex items-center">
-                  <FiLogOut className="mr-2" />
-                  <span>Logout</span>
-                </div>
+                <FiLogOut className="mr-3" />
+                <span>Logout</span>
               </button>
             </div>
           </div>
