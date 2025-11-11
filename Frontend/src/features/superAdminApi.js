@@ -24,9 +24,15 @@ export const superAdminApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["SuperAdmin", "User"],
+  tagTypes: ["SuperAdmin", "User", "Dashboard"],
   endpoints: (builder) => ({
-    // ── existing endpoints ─────────────────────────────────────
+    // Dashboard Data
+    getSuperAdminDashboard: builder.query({
+      query: () => "/superadmin/super-admin-dashboard",
+      providesTags: ["Dashboard"],
+    }),
+
+    // Existing endpoints
     updateSuperAdminInfo: builder.mutation({
       query: (formData) => ({
         url: "/superadmin/update-super-admin-info-by-super-admin",
@@ -36,7 +42,6 @@ export const superAdminApi = createApi({
       invalidatesTags: [{ type: "User", id: "LIST" }],
     }),
 
-    // ── NEW: create company ───────────────────────────────────
     createCompany: builder.mutation({
       query: (payload) => ({
         url: "/superadmin/create-company-by-super-admin",
@@ -49,6 +54,7 @@ export const superAdminApi = createApi({
 });
 
 export const {
+  useGetSuperAdminDashboardQuery,
   useUpdateSuperAdminInfoMutation,
-  useCreateCompanyMutation,   // <-- NEW hook
+  useCreateCompanyMutation,
 } = superAdminApi;

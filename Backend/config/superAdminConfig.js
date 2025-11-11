@@ -435,8 +435,20 @@ export const superAdminDashboard = async (req, res) => {
     const recentCompanies = await IndexModel.Company.find({ deleted: false })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select("name companyId plan createdAt");
+      .select("name companyId plan createdAt gain");
 
+      const revenueActivity = await IndexModel.Company.aggregate([
+      { $match: { deleted: false } },
+      { $unwind: "$plan" },
+      {
+        $project: {
+          planName: "$plan.name",
+          price: { $ifNull: ["$plan.price", 0] },
+          createdAt: "$plan.createdAt",
+        },
+      },
+      { $match: { createdAt: { $exists: true } } },
+    ]);
     // ===============================
     // 2️⃣ MongoDB storage stats
     // ===============================
@@ -484,6 +496,7 @@ export const superAdminDashboard = async (req, res) => {
       suspendedCompanies,
       pendingVerifications: pendingVerifications.length,
       recentCompanies,
+      revenueActivity,
       storage: {
         mongoDataSizeMB: mongoDataSizeMB.toFixed(2),
         mongoStorageUsedMB: mongoStorageUsedMB.toFixed(2),

@@ -1,49 +1,50 @@
-import { Header } from '@/components/dashboard/header';
-import { DashboardStats } from '@/components/dashboard/dashboard-stats';
-import { VehicleFleetOverview } from '@/components/dashboard/vehicle-fleet-overview';
-import { RecentActivity } from '@/components/dashboard/recent-activity';
-import { QuickActions } from '@/components/dashboard/quick-actions';
-import { PlanManagement } from '@/components/dashboard/plan-management';
-import { PendingVerifications } from '@/components/dashboard/pending-verifications';
+'use client';
+// src/pages/superadmin/dashboard/page.jsx
+import { useGetSuperAdminDashboardQuery } from '@/features/superAdminApi';
+import { MetricCards } from "@/components/superAdminDashboard/metric-cards";
+import { RevenueAnalytics } from "@/components/superAdminDashboard/revenue-analytics";
+import { CompanyGrowth } from "@/components/superAdminDashboard/company-growth";
+import { CompaniesTable } from "@/components/superAdminDashboard/companies-table";
+import { ChurnRiskIndicators } from "@/components/superAdminDashboard/churn-risk-indicators";
+import { StorageAnalytics } from "@/components/superAdminDashboard/storage-analytics";
+import { PaymentStatusBreakdown } from "@/components/superAdminDashboard/payment-status-breakdown";
+import { FeatureUsageStats } from "@/components/superAdminDashboard/feature-usage-stats";
 
-export default function SuperAdminDashboard() {
+export default function Page() {
+  const { data, isLoading, error } = useGetSuperAdminDashboardQuery();
+
+  if (isLoading) return <div className="p-6 text-center text-muted-foreground">Loading dashboard...</div>;
+  if (error) return <div className="p-6 text-center text-destructive">Error loading dashboard</div>;
+
+  const dashboardData = data?.data || {};
+
   return (
-    <div className="min-h-screen bg-background">
-      <main className="contaeeiner mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2 text-balance">
-            Automotive Dashboard
-          </h1>
-          <p className="text-lg text-muted-foreground text-pretty">
-            Comprehensive oversight and management of your automotive operations
-            ecosystem
-          </p>
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card px-6 py-4">
+        <h1 className="text-3xl font-bold">SuperAdmin Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Enterprise-level system monitoring and analytics</p>
+      </header>
+
+      <div className="space-y-6 p-6">
+        <MetricCards data={dashboardData} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <RevenueAnalytics data={dashboardData.revenueActivity} />
+          <CompanyGrowth data={dashboardData} />
         </div>
-
-        {/* Dashboard Stats */}
-        <DashboardStats />
-
-        {/* Plan Management Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          <PendingVerifications />
-          <PlanManagement />
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-          {/* Fleet Overview - Takes 2 columns on large screens */}
+        <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <VehicleFleetOverview />
+            <CompaniesTable companies={dashboardData.recentCompanies || []} />
           </div>
-
-          {/* Quick Actions Sidebar */}
-          <div className="space-y-6">
-            <QuickActions />
-            <RecentActivity />
+          <ChurnRiskIndicators companies={dashboardData.recentCompanies || []} />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <StorageAnalytics storage={dashboardData.storage || {}} />
+          <div className="grid gap-6">
+            <PaymentStatusBreakdown active={dashboardData.activeCompanies} total={dashboardData.totalCompanies} />
+            <FeatureUsageStats companies={dashboardData.recentCompanies || []} />
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
