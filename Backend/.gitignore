@@ -19,7 +19,7 @@
 /logs/
 # production
 /build
-
+/temp-backup
 # misc
 .DS_Store
 *.pem
