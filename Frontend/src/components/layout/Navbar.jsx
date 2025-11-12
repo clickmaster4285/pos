@@ -30,7 +30,7 @@ import {
 import { Button } from '../ui/button';
 import Link from 'next/link';
 
-export default function Navbar({ setErrorMessage, setSuccessMessage }) {
+export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -77,21 +77,15 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
 
   // Enhanced Export Handler
   const handleExportData = async () => {
-    if (!user?.role || user.role !== 'superAdmin') {
-      setErrorMessage('Only super administrators can export data');
-      return;
-    }
 
     setIsExporting(true);
     try {
       const result = await exportData({}).unwrap();
       if (result.success) {
-        setSuccessMessage(`Data exported successfully! File: ${result.filename} (${(result.size / (1024 * 1024)).toFixed(2)}MB)`);
         refetchBackupInfo();
       }
     } catch (error) {
       console.error('Export failed:', error);
-      setErrorMessage(error?.data?.message || error?.message || 'Export failed. Please try again.');
     } finally {
       setIsExporting(false);
       setIsDataMenuOpen(false);
@@ -102,22 +96,10 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   const handleImportData = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
-    if (!user?.role || user.role !== 'superAdmin') {
-      setErrorMessage('Only super administrators can import data');
-      return;
-    }
-
     if (!file.name.endsWith('.zip')) {
-      setErrorMessage('Please select a valid ZIP backup file');
       return;
     }
 
-    // Check file size (500MB limit)
-    if (file.size > 500 * 1024 * 1024) {
-      setErrorMessage('File size exceeds 500MB limit. Please use a smaller backup file.');
-      return;
-    }
 
     setIsImporting(true);
     setImportProgress(0);
@@ -154,10 +136,8 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
       setImportStage('Import completed!');
       
       if (result.success) {
-        setSuccessMessage(
-          `Data imported successfully! Restored ${result.details.collections} collections and ${result.details.uploads} files.`
-        );
-        refetchBackupInfo();
+        
+        // refetchBackupInfo();
         
         // Refresh the page after successful import to ensure clean state
         setTimeout(() => {
@@ -167,7 +147,6 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
     } catch (error) {
       console.error('Import failed:', error);
       setImportStage('Import failed!');
-      setErrorMessage(error?.data?.message || error?.message || 'Import failed. Please check the backup file and try again.');
     } finally {
       setTimeout(() => {
         setIsImporting(false);
@@ -183,20 +162,15 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   };
 
   const handleCleanupTempFiles = async () => {
-    if (!user?.role || user.role !== 'superAdmin') {
-      setErrorMessage('Only super administrators can cleanup files');
-      return;
-    }
+
 
     try {
       const result = await cleanupTempFiles().unwrap();
       if (result.success) {
-        setSuccessMessage(`Cleaned up ${result.cleaned} temporary files`);
         refetchBackupInfo();
       }
     } catch (error) {
       console.error('Cleanup failed:', error);
-      setErrorMessage(error?.data?.message || 'Cleanup failed. Please try again.');
     }
   };
 
@@ -222,7 +196,6 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
-      setErrorMessage('Logout failed. Please try again.');
     }
   };
 

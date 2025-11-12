@@ -8,7 +8,6 @@ import PaymentGateway from '@/components/PaymentGateWay/PaymentGateway';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
 
 export default function Layout({ children }) {
-  const [errorMessage, setErrorMessage] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const router = useRouter();
@@ -61,7 +60,7 @@ export default function Layout({ children }) {
         </div>
         <div className="flex-1 flex flex-col ml-64">
           <div className="h-auto border-b fixed top-0 left-64 right-0 z-10">
-            <Navbar setErrorMessage={setErrorMessage} />
+            <Navbar />
           </div>
           <div className="flex-1 overflow-auto mt-14 p-2 bg-background">
             <PaymentGateway />
@@ -79,7 +78,7 @@ export default function Layout({ children }) {
       </div>
       <div className="flex-1 flex flex-col ml-64">
         <div className="h-auto border-b fixed top-0 left-64 right-0 z-10">
-          <Navbar setErrorMessage={setErrorMessage} />
+          <Navbar />
         </div>
         <div className="flex-1 overflow-auto mt-14 p-2 bg-background">
           {children}
