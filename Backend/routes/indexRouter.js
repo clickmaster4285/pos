@@ -87,6 +87,6 @@ router.use('/table', Table);
 
 // superAdmin config route
 router.use('/superadmin', SuperAdmin);
-router.use('/dataManagementRoutes/superadmin', dataManagementRoutes);
+// router.use('/dataManagementRoutes-superadmin', dataManagementRoutes);
 
 export default router;

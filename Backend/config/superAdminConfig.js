@@ -449,6 +449,9 @@ export const superAdminDashboard = async (req, res) => {
       },
       { $match: { createdAt: { $exists: true } } },
     ]);
+
+    const companyGrowth = companies.map(({ name, createdAt }) => ({ name, createdAt }));
+
     // ===============================
     // 2️⃣ MongoDB storage stats
     // ===============================
@@ -474,7 +477,7 @@ export const superAdminDashboard = async (req, res) => {
       }
       return totalSize;
     };
-
+    
     const uploadsPath = path.join(process.cwd(), "Uploads");
     let uploadsSizeMB = 0;
 
@@ -482,6 +485,8 @@ export const superAdminDashboard = async (req, res) => {
       const bytes = getFolderSize(uploadsPath);
       uploadsSizeMB = bytes / (1024 * 1024); // convert to MB
     }
+
+    
 
     // ===============================
     // 4️⃣ Combine all dashboard data
@@ -497,6 +502,7 @@ export const superAdminDashboard = async (req, res) => {
       pendingVerifications: pendingVerifications.length,
       recentCompanies,
       revenueActivity,
+      companyGrowth,
       storage: {
         mongoDataSizeMB: mongoDataSizeMB.toFixed(2),
         mongoStorageUsedMB: mongoStorageUsedMB.toFixed(2),

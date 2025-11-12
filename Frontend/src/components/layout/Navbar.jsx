@@ -8,21 +8,24 @@ import {
   FiUser,
   FiMenu,
   FiX,
-  FiGlobe,
   FiSettings,
   FiLogOut,
   FiDownload,
   FiUpload,
   FiDatabase,
   FiAlertCircle,
+  FiCheckCircle,
+  FiInfo,
+  FiTrash2,
 } from 'react-icons/fi';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { useLogoutMutation } from '@/features/authApi';
 import { 
   useExportDataMutation, 
   useImportDataMutation, 
   useGetBackupInfoQuery,
+  useCleanupTempFilesMutation,
 } from '@/features/dataManagementApi';
 import { Button } from '../ui/button';
 import Link from 'next/link';
@@ -36,6 +39,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [importStage, setImportStage] = useState('');
   
   const profileRef = useRef(null);
   const notificationsRef = useRef(null);
@@ -49,7 +53,8 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   // Data management mutations and queries
   const [exportData] = useExportDataMutation();
   const [importData] = useImportDataMutation();
-  const { data: backupInfo, refetch: refetchBackupInfo } = useGetBackupInfoQuery(undefined, {
+  const [cleanupTempFiles] = useCleanupTempFilesMutation();
+  const { data: backupInfo, refetch: refetchBackupInfo, isLoading: isLoadingBackupInfo } = useGetBackupInfoQuery(undefined, {
     skip: user?.role !== 'superAdmin',
   });
 
@@ -73,7 +78,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
   // Enhanced Export Handler
   const handleExportData = async () => {
     if (!user?.role || user.role !== 'superAdmin') {
-      setErrorMessage('Only super admins can export data');
+      setErrorMessage('Only super administrators can export data');
       return;
     }
 
@@ -81,12 +86,12 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
     try {
       const result = await exportData({}).unwrap();
       if (result.success) {
-        setSuccessMessage('Data exported successfully! The download should start automatically.');
-        refetchBackupInfo(); // Refresh backup info
+        setSuccessMessage(`Data exported successfully! File: ${result.filename} (${(result.size / (1024 * 1024)).toFixed(2)}MB)`);
+        refetchBackupInfo();
       }
     } catch (error) {
       console.error('Export failed:', error);
-      setErrorMessage(error?.data?.message || 'Export failed. Please try again.');
+      setErrorMessage(error?.data?.message || error?.message || 'Export failed. Please try again.');
     } finally {
       setIsExporting(false);
       setIsDataMenuOpen(false);
@@ -99,7 +104,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
     if (!file) return;
 
     if (!user?.role || user.role !== 'superAdmin') {
-      setErrorMessage('Only super admins can import data');
+      setErrorMessage('Only super administrators can import data');
       return;
     }
 
@@ -110,53 +115,88 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
 
     // Check file size (500MB limit)
     if (file.size > 500 * 1024 * 1024) {
-      setErrorMessage('File size exceeds 500MB limit');
+      setErrorMessage('File size exceeds 500MB limit. Please use a smaller backup file.');
       return;
     }
 
     setIsImporting(true);
     setImportProgress(0);
+    setImportStage('Preparing upload...');
     
     const formData = new FormData();
     formData.append('backupFile', file);
 
     try {
-      // Simulate progress (plain JS interval)
+      // Simulate progress for better UX
+      const progressStages = [
+        { stage: 'Uploading file...', progress: 25 },
+        { stage: 'Extracting backup...', progress: 50 },
+        { stage: 'Validating data...', progress: 70 },
+        { stage: 'Restoring database...', progress: 85 },
+        { stage: 'Finalizing...', progress: 95 }
+      ];
+
+      let currentStage = 0;
       const progressInterval = setInterval(() => {
-        setImportProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 500);
+        if (currentStage < progressStages.length) {
+          setImportStage(progressStages[currentStage].stage);
+          setImportProgress(progressStages[currentStage].progress);
+          currentStage++;
+        } else {
+          clearInterval(progressInterval);
+        }
+      }, 1000);
 
       const result = await importData(formData).unwrap();
       
       clearInterval(progressInterval);
       setImportProgress(100);
+      setImportStage('Import completed!');
       
       if (result.success) {
-        setSuccessMessage(`Data imported successfully! ${result.importedCollections?.length || 0} collections restored.`);
-        refetchBackupInfo(); // Refresh backup info
+        setSuccessMessage(
+          `Data imported successfully! Restored ${result.details.collections} collections and ${result.details.uploads} files.`
+        );
+        refetchBackupInfo();
         
         // Refresh the page after successful import to ensure clean state
         setTimeout(() => {
           window.location.reload();
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
       console.error('Import failed:', error);
-      setErrorMessage(error?.data?.message || 'Import failed. Please check the backup file and try again.');
+      setImportStage('Import failed!');
+      setErrorMessage(error?.data?.message || error?.message || 'Import failed. Please check the backup file and try again.');
     } finally {
-      setIsImporting(false);
-      setImportProgress(0);
-      setIsDataMenuOpen(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportProgress(0);
+        setImportStage('');
+        setIsDataMenuOpen(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }, 2000);
+    }
+  };
+
+  const handleCleanupTempFiles = async () => {
+    if (!user?.role || user.role !== 'superAdmin') {
+      setErrorMessage('Only super administrators can cleanup files');
+      return;
+    }
+
+    try {
+      const result = await cleanupTempFiles().unwrap();
+      if (result.success) {
+        setSuccessMessage(`Cleaned up ${result.cleaned} temporary files`);
+        refetchBackupInfo();
       }
+    } catch (error) {
+      console.error('Cleanup failed:', error);
+      setErrorMessage(error?.data?.message || 'Cleanup failed. Please try again.');
     }
   };
 
@@ -182,6 +222,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
+      setErrorMessage('Logout failed. Please try again.');
     }
   };
 
@@ -220,7 +261,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative"
+                className="relative hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 onClick={() => setIsDataMenuOpen(!isDataMenuOpen)}
                 title="Data Management"
               >
@@ -236,8 +277,27 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                         <FiDatabase className="w-5 h-5 text-blue-600 mr-2" />
                         <h3 className="text-sm font-semibold text-gray-800">Data Management</h3>
                       </div>
+                      <FiInfo className="w-4 h-4 text-gray-400" />
                     </div>
                   </div>
+
+                  {/* System Info */}
+                  {!isLoadingBackupInfo && backupInfo?.success && (
+                    <div className="p-3 bg-gray-50 border-b border-gray-200">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Database:</span>
+                          <div className="font-medium">{backupInfo.data.database.name}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Uploads:</span>
+                          <div className="font-medium">
+                            {backupInfo.data.uploads.fileCount} files ({backupInfo.data.uploads.sizeMB}MB)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Export Section */}
                   <div className="p-4 border-b border-gray-200">
@@ -268,7 +328,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                   </div>
 
                   {/* Import Section */}
-                  <div className="p-4">
+                  <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">Import Backup</span>
                       <FiUpload className="w-4 h-4 text-green-600" />
@@ -307,11 +367,17 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
 
                     {/* Progress bar */}
                     {isImporting && (
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                        <div 
-                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${importProgress}%` }}
-                        ></div>
+                      <div className="space-y-2 mb-3">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-600">{importStage}</span>
+                          <span className="text-gray-600">{importProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${importProgress}%` }}
+                          ></div>
+                        </div>
                       </div>
                     )}
 
@@ -323,6 +389,24 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Cleanup Section */}
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Cleanup Temporary Files</span>
+                      <FiTrash2 className="w-4 h-4 text-red-600" />
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Remove temporary backup files to free up disk space
+                    </p>
+                    <button
+                      onClick={handleCleanupTempFiles}
+                      className="w-full flex items-center justify-center py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition-all duration-200 shadow-sm"
+                    >
+                      <FiTrash2 className="mr-2 w-4 h-4" />
+                      Cleanup Now
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -333,7 +417,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
             <Button
               variant="ghost"
               size="icon"
-              className="relative"
+              className="relative hover:bg-gray-50 transition-colors"
               onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             >
               <FiBell className="w-5 h-5" />
@@ -348,7 +432,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
           {/* Profile */}
           <div className="relative" ref={profileRef}>
             <button
-              className="flex items-center text-primary-700 hover:text-gray-900 transition-colors duration-200 p-2"
+              className="flex items-center text-primary-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-50"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
               {user?.avatar ? (
@@ -365,6 +449,33 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                 </div>
               )}
             </button>
+
+            {/* Profile Dropdown */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                <div className="p-3 border-b border-gray-200">
+                  <p className="text-sm font-medium text-gray-800">{user?.name || 'User'}</p>
+                  <p className="text-xs text-gray-500">{user?.email}</p>
+                  <p className="text-xs text-blue-600 font-medium capitalize">{user?.role}</p>
+                </div>
+                <div className="p-1">
+                  <Link
+                    href={getSettingsRoute()}
+                    className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+                  >
+                    <FiSettings className="mr-3 w-4 h-4" />
+                    <span>Settings</span>
+                  </Link>
+                  <button
+                    onClick={handleLogOut}
+                    className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors text-left"
+                  >
+                    <FiLogOut className="mr-3 w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -391,7 +502,7 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                 <button
                   onClick={triggerFileInput}
                   disabled={isImporting}
-                  className="w-full flex items-center justify-between py-3 px-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm font-medium transition-colors duration-200 disabled:opacity-50"
+                  className="w-full flex items-center justify-between py-3 px-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-sm font-medium transition-colors duration-200 disabled:opacity-50 mb-2"
                 >
                   <div className="flex items-center">
                     <FiUpload className="mr-2" />
@@ -410,21 +521,38 @@ export default function Navbar({ setErrorMessage, setSuccessMessage }) {
                 />
 
                 {isImporting && (
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${importProgress}%` }}
-                    ></div>
+                  <div className="space-y-2 mb-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">{importStage}</span>
+                      <span className="text-gray-600">{importProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${importProgress}%` }}
+                      ></div>
+                    </div>
                   </div>
                 )}
+
+                <button
+                  onClick={handleCleanupTempFiles}
+                  className="w-full flex items-center justify-between py-3 px-4 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm font-medium transition-colors duration-200"
+                >
+                  <div className="flex items-center">
+                    <FiTrash2 className="mr-2" />
+                    Cleanup Files
+                  </div>
+                </button>
               </div>
             )}
 
             {/* Other mobile menu items */}
-            <div className="flex flex-col space-y-2 text-gray-700">
+            <div className="flex flex-col space-y-2 text-gray-700 border-t border-gray-200 pt-3">
               <Link
                 href={getSettingsRoute()}
                 className="flex items-center py-2 px-4 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 <FiSettings className="mr-3" />
                 <span>Settings</span>
