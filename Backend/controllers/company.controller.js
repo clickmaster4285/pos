@@ -599,6 +599,7 @@ const getCompany = async (req, res) => {
 // Get all company
 const getAllCompany = async (req, res) => {
   try {
+    console.log("th lkjsdkfjhksjdhjghgfgb")
     // Only allow superAdmin access
     if (req.user.role !== "superAdmin") {
       return res.status(401).json({
@@ -613,7 +614,7 @@ const getAllCompany = async (req, res) => {
     if (!companies || companies.length === 0) {
       return res.status(404).json({
         success: false,
-        error: "No companies found",
+        message: "No companies found",
       });
     }
 

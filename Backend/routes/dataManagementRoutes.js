@@ -4,7 +4,9 @@ import {
   exportAllData, 
   importData, 
   getBackupInfo,
-  cleanupTempFiles 
+  cleanupTempFiles ,
+  exportCompanyData,
+  importCompanyData,
 } from '../backup/dataManagementController.js';
 import passport from '../middleware/passportAuth.middleware.js';
 
@@ -16,9 +18,19 @@ router.get('/export-all-data',
   exportAllData
 );
 
+router.get('/export-company-data', 
+  passport.authenticate('jwt', { session: false }), 
+  exportCompanyData
+);
+
 router.post('/import-data', 
   passport.authenticate('jwt', { session: false }), 
   importData
+);
+
+router.post('/import-company-data/:companyId', 
+  passport.authenticate('jwt', { session: false }), 
+  importCompanyData
 );
 
 router.get('/backup-info', 

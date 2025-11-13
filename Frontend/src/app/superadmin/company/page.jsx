@@ -17,7 +17,8 @@ import {
 
 function mapCompany(c) {
   return {
-    id: String(c._id || c.id || c.companyId),
+    id: String(c._id || c.id),
+    companyId: c.companyId || '-',
     name: c.name || '—',
     industry: c.industryName || '—',
     status: c.isActive ? 'Active' : 'Inactive',
@@ -66,7 +67,7 @@ export default function CompaniesPage() {
     error,
     refetch,
   } = useGetAllCompaniesQuery();
-
+console.log("the isError: ", isError)
   const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
   const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation();
   const [pendingId, setPendingId] = useState(null);
@@ -194,25 +195,6 @@ export default function CompaniesPage() {
               <div key={i} className="h-20 bg-muted rounded"></div>
             ))}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
-          <div className="text-destructive font-semibold mb-2">
-            Failed to load...
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            className="mt-4"
-          >
-            Retry
-          </Button>
         </div>
       </div>
     );

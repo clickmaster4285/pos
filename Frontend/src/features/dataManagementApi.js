@@ -1,7 +1,9 @@
 // src/features/dataManagementApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+).replace(/\/$/, "");
 
 // Enhanced token retrieval
 const getToken = (getState) => {
@@ -29,101 +31,137 @@ export const dataManagementApi = createApi({
     credentials: "include",
     prepareHeaders: (headers, { getState, endpoint }) => {
       const token = getToken(getState);
-      
-      // For import-data endpoint, let the browser set Content-Type with boundary
-      if (endpoint !== 'importData') {
-        headers.set('Content-Type', 'application/json');
+
+      // For import endpoints, let the browser set Content-Type with boundary
+      if (!endpoint?.toLowerCase()?.includes("import")) {
+        headers.set("Content-Type", "application/json");
       }
-      
+
       if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+        headers.set("Authorization", `Bearer ${token}`);
       }
       return headers;
     },
   }),
   tagTypes: ["BackupInfo"],
-  endpoints: (builder) => ({  
-    // Export all data with uploads
+  endpoints: (builder) => ({
+    /** 🌍 Export All Company Data */
     exportData: builder.mutation({
       query: () => ({
         url: "/export-all-data",
         method: "GET",
         responseHandler: async (response) => {
           if (!response.ok) {
-            // Try to parse error response
             try {
-              const errorText = await response.text();
-              const errorData = JSON.parse(errorText);
-              throw errorData;
-            } catch (parseError) {
+              const text = await response.text();
+              const data = JSON.parse(text);
+              throw data;
+            } catch {
               throw {
                 message: `Export failed with status: ${response.status}`,
-                status: response.status
               };
             }
           }
-          
-          // Get filename from Content-Disposition header or generate one
-          const contentDisposition = response.headers.get('Content-Disposition');
-          let filename = `automotive-backup-${new Date().toISOString().split('T')[0]}.zip`;
-          
+
+          const contentDisposition = response.headers.get(
+            "Content-Disposition"
+          );
+          let filename = `automotive-backup-${new Date()
+            .toISOString()
+            .split("T")[0]}.zip`;
+
           if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
-            if (filenameMatch) filename = filenameMatch[1];
+            const match = contentDisposition.match(/filename="?(.+)"?/);
+            if (match) filename = match[1];
           }
-          
-          // Convert to blob for download
+
           const blob = await response.blob();
-          
-          // Check if blob is empty or invalid
           if (blob.size === 0) {
             throw { message: "Export failed: Empty file received" };
           }
-          
-          // Create download link
+
           const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = url;
           link.download = filename;
-          link.style.display = 'none';
-          document.body.appendChild(link);
           link.click();
-          document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
-          
-          return { 
-            success: true, 
-            message: 'Export completed successfully',
+
+          return {
+            success: true,
             filename,
-            size: blob.size
+            size: blob.size,
           };
         },
-        cache: "no-cache",
       }),
       invalidatesTags: ["BackupInfo"],
     }),
 
-    // Import data from zip file
+    /** 📦 Import All Data */
     importData: builder.mutation({
       query: (formData) => ({
         url: "/import-data",
         method: "POST",
         body: formData,
-        // Let browser set the Content-Type with boundary for FormData
-        headers: {
-          // Authorization will be added by prepareHeaders
-        },
       }),
       invalidatesTags: ["BackupInfo"],
     }),
 
-    // Get backup info (size, last backup date, etc.)
+    /** 🏢 Export Specific Company Data */
+    exportCompanyData: builder.mutation({
+      query: (companyId) => ({
+        url: `/export-company-data?companyId=${companyId}`,
+        method: "GET",
+        responseHandler: async (response) => {
+          if (!response.ok) {
+            throw new Error(`Failed to export data (${response.status})`);
+          }
+
+          const contentDisposition = response.headers.get(
+            "Content-Disposition"
+          );
+          let filename = `company-backup-${companyId}.zip`;
+
+          if (contentDisposition) {
+            const match = contentDisposition.match(/filename="?(.+)"?/);
+            if (match) filename = match[1];
+          }
+
+          const blob = await response.blob();
+          if (blob.size === 0) {
+            throw new Error("Empty file received");
+          }
+
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          return { success: true, filename };
+        },
+      }),
+    }),
+
+    /** 🏢 Import Specific Company Data */
+    importCompanyData: builder.mutation({
+      query: ({ companyId, formData }) => ({
+        url: `/import-company-data/${companyId}`,
+        method: "POST",
+        body: formData,
+      }),
+    }),
+
+    /** ℹ️ Get Backup Info */
     getBackupInfo: builder.query({
       query: () => "/backup-info",
       providesTags: ["BackupInfo"],
     }),
 
-    // Cleanup temporary files
+    /** 🧹 Cleanup Temporary Files */
     cleanupTempFiles: builder.mutation({
       query: () => ({
         url: "/cleanup-temp",
@@ -139,4 +177,6 @@ export const {
   useImportDataMutation,
   useGetBackupInfoQuery,
   useCleanupTempFilesMutation,
+  useExportCompanyDataMutation,
+  useImportCompanyDataMutation,
 } = dataManagementApi;

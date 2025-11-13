@@ -9,7 +9,6 @@ import {
   FiTrash2,
   FiInfo,
   FiAlertCircle,
-  FiHardDrive,
 } from "react-icons/fi";
 import {
   useExportDataMutation,
@@ -142,25 +141,14 @@ export default function DataManagementMenu({ isMobile = false }) {
           {/* System Info */}
           {!isLoadingBackupInfo && backupInfo?.success && (
             <div className="p-6 bg-muted/30 border-b border-border">
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-xl">
-                    <FiHardDrive className="w-4 h-4 text-primary" />
+                    <FiDatabase className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Database</div>
                     <div className="font-semibold text-foreground">{backupInfo.data.database.name}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-xl">
-                    <FiUpload className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Uploads</div>
-                    <div className="font-semibold text-foreground">
-                      {backupInfo.data.uploads.fileCount} files ({backupInfo.data.uploads.sizeMB} MB)
-                    </div>
                   </div>
                 </div>
               </div>
@@ -177,7 +165,7 @@ export default function DataManagementMenu({ isMobile = false }) {
                 </div>
                 <div>
                   <h4 className="font-semibold text-foreground">Export All Data</h4>
-                  <p className="text-sm text-muted-foreground">Download complete database and uploads</p>
+                  <p className="text-sm text-muted-foreground">Download complete database</p>
                 </div>
               </div>
               <button
