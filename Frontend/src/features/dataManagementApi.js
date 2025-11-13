@@ -25,7 +25,7 @@ const getToken = (getState) => {
 export const dataManagementApi = createApi({
   reducerPath: "dataManagementApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: `${API_URL}/api/dataManagementRoutes-superadmin`,
+    baseUrl: `${API_URL}/api/dataManagementRoutes`,
     credentials: "include",
     prepareHeaders: (headers, { getState, endpoint }) => {
       const token = getToken(getState);
