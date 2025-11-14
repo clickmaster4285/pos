@@ -67,23 +67,29 @@ export default function CompaniesPage() {
     error,
     refetch,
   } = useGetAllCompaniesQuery();
+
 console.log("the isError: ", isError)
   const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
   const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation();
   const [pendingId, setPendingId] = useState(null);
 
-  const { verifiedCompanies, unverifiedCompanies } = useMemo(() => {
-    const mapped = Array.isArray(companies.data) && companies.data.length
+const { allCompanies, verifiedCompanies, unverifiedCompanies } = useMemo(() => {
+  const mapped =
+    Array.isArray(companies.data) && companies.data.length
       ? companies.data.map(mapCompany)
       : [];
 
-    return {
-      verifiedCompanies: mapped.filter(c => c.isActive),
-      unverifiedCompanies: mapped.filter(c => !c.isActive),
-    };
-  }, [companies]);
+  return {
+    allCompanies: mapped,
+    verifiedCompanies: mapped.filter((c) => c.isActive),
+    unverifiedCompanies: mapped.filter((c) => !c.isActive),
+  };
+}, [companies]);
 
-  const dataToUse = showUnverified ? unverifiedCompanies : verifiedCompanies;
+// 👇 default: show ALL companies (active + inactive)
+// when showUnverified = true → only unverified
+const dataToUse = showUnverified ? unverifiedCompanies : allCompanies;
+
 
   const filtered = useMemo(() => {
     let result = dataToUse;
@@ -202,11 +208,11 @@ console.log("the isError: ", isError)
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl p-6">
+      <div className="mx-auto  p-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8 mt-2">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground ">
               Companies Management
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
@@ -218,7 +224,7 @@ console.log("the isError: ", isError)
 
           <div className="flex items-center gap-3">
             <Button
-              variant={showUnverified ? "default" : "outline"}
+              variant={showUnverified ? 'default' : 'outline'}
               onClick={() => {
                 setShowUnverified(!showUnverified);
                 setPage(1);
@@ -245,7 +251,7 @@ console.log("the isError: ", isError)
 
             <div className="flex items-center border rounded-lg">
               <Button
-                variant={view === 'grid' ? "default" : "ghost"}
+                variant={view === 'grid' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setView('grid')}
                 className="rounded-r-none"
@@ -253,7 +259,7 @@ console.log("the isError: ", isError)
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               <Button
-                variant={view === 'list' ? "default" : "ghost"}
+                variant={view === 'list' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setView('list')}
                 className="rounded-l-none border-l"
@@ -338,43 +344,49 @@ console.log("the isError: ", isError)
           {total > 0 && !showUnverified && (
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
-                Showing {start + 1}-{Math.min(start + pageSize, total)} of {total} companies
+                Showing {start + 1}-{Math.min(start + pageSize, total)} of{' '}
+                {total} companies
               </p>
 
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                 >
                   Previous
                 </Button>
 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
-                    const windowStart = Math.max(1, Math.min(page - 2, totalPages - 4));
-                    const pageNumber = windowStart + i;
-                    if (pageNumber > totalPages) return null;
+                  {Array.from({ length: Math.min(totalPages, 5) }).map(
+                    (_, i) => {
+                      const windowStart = Math.max(
+                        1,
+                        Math.min(page - 2, totalPages - 4)
+                      );
+                      const pageNumber = windowStart + i;
+                      if (pageNumber > totalPages) return null;
 
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={pageNumber === page ? "default" : "outline"}
-                        size="sm"
-                        className="w-8 h-8 p-0"
-                        onClick={() => setPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={pageNumber === page ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-8 h-8 p-0"
+                          onClick={() => setPage(pageNumber)}
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    }
+                  )}
                 </div>
 
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
                 >
                   Next

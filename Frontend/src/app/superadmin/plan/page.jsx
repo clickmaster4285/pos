@@ -200,7 +200,7 @@ export default function PlanManagement() {
   }
 
   return (
-    <div className="bg-background">
+    <div className="">
       <HeaderSection onCreatePlanClick={() => setIsCreateDialogOpen(true)} />
 
       <div className="mx-auto px-6 py-6">
@@ -272,7 +272,7 @@ function HeaderSection({ onCreatePlanClick }) {
           </div>
           <Button
             onClick={onCreatePlanClick}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Plan

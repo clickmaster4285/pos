@@ -1,8 +1,9 @@
 import bcrypt from 'bcrypt';
-import IndexModel from "../models/indexModel.js";
+import IndexModel from '../models/indexModel.js';
 
 export const generateOTP = async () => {
   const otp = Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit OTP
+  
   const hashedOTP = await bcrypt.hash(otp, 12);
   return { otp, hashedOTP };
 };
@@ -14,26 +15,26 @@ export const verifyOTP = async (req, res) => {
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
-        error: "Email and OTP are required",
+        error: 'Email and OTP are required',
       });
     }
 
     const user = await IndexModel.User.findOne({
       email,
       deleted: false,
-    }).select("+verificationOTP +verificationExpiry");
+    }).select('+verificationOTP +verificationExpiry');
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "User not found",
+        error: 'User not found',
       });
     }
 
     if (!user.verificationOTP || user.verificationExpiry < Date.now()) {
       return res.status(400).json({
         success: false,
-        error: "OTP is invalid or expired",
+        error: 'OTP is invalid or expired',
       });
     }
 
@@ -41,7 +42,7 @@ export const verifyOTP = async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        error: "Incorrect OTP",
+        error: 'Incorrect OTP',
       });
     }
 
@@ -53,7 +54,7 @@ export const verifyOTP = async (req, res) => {
     // ✅ Add to history
     user.history = user.history || [];
     user.history.push({
-      action: "Admin/Company verified OTP",
+      action: 'Admin/Company verified OTP',
       performedBy: user.userId, // or req.user._id if coming from token/session
       performedAt: new Date(),
     });
@@ -69,7 +70,7 @@ export const verifyOTP = async (req, res) => {
       company.history = company.history || [];
       company.isActive = true;
       company.history.push({
-        action: "Company activated after OTP verification",
+        action: 'Company activated after OTP verification',
         performedBy: user.userId,
         performedAt: new Date(),
       });
@@ -79,12 +80,12 @@ export const verifyOTP = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Account verified successfully",
+      message: 'Account verified successfully',
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: "Server error during verification",
+      error: 'Server error during verification',
       details: error.message,
     });
   }
