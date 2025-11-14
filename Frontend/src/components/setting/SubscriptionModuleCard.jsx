@@ -65,7 +65,6 @@ export default function SubscriptionModuleCard({
 
   // when user clicks a plan card in PlanSelection
   const handlePlanSelect = (planId) => {
-  
     setSelectedPlanId(String(planId));
     setShowPicker(false);
     setShowGateway(true);
@@ -132,8 +131,8 @@ export default function SubscriptionModuleCard({
               <Package className="h-4 w-4" /> Max Inventory Items
             </div>
             <div className="text-xl font-semibold mt-1">
-              {typeof lim.maxInventoryItems === 'number'
-                ? lim.maxInventoryItems
+              {typeof lim.maxProductItems === 'number'
+                ? lim.maxProductItems
                 : '—'}
             </div>
           </div>

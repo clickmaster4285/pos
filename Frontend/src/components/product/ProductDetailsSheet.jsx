@@ -75,7 +75,6 @@ export function ProductDetailsSheet({
   onToggle,
   pending = false,
 }) {
-
   if (!product) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -104,8 +103,9 @@ export function ProductDetailsSheet({
 
   const InfoRow = ({ icon: Icon, label, value, className = '' }) => (
     <div className={`flex items-start gap-3 py-3 ${className}`}>
-      <div className="bg-primary p-2 rounded-lg mt-0.5">
-        <Icon className="h-4 w-4 text-card " />
+      {/* Dot / bullet */}
+      <div className="mt-1">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-secondary-foreground" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-xs font-medium text-muted-foreground mb-1">
@@ -126,46 +126,58 @@ export function ProductDetailsSheet({
         className="bg:background w-full sm:max-w-2xl lg:max-w-3xl p-6 overflow-y-auto"
       >
         {/* Header */}
-        <div className="border-b">
-          <SheetHeader className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 flex items-center justify-center rounded-xl bg-white dark:bg-gray-800 border shadow-xs font-semibold text-slate-700 dark:text-slate-300">
+        <div className="border-b ">
+          <SheetHeader className="space-y-4 py-3">
+            {/* Top row: avatar + name + status */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Avatar / initials */}
+                <div className="h-12 w-12 flex items-center justify-center rounded-xl bg-white dark:bg-gray-900 border shadow-sm font-semibold text-slate-700 dark:text-slate-200">
                   {initials(product.productName)}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <SheetTitle className="text-lg font-semibold text-foreground truncate">
+
+                {/* Name + subcategory */}
+                <div className="min-w-0">
+                  <SheetTitle className="text-base sm:text-lg font-semibold text-foreground truncate">
                     {product.productName || 'Unnamed Product'}
                   </SheetTitle>
-                  <SheetDescription className="text-sm text-muted-foreground truncate">
+                  <SheetDescription className="text-xs sm:text-sm text-muted-foreground truncate">
                     {hasCategoriesFeature()
                       ? product.subCategoryName || 'No subcategory'
                       : 'Product details'}
                   </SheetDescription>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
+              {/* Status pill */}
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
-                className={`px-3 py-1.5 text-xs font-medium ${
+                className={`px-3 py-1.5 text-[11px] font-medium whitespace-nowrap flex items-center ${
                   isActive
                     ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800'
                     : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400'
                 }`}
               >
-                <div
+                <span
                   className={`w-2 h-2 rounded-full mr-2 ${
                     isActive ? 'bg-green-500' : 'bg-gray-400'
                   }`}
                 />
                 {isActive ? 'Active' : 'Inactive'}
               </Badge>
+            </div>
 
-              <div className="text-xs text-muted-foreground">
-                SKU: {product.SKU || 'N/A'}
-              </div>
+            {/* Meta row: SKU + Quantity */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pb-2">
+              <span className="inline-flex items-center gap-1">
+                <span className="font-medium">SKU:</span>
+                <span className="font-normal">{product.SKU || 'N/A'}</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1">
+                <span className="font-medium">Quantity:</span>
+                <span className="font-normal">{product.quantity ?? 'N/A'}</span>
+              </span>
             </div>
           </SheetHeader>
         </div>
@@ -175,9 +187,11 @@ export function ProductDetailsSheet({
           {/* Basic Information Card */}
           <Card className="shadow-xs p-4">
             <CardContent className="p-0">
-              <div className="p-4 border-b">
+              <div className="py-4 border-b">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Package className="h-4 w-4" />
+                  <div className="bg-gradient-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
+                    <Package className="h-4 w-4 text-card" />
+                  </div>
                   Basic Information
                 </h3>
               </div>
@@ -193,7 +207,7 @@ export function ProductDetailsSheet({
                 )}
 
                 {/* Vendor */}
-                {!isRestaurant &&  hasVendorsFeature() && (
+                {!isRestaurant && hasVendorsFeature() && (
                   <InfoRow icon={Truck} label="Vendor" value={vendorName} />
                 )}
 
@@ -221,40 +235,42 @@ export function ProductDetailsSheet({
           </Card>
 
           {/* Ingredients Card */}
-          <Card className="shadow-xs">
-            <CardContent className="p-0">
-              <div className="p-4 border-b">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  Ingredients
-                </h3>
-              </div>
+          {isRestaurant && (
+            <Card className="shadow-xs">
+              <CardContent className="p-0">
+                <div className="p-4 border-b">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Ingredients
+                  </h3>
+                </div>
 
-              <div className="p-4">
-                {product.ingredient?.length ? (
-                  <div className="space-y-2">
-                    {product.ingredient.map((ingredient, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-foreground">
-                          {ingredient.ingredientName}
-                        </span>
-                        <span className="text-muted-foreground font-medium">
-                          {ingredient.quantity}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground text-center py-2">
-                    No ingredients specified
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                <div className="p-4">
+                  {product.ingredient?.length ? (
+                    <div className="space-y-2">
+                      {product.ingredient.map((ingredient, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span className="text-foreground">
+                            {ingredient.ingredientName}
+                          </span>
+                          <span className="text-muted-foreground font-medium">
+                            {ingredient.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      No ingredients specified
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tags */}
           {product.tags?.length > 0 && (
@@ -288,35 +304,70 @@ export function ProductDetailsSheet({
           {metaFields.length > 0 && (
             <Card className="shadow-xs">
               <CardContent className="p-0">
-                <div className="p-4 border-b">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Additional Details
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b ">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2 ">
+                    <div className="bg-gradient-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
+                      <FileText className="h-4 w-4 text-card" />
+                    </div>
+                    Additional details
                   </h3>
+                  <span className="text-[11px] px-2 py-1 rounded-full bg-background text-muted-foreground border">
+                    {metaFields.length} field{metaFields.length > 1 ? 's' : ''}
+                  </span>
                 </div>
 
-                <div className="divide-y">
-                  {metaFields.map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex items-center justify-between py-3 px-4"
-                    >
-                      <div className="flex-1">
-                        <div className="text-xs font-medium text-muted-foreground mb-1 capitalize">
-                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                {/* Body */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-px ">
+                  {metaFields.map(([key, value]) => {
+                    const label = key.replace(/([A-Z])/g, ' $1').trim();
+                    const isBoolean = typeof value === 'boolean';
+                    const isArray = Array.isArray(value);
+
+                    let displayValue;
+                    if (isArray) {
+                      displayValue = value.length ? value.join(', ') : '—';
+                    } else if (isBoolean) {
+                      displayValue = value ? 'Yes' : 'No';
+                    } else {
+                      const str = String(value ?? '').trim();
+                      displayValue = str || '—';
+                    }
+
+                    return (
+                      <div
+                        key={key}
+                        className="bg-card px-4 py-3 flex items-start gap-3"
+                      >
+                        {/* Dot / bullet */}
+                        <div className="mt-1">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-secondary-foreground" />
                         </div>
-                        <div className="text-sm text-foreground">
-                          {Array.isArray(value)
-                            ? value.join(', ')
-                            : typeof value === 'boolean'
-                            ? value
-                              ? 'Yes'
-                              : 'No'
-                            : String(value) || '—'}
+
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                            {label}
+                          </div>
+
+                          {isBoolean ? (
+                            <span
+                              className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                value
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-slate-50 text-slate-600 border border-slate-200'
+                              }`}
+                            >
+                              {displayValue}
+                            </span>
+                          ) : (
+                            <div className="mt-1 text-sm text-foreground break-words">
+                              {displayValue}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

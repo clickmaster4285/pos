@@ -565,7 +565,7 @@ const getCompany = async (req, res) => {
   try {
     const { id } = req.query;
     let company;
-    if (req.user.role === "superAdmin") {
+    if (req.user.role === "superAdmin" || req.user.role === "admin") {
       company = await IndexModel.Company.findOne({ _id: id });
     }
 

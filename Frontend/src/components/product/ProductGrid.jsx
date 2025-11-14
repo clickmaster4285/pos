@@ -325,9 +325,10 @@ export function ProductGrid({
               </div>
 
               <div className="pt-3 border-t border-border flex items-center justify-between">
-                <Badge variant="secondary" className="h-6 px-2 text-[10px]">
-                  Product
+                <Badge variant="secondary" className="h-6 px-2 text-[11px]">
+                  Quantity: {product.quantity}
                 </Badge>
+
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />{' '}
                   {fmtDate(product.createdAt)}

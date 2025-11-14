@@ -84,8 +84,8 @@ export function RefundDialog({
       const availableToRefund = Math.max(0, (item.quantity || 0) - already);
       return {
         ...item,
-        productIdNorm: String(item.productId || item.ProductId || ''), // normalized product id
-        orderItemIdNorm: String(item.orderItemId || item.OrderItemId || ''), // normalized order item id
+        productIdNorm: String(item.productId || item.ProductId || ''),
+        orderItemIdNorm: String(item.orderItemId || item.OrderItemId || ''),
         availableToRefund,
       };
     });
@@ -116,7 +116,16 @@ export function RefundDialog({
     }
   }, [billItems, refundType]);
 
-  // Compute total based on current selections
+  // 🔥 Reset reason (and optionally items) whenever the dialog closes
+  useEffect(() => {
+    if (!open) {
+      setRefundReason('');
+      // If you also want to reset selections each time it closes, uncomment:
+      // setRefundItems([]);
+    }
+  }, [open]);
+
+  // ... rest of your component stays the same ...
   const totalRefundAmount = useMemo(() => {
     return refundItems.reduce((sum, ri) => {
       const found = billItems.find(
@@ -128,6 +137,8 @@ export function RefundDialog({
       return sum + (Number(ri.quantity) || 0) * (Number(found.price) || 0);
     }, 0);
   }, [refundItems, billItems]);
+
+
 
   // Change qty by productId/orderItemId
   const handleQuantityChange = (keyObj, value) => {
@@ -154,33 +165,31 @@ export function RefundDialog({
   };
 
   // Submit: emit exactly what BillingPage expects ({ notes, lines })
-  const handleRefund = () => {
-    if (
-      refundType === 'partial' &&
-      !refundItems.some((x) => Number(x.quantity) > 0)
-    ) {
-      // nothing selected
-      return;
-    }
-    if (!refundReason.trim()) {
-      return;
-    }
+ const handleRefund = () => {
+   if (
+     refundType === 'partial' &&
+     !refundItems.some((x) => Number(x.quantity) > 0)
+   ) {
+     return;
+   }
+   if (!refundReason.trim()) {
+     return;
+   }
 
-    // Build lines exactly as the backend expects (BillingPage will map -> refundItems)
-    const lines = refundItems
-      .filter((x) => Number(x.quantity) > 0 && (x.productId || x.orderItemId))
-      .map((x) => ({
-        productId: x.productId, // string | undefined
-        orderItemId: x.orderItemId, // string | undefined
-        quantity: Number(x.quantity),
-        reason: refundReason.trim(),
-      }));
+   const lines = refundItems
+     .filter((x) => Number(x.quantity) > 0 && (x.productId || x.orderItemId))
+     .map((x) => ({
+       productId: x.productId,
+       orderItemId: x.orderItemId,
+       quantity: Number(x.quantity),
+       reason: refundReason.trim(),
+     }));
 
-    onRefund(bill, {
-      notes: refundReason.trim(),
-      lines, // BillingPage.buildRefundPayload -> { notes, refundItems }
-    });
-  };
+   onRefund(bill, {
+     notes: refundReason.trim(),
+     lines,
+   });
+ };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

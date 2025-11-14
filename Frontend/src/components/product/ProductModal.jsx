@@ -352,139 +352,148 @@ export const ProductModal = memo(function ProductModal({
   /* ----------------------------------------------------------------- */
   /*  Render helpers                                                    */
   /* ----------------------------------------------------------------- */
-  const renderField = (field) => {
-    if (field.name === 'SKU') {
-      return (
-        <div key="SKU" className="space-y-2">
-          <Label>{field.label}</Label>
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={formData.SKU}
-              onChange={(e) =>
-                handleChange('SKU', e.target.value.toUpperCase())
-              }
-              placeholder={
-                formData.isAutoSKU ? 'Auto-generated' : 'Enter custom SKU'
-              }
-              disabled={formData.isAutoSKU || isReadOnly}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              variant={formData.isAutoSKU ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                const newAuto = !formData.isAutoSKU;
-                handleChange('isAutoSKU', newAuto);
-                if (newAuto) handleChange('SKU', '');
-              }}
-              disabled={isReadOnly}
-            >
-              {formData.isAutoSKU ? 'Auto' : 'Custom'}
-            </Button>
-          </div>
-        </div>
-      );
-    }
+const renderField = (field) => {
+  const placeholder = field.placeholder || ''; // <= central place
 
-    if (field.type === 'date') {
+  if (field.name === 'SKU') {
+    return (
+      <div key="SKU" className="space-y-2">
+        <Label>{field.label}</Label>
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            value={formData.SKU}
+            onChange={(e) => handleChange('SKU', e.target.value.toUpperCase())}
+            placeholder={
+              formData.isAutoSKU
+                ? 'Auto-generated'
+                : placeholder || 'Enter custom SKU'
+            }
+            disabled={formData.isAutoSKU || isReadOnly}
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant={formData.isAutoSKU ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              const newAuto = !formData.isAutoSKU;
+              handleChange('isAutoSKU', newAuto);
+              if (newAuto) handleChange('SKU', '');
+            }}
+            disabled={isReadOnly}
+          >
+            {formData.isAutoSKU ? 'Custom' : 'Auto'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (field.type === 'date') {
+    return (
+      <div key={field.name} className="space-y-2">
+        <Label>{field.label}</Label>
+        <Input
+          type="date"
+          value={formData[field.name] || ''}
+          onChange={(e) => handleChange(field.name, e.target.value)}
+          disabled={isReadOnly}
+        />
+      </div>
+    );
+  }
+
+  switch (field.type) {
+    case 'number':
       return (
         <div key={field.name} className="space-y-2">
           <Label>{field.label}</Label>
           <Input
-            type="date"
+            type="number"
+            min={field.min}
+            step={field.step || 1}
             value={formData[field.name] || ''}
             onChange={(e) => handleChange(field.name, e.target.value)}
             disabled={isReadOnly}
+            placeholder={placeholder}
           />
         </div>
       );
-    }
 
-    switch (field.type) {
-      case 'number':
-        return (
-          <div key={field.name} className="space-y-2">
-            <Label>{field.label}</Label>
-            <Input
-              type="number"
-              min={field.min}
-              step={field.step || 1}
-              value={formData[field.name] || ''}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              disabled={isReadOnly}
-            />
-          </div>
-        );
+    case 'text':
+      return (
+        <div key={field.name} className="space-y-2">
+          <Label>{field.label}</Label>
+          <Input
+            value={formData[field.name] || ''}
+            onChange={(e) => handleChange(field.name, e.target.value)}
+            disabled={isReadOnly}
+            placeholder={placeholder}
+          />
+        </div>
+      );
 
-      case 'text':
-        return (
-          <div key={field.name} className="space-y-2">
-            <Label>{field.label}</Label>
-            <Input
-              value={formData[field.name] || ''}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              disabled={isReadOnly}
-            />
-          </div>
-        );
+    case 'textarea':
+      return (
+        <div key={field.name} className="space-y-2">
+          <Label>{field.label}</Label>
+          <Textarea
+            value={formData[field.name] || ''}
+            onChange={(e) => handleChange(field.name, e.target.value)}
+            disabled={isReadOnly}
+            placeholder={placeholder}
+          />
+        </div>
+      );
 
-      case 'textarea':
-        return (
-          <div key={field.name} className="space-y-2">
-            <Label>{field.label}</Label>
-            <Textarea
-              value={formData[field.name] || ''}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              disabled={isReadOnly}
-            />
-          </div>
-        );
+    case 'select':
+      return (
+        <div key={field.name} className="space-y-2">
+          <Label>{field.label}</Label>
+          <Select
+            value={formData[field.name]}
+            onValueChange={(v) => handleChange(field.name, v)}
+            disabled={isReadOnly}
+          >
+            <SelectTrigger>
+              <SelectValue
+                placeholder={
+                  placeholder ||
+                  `Select ${String(field.label || '').toLowerCase()}`
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options.map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
 
-      case 'select':
-        return (
-          <div key={field.name} className="space-y-2">
-            <Label>{field.label}</Label>
-            <Select
-              value={formData[field.name]}
-              onValueChange={(v) => handleChange(field.name, v)}
-              disabled={isReadOnly}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={`Select ${field.label.toLowerCase()}`}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options.map((o) => (
-                  <SelectItem key={o} value={o}>
-                    {o}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        );
+    case 'checkbox':
+      return (
+        <div key={field.name} className="flex items-center space-y-2">
+          <input
+            type="checkbox"
+            checked={!!formData[field.name]}
+            onChange={(e) => handleChange(field.name, e.target.checked)}
+            disabled={isReadOnly}
+            className="mr-2"
+          />
+          <Label className="cursor-pointer">{field.label}</Label>
+        </div>
+      );
 
-      case 'checkbox':
-        return (
-          <div key={field.name} className="flex items-center space-y-2">
-            <input
-              type="checkbox"
-              checked={!!formData[field.name]}
-              onChange={(e) => handleChange(field.name, e.target.checked)}
-              disabled={isReadOnly}
-              className="mr-2"
-            />
-            <Label className="cursor-pointer">{field.label}</Label>
-          </div>
-        );
+    default:
+      return null;
+  }
+};
 
-      default:
-        return null;
-    }
-  };
 
   /* ----------------------------------------------------------------- */
   /*  JSX                                                               */
@@ -492,7 +501,7 @@ export const ProductModal = memo(function ProductModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {mode === 'create'
@@ -510,188 +519,265 @@ export const ProductModal = memo(function ProductModal({
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ==================== TWO-COLUMN SECTION ==================== */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* ---- Product Name ---- */}
-              <div className="space-y-2">
-                <Label>Name *</Label>
-                <Input
-                  value={formData.productName}
-                  onChange={(e) => handleChange('productName', e.target.value)}
-                  required
-                  disabled={isReadOnly}
-                  placeholder={"Enter Product Name"}
-                />
-              </div>
 
+            <div>
               {/* ---- Images ---- */}
-              <div className="space-y-2">
-                <Label>Images</Label>
-                <div className="flex flex-wrap gap-2">
-                  {formData.imgUrl.map((url, i) => (
-                    <div key={`existing-${i}`} className="relative">
-                      <img
-                        src={url}
-                        alt={`Existing ${i + 1}`}
-                        className="h-20 w-20 object-cover rounded-lg border cursor-pointer"
-                        onClick={() =>
-                          !isReadOnly &&
-                          document.getElementById('image-upload').click()
-                        }
-                      />
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              imgUrl: prev.imgUrl.filter((_, idx) => idx !== i),
-                            }))
-                          }
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-semibold">
+                      Product images
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload clear photos of the product. First image will be
+                      used as the main thumbnail.
+                    </p>
+                  </div>
 
-                  {formData.productImage.map((file, i) => (
-                    <div key={`new-${i}`} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Preview ${i + 1}`}
-                        className="h-20 w-20 object-cover rounded-lg border cursor-pointer"
-                        onClick={() =>
-                          !isReadOnly &&
-                          document.getElementById('image-upload').click()
-                        }
-                      />
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {formData.imgUrl.length + formData.productImage.length >
+                    0 && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                      {formData.imgUrl.length + formData.productImage.length}{' '}
+                      image
+                      {formData.imgUrl.length + formData.productImage.length > 1
+                        ? 's'
+                        : ''}
+                    </span>
+                  )}
+                </div>
 
-                  {!isReadOnly && (
+                {/* Preview gallery */}
+                {(formData.imgUrl.length > 0 ||
+                  formData.productImage.length > 0) && (
+                  <div className="rounded-xl border bg-muted/40 p-3">
+                    <div className="flex flex-wrap gap-3">
+                      {formData.imgUrl.map((url, i) => (
+                        <div
+                          key={`existing-${i}`}
+                          className="relative h-24 w-24 rounded-lg overflow-hidden border bg-background shadow-sm"
+                        >
+                          <img
+                            src={url}
+                            alt={`Existing ${i + 1}`}
+                            className="h-full w-full object-cover cursor-pointer"
+                            onClick={() =>
+                              !isReadOnly &&
+                              document.getElementById('image-upload').click()
+                            }
+                          />
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  imgUrl: prev.imgUrl.filter(
+                                    (_, idx) => idx !== i
+                                  ),
+                                }))
+                              }
+                              className="absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-1 shadow"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {formData.productImage.map((file, i) => (
+                        <div
+                          key={`new-${i}`}
+                          className="relative h-24 w-24 rounded-lg overflow-hidden border bg-background shadow-sm"
+                        >
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${i + 1}`}
+                            className="h-full w-full object-cover cursor-pointer"
+                            onClick={() =>
+                              !isReadOnly &&
+                              document.getElementById('image-upload').click()
+                            }
+                          />
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => removeImage(i)}
+                              className="absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white rounded-full p-1 shadow"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload area */}
+                {!isReadOnly && (
+                  <>
                     <div
-                      className="h-20 w-20 bg-gray-100 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer"
+                      className="mt-1 border-2 border-dashed border-muted-foreground/40 rounded-xl px-4 py-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() =>
                         document.getElementById('image-upload').click()
                       }
                     >
-                      <ImageIcon className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
+                      <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground" />
+                      <p className="text-sm font-medium">
+                        Click to upload or drop files here
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG up to 5MB per file
+                      </p>
 
-                {!isReadOnly && (
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageChange}
-                    className="hidden"
-                 
-                  />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                      >
+                        Choose files
+                      </Button>
+                    </div>
+
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </>
                 )}
               </div>
 
-              {/* ---- Category (if enabled) ---- */}
-              {hasCategories &&
-                industryFields.some((f) => f.type === 'select-category') && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Category *</Label>
-                      {!isReadOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsCatModalOpen(true)}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" /> New
-                        </Button>
-                      )}
-                    </div>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(v) => handleChange('category', v)}
-                      disabled={isReadOnly}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {localCategories.map((c) => (
-                          <SelectItem key={c._id} value={c._id}>
-                            {c.categoryName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-              {/* ---- Sub-Category (if category selected) ---- */}
-              {hasCategories && formData.category && (
-                <div className="space-y-2">
-                  <Label>Sub Category</Label>
-                  <Select
-                    value={formData.subCategoryName}
-                    onValueChange={(v) => handleChange('subCategoryName', v)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ---- Product Name ---- */}
+                <div className="space-y-2 ">
+                  <Label>Name *</Label>
+                  <Input
+                    value={formData.productName}
+                    onChange={(e) =>
+                      handleChange('productName', e.target.value)
+                    }
+                    required
                     disabled={isReadOnly}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sub-category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSubCategories.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={'Enter Product Name'}
+                  />
                 </div>
-              )}
 
-              {/* ---- Vendor (if enabled) ---- */}
-              {hasVendors &&
-                industryFields.some((f) => f.type === 'select-vendor') && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Vendor</Label>
-                      {!isReadOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsVendorModalOpen(true)}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" /> New
-                        </Button>
-                      )}
+                {/* ---- SKU (if defined) ---- */}
+                {industryFields.some((f) => f.name === 'SKU') &&
+                  renderField(industryFields.find((f) => f.name === 'SKU'))}
+
+                {/* ---- Vendor (if enabled) ---- */}
+                {hasVendors &&
+                  industryFields.some((f) => f.type === 'select-vendor') && (
+                    <div className="space-y-2 ">
+                      <Label className="text-sm font-medium">Vendor</Label>
+
+                      <Select
+                        value={formData.vendor || undefined}
+                        onValueChange={(val) => {
+                          if (val === '__create_vendor__') {
+                            // open vendor create modal, don't set value
+                            setIsVendorModalOpen(true);
+                            return;
+                          }
+                          handleChange('vendor', val);
+                        }}
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select vendor" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {localVendors.map((v) => (
+                            <SelectItem key={v._id} value={v._id}>
+                              {v.name}
+                            </SelectItem>
+                          ))}
+
+                          {!isReadOnly && (
+                            <>
+                              <div className="my-1 border-t" />
+                              <SelectItem
+                                value="__create_vendor__"
+                                className="text-primary font-medium cursor-pointer"
+                              >
+                                + Create new vendor
+                              </SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
+                  )}
+
+                {/* ---- Category (if enabled) ---- */}
+                {hasCategories &&
+                  industryFields.some((f) => f.type === 'select-category') && (
+                    <div className="space-y-2 ">
+                      <Label className="text-sm font-medium">Category *</Label>
+
+                      <Select
+                        value={formData.category || undefined}
+                        onValueChange={(val) => {
+                          if (val === '__create_category__') {
+                            // open category create modal, skip storing this value
+                            setIsCatModalOpen(true);
+                            return;
+                          }
+                          handleChange('category', val);
+                        }}
+                        disabled={isReadOnly}
+                        required
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {localCategories.map((c) => (
+                            <SelectItem key={c._id} value={c._id}>
+                              {c.categoryName}
+                            </SelectItem>
+                          ))}
+
+                          {!isReadOnly && (
+                            <>
+                              <div className="my-1 border-t" />
+                              <SelectItem
+                                value="__create_category__"
+                                className="text-primary font-medium cursor-pointer"
+                              >
+                                + Create new category
+                              </SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                {/* ---- Sub-Category (if category selected) ---- */}
+                {hasCategories && formData.category && (
+                  <div className="space-y-2 -mt-1">
+                    <Label className="text-sm font-medium">Sub Category</Label>
                     <Select
-                      value={formData.vendor}
-                      onValueChange={(v) => handleChange('vendor', v)}
+                      value={formData.subCategoryName}
+                      onValueChange={(v) => handleChange('subCategoryName', v)}
                       disabled={isReadOnly}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vendor" />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select sub-category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {localVendors.map((v) => (
-                          <SelectItem key={v._id} value={v._id}>
-                            {v.name}
+                        {availableSubCategories.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -699,16 +785,10 @@ export const ProductModal = memo(function ProductModal({
                   </div>
                 )}
 
-              {/* ---- SKU (if defined) ---- */}
-              {industryFields.some((f) => f.name === 'SKU') &&
-                renderField(industryFields.find((f) => f.name === 'SKU'))}
-
-              
-              {/* ---- Dynamic Industry Fields ---- */}
-              {dynamicFields.map(renderField)}
+                {/* ---- Dynamic Industry Fields ---- */}
+                {dynamicFields.map(renderField)}
+              </div>
             </div>
-
-
             {/* ==================== FULL-WIDTH INGREDIENTS ==================== */}
             {industryFields.some((f) => f.type === 'ingredients-array') && (
               <div className="space-y-4">
@@ -839,6 +919,7 @@ export const ProductModal = memo(function ProductModal({
                 // required
                 disabled={isReadOnly}
                 className="min-h-32"
+                placeholder="Enter description of the product"
               />
             </div>
 

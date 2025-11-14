@@ -79,10 +79,10 @@ export function ProductList({
           <div className="col-span-2">Vendor</div>
         )}
         {isRestaurant && <div className="col-span-3">Ingredients</div>}
-        <div className="col-span-2">SKU</div>
+       {!isRestaurant && <div className="col-span-2">Quantity</div>}
         <div className="col-span-2">Price</div>
-        <div className="col-span-2">Details</div>
-        <div className="col-span-2 text-center">Stock</div>
+        <div className="col-span-3">Details</div>
+       
         <div className="col-span-2 text-center">Status</div>
         <div className="col-span-2 text-right">Actions</div>
       </div>
@@ -157,12 +157,18 @@ export function ProductList({
               </div>
             )}
 
-            <div className="col-span-2" onClick={() => onOpenSheet(p)}>
+            {/* <div className="col-span-2" onClick={() => onOpenSheet(p)}>
               <p className="text-sm font-mono text-foreground truncate">
                 {p.SKU || '—'}
               </p>
-            </div>
+            </div> */}
 
+           {! isRestaurant && <div className="col-span-2" onClick={() => onOpenSheet(p)}>
+              <p className="text-sm font-mono text-foreground truncate font-medium">
+                {p.quantity || '—'}
+              </p>
+            </div>
+}
             <div className="col-span-2" onClick={() => onOpenSheet(p)}>
               <p className="text-sm font-semibold text-green-600 truncate">
                 ${p.sellingPrice?.toFixed(2) || '0.00'}
@@ -177,14 +183,7 @@ export function ProductList({
               </p>
             </div>
 
-            <div
-              className="col-span-2 text-center"
-              onClick={() => onOpenSheet(p)}
-            >
-              <p className="text-sm font-medium text-foreground">
-                {p.quantity ?? 0}
-              </p>
-            </div>
+      
 
             <div className="col-span-2 flex items-center justify-center">
               <Badge

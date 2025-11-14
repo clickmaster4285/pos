@@ -1,7 +1,7 @@
 import User from './user.model.js';
 import Company from './company.model.js';
 import Plan from './plan.model.js';
-import Ingredient from './ingredient.model.js'
+import Ingredient from './ingredient.model.js';
 import Vendor from './vendor.model.js';
 import History from './history.model.js';
 import AddressBook from './addressBook.model.js';
@@ -15,6 +15,7 @@ import Category from './category.model.js';
 import Product from './product.model.js';
 import Orders from './orders.model.js';
 import Table from './table.model.js';
+import Notification from './notification.js';
 
 export default {
   User,
@@ -34,4 +35,5 @@ export default {
   Orders,
   Table,
   Ingredient,
+  Notification,
 };
