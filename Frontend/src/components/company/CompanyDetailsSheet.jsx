@@ -133,7 +133,6 @@ export function CompanyDetailsSheet({
     );
   }
 
-  console.log("the company data in details sheet:", company);
   
   const isActive = !!company.isActive;
   const owner = company.ownerDetails || {};

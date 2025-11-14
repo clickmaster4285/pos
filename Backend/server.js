@@ -24,6 +24,7 @@ import {
   errorLoggerMiddleware,
 } from './middleware/loggerMiddleware.js';
 import { exceptionLogger } from './utils/logger.js';
+import dataManagementRoutes from './routes/dataManagementRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,14 +51,33 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+// Add this with other route usage in server.js
 app.set('trust proxy', true);
 app.use(
   '/api/strip/strip-webhook',
   bodyParser.raw({ type: 'application/json' })
 );
-
 // Keep express.json as requested
-app.use(express.json({ limit: '10mb' }));
+// Configure express.json to skip multipart/form-data
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    const url = req.url;
+    const contentType = req.headers['content-type'] || '';
+    
+    // Skip JSON parsing for specific routes that handle FormData
+    if (url.includes('/import-data') && contentType.includes('multipart/form-data')) {
+      req.isMultipart = true;
+      return;
+    }
+    
+    // Store raw body for webhook verification if needed
+    if (url.includes('/strip-webhook')) {
+      req.rawBody = buf;
+    }
+  }
+}));
+
 // Keep express.urlencoded commented out as per your instruction
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -65,7 +85,7 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan(NODE_ENV === 'development' ? 'dev' : 'combined'));
 app.use(cookieParser());
-
+ 
 // Add logging middleware (NEW - added after existing middleware)
 app.use(requestLogger);
 app.use(userActivityLoggerMiddleware);
@@ -82,6 +102,7 @@ app.get('/health', (req, res) => {
 
 app.use('/Uploads', express.static(path.join(__dirname, 'Uploads')));
 app.use('/api', apiRouter);
+app.use('/api/dataManagementRoutes', dataManagementRoutes);
 
 // Automatically start real-time listeners for all devices
 // const startRealTimeListeners = async () => {

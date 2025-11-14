@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { upload } from "../config/multer.js";
 import path from "path";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
+import mongoose from 'mongoose';
 
 const createCompany = async (req, res) => {
   try {
@@ -210,6 +211,7 @@ const createCompany = async (req, res) => {
       plan:
         availablePlan.price === 0
           ? {
+              _id: new mongoose.Types.ObjectId(),
               planId: availablePlan._id,
               companyPlanId: await generatePlanId(companyId, adminUserId),
               status: "in progress",
@@ -597,6 +599,7 @@ const getCompany = async (req, res) => {
 // Get all company
 const getAllCompany = async (req, res) => {
   try {
+    console.log("th lkjsdkfjhksjdhjghgfgb")
     // Only allow superAdmin access
     if (req.user.role !== "superAdmin") {
       return res.status(401).json({
@@ -611,7 +614,7 @@ const getAllCompany = async (req, res) => {
     if (!companies || companies.length === 0) {
       return res.status(404).json({
         success: false,
-        error: "No companies found",
+        message: "No companies found",
       });
     }
 

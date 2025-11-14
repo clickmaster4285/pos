@@ -41,7 +41,6 @@ export const staffApi = createApi({
     getAllStaff: builder.query({
   query: () => '/get-all-staff',
   transformResponse: (res) => {
-    console.log('[staffApi] getAllStaff response:', res);
     if (res?.success && Array.isArray(res.data)) return res.data;
     throw new Error(res?.message || 'Failed to fetch staff');
   },
@@ -63,7 +62,6 @@ export const staffApi = createApi({
         body: staffData,
       }),
       transformResponse: (res) => {
-        console.log('[staffApi] createStaff response:', res);
         if (res?.success && res.data) return res.data;
         if (res && res._id) return res;
         throw new Error(res?.message || 'Failed to create staff');
@@ -79,7 +77,6 @@ export const staffApi = createApi({
         body: staffData,
       }),
       transformResponse: (res) => {
-        console.log('[staffApi] updateStaff response:', res);
         if (res?.success && res.data) return res.data;
         if (res && res._id) return res;
         throw new Error(res?.message || 'Failed to update staff');
@@ -100,7 +97,6 @@ export const staffApi = createApi({
         method: 'DELETE',
       }),
       transformResponse: (res) => {
-        console.log('[staffApi] deleteStaff response:', res);
         if (!res?.success) throw new Error(res?.message || 'Failed to delete staff');
         return res;
       },

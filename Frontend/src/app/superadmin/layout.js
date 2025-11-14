@@ -7,7 +7,6 @@ import Sidebar from '@/components/layout/Sidebar';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
 
 export default function Layout({ children }) {
-  const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -41,7 +40,7 @@ export default function Layout({ children }) {
       </div>
       <div className="flex-1 flex flex-col ml-64">
         <div className="h-auto border-b fixed top-0 left-64 right-0 z-10">
-          <Navbar setErrorMessage={setErrorMessage}/>
+          <Navbar />
         </div>
         <div className="flex-1 overflow-auto mt-14 p-2 bg-background">
           {children}

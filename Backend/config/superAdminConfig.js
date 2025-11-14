@@ -7,7 +7,6 @@ import bcrypt from "bcrypt";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 
-
 const createSuperAdmin = async () => {
   try {
     const superAdminExists = await IndexModel.User.findOne({
@@ -137,7 +136,7 @@ export const updateSuperAdminInfo = async (req, res) => {
 
     // Update the user
     const updatedUser = await IndexModel.User.findOneAndUpdate(
-      { role: "superAdmin", }, // Ensure userId matches for security
+      { role: "superAdmin" }, // Ensure userId matches for security
       { $set: updateData },
       {
         new: true,
@@ -194,7 +193,7 @@ export const updateSuperAdminInfo = async (req, res) => {
 
 export const createCompanybySuperAdmin = async (req, res) => {
   try {
-    const {userId, role} = req.user;
+    const { userId, role } = req.user;
     if (role !== "superAdmin") {
       return res.status(403).json({
         success: false,
@@ -322,8 +321,8 @@ export const createCompanybySuperAdmin = async (req, res) => {
       ],
       verified: true,
     });
-    
-    console.log("the newCompany is : ", adminUser, newCompany.owner)
+
+    console.log("the newCompany is : ", adminUser, newCompany.owner);
     // Set company owner to admin user's userId
     newCompany.owner = adminUser.userId;
 
@@ -386,6 +385,8 @@ export const createCompanybySuperAdmin = async (req, res) => {
   }
 };
 
+
+
 export const superAdminDashboard = async (req, res) => {
   try {
     const { role } = req.user;
@@ -395,21 +396,119 @@ export const superAdminDashboard = async (req, res) => {
       });
     }
 
-    // Fetch necessary data for the dashboard
-    const totalCompanies = await IndexModel.Company.find({ deleted: false });
-    const totalAdmins = await IndexModel.User.find({ role: "admin", deleted: false });
-    const pendingVerifications = await IndexModel.User.find({ isActive: false, deleted: false });
-    // const totalRevenue = await 
-    // const recentActivities = await IndexModel.ActivityLog.find({})
-    //   .sort({ createdAt: -1 })
-    //   .limit(10);
+    // ===============================
+    // 1️⃣ Basic dashboard data
+    // ===============================
+    const companies = await IndexModel.Company.find({ deleted: false }).lean();
+    const admins = await IndexModel.User.find({
+      role: "admin",
+      deleted: false,
+    }).lean();
+    const pendingVerifications = await IndexModel.User.find({
+      "status.isaccepted": "false",
+      deleted: false,
+    }).lean();
+    const staff = await IndexModel.User.find({
+      role: "staff",
+      isActive: true,
+      deleted: false,
+    }).lean();
 
-    // Compile dashboard data
+    // 💰 Total revenue
+    const totalRevenue = companies.reduce((acc, company) => {
+      const planSum = (company.plan || []).reduce(
+        (sum, p) => sum + (p.price || 0),
+        0
+      );
+      return acc + planSum;
+    }, 0);
+
+    // 📦 Active plans
+    const totalActivePlan = companies.reduce((count, company) => {
+      const activePlans = (company.plan || []).filter((p) => p.isActive);
+      return count + activePlans.length;
+    }, 0);
+
+    const activeCompanies = companies.filter((c) => c.isActive).length;
+    const suspendedCompanies = companies.filter((c) => !c.isActive).length;
+
+    const recentCompanies = await IndexModel.Company.find({ deleted: false })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("name companyId plan createdAt gain");
+
+      const revenueActivity = await IndexModel.Company.aggregate([
+      { $match: { deleted: false } },
+      { $unwind: "$plan" },
+      {
+        $project: {
+          planName: "$plan.name",
+          price: { $ifNull: ["$plan.price", 0] },
+          createdAt: "$plan.createdAt",
+        },
+      },
+      { $match: { createdAt: { $exists: true } } },
+    ]);
+
+    const companyGrowth = companies.map(({ name, createdAt }) => ({ name, createdAt }));
+
+    // ===============================
+    // 2️⃣ MongoDB storage stats
+    // ===============================
+    const dbStats = await IndexModel.Company.db.db.stats();
+    const mongoStorageUsedMB = dbStats.storageSize / (1024 * 1024); // MB
+    const mongoDataSizeMB = dbStats.dataSize / (1024 * 1024); // MB
+
+    // ===============================
+    // 3️⃣ Uploads folder size
+    // ===============================
+    const getFolderSize = (folderPath) => {
+      let totalSize = 0;
+      const files = fs.readdirSync(folderPath);
+
+      for (const file of files) {
+        const filePath = path.join(folderPath, file);
+        const stats = fs.statSync(filePath);
+        if (stats.isDirectory()) {
+          totalSize += getFolderSize(filePath);
+        } else {
+          totalSize += stats.size;
+        }
+      }
+      return totalSize;
+    };
+    
+    const uploadsPath = path.join(process.cwd(), "Uploads");
+    let uploadsSizeMB = 0;
+
+    if (fs.existsSync(uploadsPath)) {
+      const bytes = getFolderSize(uploadsPath);
+      uploadsSizeMB = bytes / (1024 * 1024); // convert to MB
+    }
+
+    
+
+    // ===============================
+    // 4️⃣ Combine all dashboard data
+    // ===============================
     const dashboardData = {
-      totalCompanies: totalCompanies.length,
-      totalAdmins: totalAdmins.length,
+      totalCompanies: companies.length,
+      totalAdmins: admins.length,
+      totalStaff: staff.length,
+      totalRevenue,
+      totalActivePlan,
+      activeCompanies,
+      suspendedCompanies,
       pendingVerifications: pendingVerifications.length,
-      recentActivities: recentActivities.length,
+      recentCompanies,
+      revenueActivity,
+      companyGrowth,
+      storage: {
+        mongoDataSizeMB: mongoDataSizeMB.toFixed(2),
+        mongoStorageUsedMB: mongoStorageUsedMB.toFixed(2),
+        uploadsSizeMB: uploadsSizeMB.toFixed(2),
+        totalCombinedMB: (mongoDataSizeMB + uploadsSizeMB).toFixed(2),
+      },
     };
 
     return res.status(200).json({
@@ -420,5 +519,8 @@ export const superAdminDashboard = async (req, res) => {
     console.error("❌ Error fetching SuperAdmin dashboard data:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
-}
+};
+
+
+
 export default createSuperAdmin;

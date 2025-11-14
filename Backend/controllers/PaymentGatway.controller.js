@@ -123,12 +123,7 @@ const confirmAndUpgradePlan = async (req, res) => {
       _id: new mongoose.Types.ObjectId(),
       planId, // your company-level plan id string
       companyPlanId: companyPlanId,
-      name: pricePlan.name,
-      description: pricePlan.description,
-      price: pricePlan.price,
-      validateDays: pricePlan.validateDays,
-      limitations: pricePlan.limitations || {},
-      features: pricePlan.features || [],
+      ...pricePlan,
       isActive: true,
       status: 'in progress',
       deleted: false,
