@@ -52,7 +52,7 @@ export function CompanyList({
     return (
       <Card className="border-border/60">
         <div className="text-center py-12">
-          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-16 h-16  rounded-full flex items-center justify-center mb-4">
             <Building2 className="h-6 w-6 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">
@@ -72,7 +72,7 @@ export function CompanyList({
   return (
     <Card className="border-border/60 overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-12 items-center px-6 py-4 bg-muted/30 border-b border-border/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="grid grid-cols-12 items-center px-6 py-4 border-b border-border/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <div className="col-span-4">Company</div>
         <div className="col-span-2">Contact</div>
         <div className="col-span-3">Address</div>
@@ -86,7 +86,7 @@ export function CompanyList({
           const id = getId(c);
           const isPending = pendingId === id;
           const plans = Array.isArray(c.plan) ? c.plan : [];
-          
+          console.log("items", items)
           const usersCount = Array.isArray(c?.gain?.staff) ? c.gain.staff.length : 0;
           const vendorsCount = c?.gain?.vendor || 0;
           const productCount = c?.gain?.product || 0;

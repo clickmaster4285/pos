@@ -124,7 +124,7 @@ export function CompanyGrid({
   if (!items?.length) {
     return (
       <div className="text-center py-12">
-        <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+        <div className="mx-auto w-24 h-24  rounded-full flex items-center justify-center mb-4">
           <Building2 className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-medium text-foreground mb-2">
@@ -335,8 +335,8 @@ export function CompanyGrid({
               </div>
 
               {/* Stats & Footer */}
-              <div className="px-5 py-4 bg-muted/30 border-t border-border/50">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+              <div className="px-5 py-4 border-t border-border/50">
+                <div className="flex items-center justify-between text-xs text-muted-foreground ">
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                       <Users className="h-3 w-3" />

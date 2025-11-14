@@ -59,24 +59,29 @@ app.use(
 );
 // Keep express.json as requested
 // Configure express.json to skip multipart/form-data
-app.use(express.json({ 
-  limit: '10mb',
-  verify: (req, res, buf) => {
-    const url = req.url;
-    const contentType = req.headers['content-type'] || '';
-    
-    // Skip JSON parsing for specific routes that handle FormData
-    if (url.includes('/import-data') && contentType.includes('multipart/form-data')) {
-      req.isMultipart = true;
-      return;
-    }
-    
-    // Store raw body for webhook verification if needed
-    if (url.includes('/strip-webhook')) {
-      req.rawBody = buf;
-    }
-  }
-}));
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+      const url = req.url;
+      const contentType = req.headers['content-type'] || '';
+
+      // Skip JSON parsing for specific routes that handle FormData
+      if (
+        url.includes('/import-data') &&
+        contentType.includes('multipart/form-data')
+      ) {
+        req.isMultipart = true;
+        return;
+      }
+
+      // Store raw body for webhook verification if needed
+      if (url.includes('/strip-webhook')) {
+        req.rawBody = buf;
+      }
+    },
+  })
+);
 
 // Keep express.urlencoded commented out as per your instruction
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -85,7 +90,7 @@ app.use(helmet());
 app.use(compression());
 app.use(morgan(NODE_ENV === 'development' ? 'dev' : 'combined'));
 app.use(cookieParser());
- 
+
 // Add logging middleware (NEW - added after existing middleware)
 app.use(requestLogger);
 app.use(userActivityLoggerMiddleware);

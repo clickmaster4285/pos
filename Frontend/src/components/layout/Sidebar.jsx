@@ -524,7 +524,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => toggleGroup(key)}
-          className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200 border-b border-sidebar-border/30"
+          className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200 "
         >
           <div className="flex items-center min-w-0">
             <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
@@ -584,7 +584,7 @@ export default function Sidebar() {
                           openGroups.inventory
                         )}
                         {openGroups.inventory && (
-                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                          <ul className="space-y-1 mt-1 ml-4  pl-2">
                             {inventoryMenuItems.map((link) => renderLink(link))}
                           </ul>
                         )}
@@ -601,7 +601,7 @@ export default function Sidebar() {
                           openGroups.staff
                         )}
                         {openGroups.staff && (
-                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                          <ul className="space-y-1 mt-1 ml-4  pl-2">
                             {staffMenuItems.map((link) => renderLink(link))}
                           </ul>
                         )}
@@ -618,7 +618,7 @@ export default function Sidebar() {
                           openGroups.company
                         )}
                         {openGroups.company && (
-                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                          <ul className="space-y-1 mt-1 ml-4 pl-2">
                             {companyMenuItems.map((link) => renderLink(link))}
                           </ul>
                         )}
