@@ -24,7 +24,8 @@ import {
   errorLoggerMiddleware,
 } from './middleware/loggerMiddleware.js';
 import { exceptionLogger } from './utils/logger.js';
-import dataManagementRoutes from './routes/dataManagementRoutes.js';
+import dataManagementRoutes from './routes/dataManagement.routes.js';
+import Excel from './routes/backupExcel.routes.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,6 +109,7 @@ app.get('/health', (req, res) => {
 app.use('/Uploads', express.static(path.join(__dirname, 'Uploads')));
 app.use('/api', apiRouter);
 app.use('/api/dataManagementRoutes', dataManagementRoutes);
+app.use('/api/excel', Excel);
 
 // Automatically start real-time listeners for all devices
 // const startRealTimeListeners = async () => {

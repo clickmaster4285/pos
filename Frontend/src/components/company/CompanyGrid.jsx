@@ -19,7 +19,7 @@ import {
   HoverCardContent,
 } from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, XCircle, Download, Upload } from 'lucide-react';
+import { CheckCircle, XCircle, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import {
   Building2,
   Mail,
@@ -31,7 +31,10 @@ import {
   Package,
   FileText,
 } from 'lucide-react';
+
+// RTK Query hooks
 import { useExportCompanyDataMutation, useImportCompanyDataMutation } from '@/features/dataManagementApi';
+import { useExportCompanyExcelMutation } from '@/features/companyExcelApi';
 
 const safe = (v) => (typeof v === 'string' ? v : '—');
 const getId = (c) => c?.id ?? c?._id ?? c?.companyId ?? '';
@@ -51,18 +54,20 @@ export function CompanyGrid({
   isVerifying,
   onDetail,
 }) {
+  // ZIP Backup / Restore
   const [exportCompanyData, { isLoading: isExporting }] = useExportCompanyDataMutation();
   const [importCompanyData, { isLoading: isImporting }] = useImportCompanyDataMutation();
   const fileInputRef = useRef(null);
 
-  // Handle company export
+  // Excel Export
+  const [exportExcel, { isLoading: isExportingExcel }] = useExportCompanyExcelMutation();
+
+  // Handle company ZIP export
   const handleCompanyExport = async (companyId, companyName, e) => {
     e.stopPropagation();
     try {
-      console.log("i send to api", companyId)
       const response = await exportCompanyData(companyId).unwrap();
       
-      // Create download link
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -72,12 +77,9 @@ export function CompanyGrid({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      console.log(`Export successful for company: ${companyName}`);
     } catch (error) {
-      console.error('Export failed:', error);
-      // You can add toast notification here
-      alert(`Export failed: ${error.data?.message || error.message}`);
+      console.error('ZIP Export failed:', error);
+      alert(`ZIP Export failed: ${error.data?.message || error.message}`);
     }
   };
 
@@ -88,9 +90,7 @@ export function CompanyGrid({
     
     try {
       const result = await importCompanyData({ companyId, formData }).unwrap();
-      console.log(`Import successful for company: ${companyId}`, result);
       alert(`Import successful! ${result.message}`);
-      // Refresh company data or show success message
     } catch (error) {
       console.error('Import failed:', error);
       alert(`Import failed: ${error.data?.message || error.message}`);
@@ -117,7 +117,6 @@ export function CompanyGrid({
       handleCompanyImport(companyId, file);
     }
     
-    // Reset input
     e.target.value = '';
   };
 
@@ -153,6 +152,7 @@ export function CompanyGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
         {items.map((company) => {
           const id = getId(company);
+          const companyId = company.companyId || id;
           const isPending = pendingId === id;
 
           const usersCount = Array.isArray(company?.gain?.staff)
@@ -270,18 +270,37 @@ export function CompanyGrid({
                                 </HoverCardContent>
                               </HoverCard>
 
-                              {/* Backup Options */}
+                              {/* Backup & Export Options */}
                               <DropdownMenuSeparator />
+
+                              {/* Export Excel */}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  exportExcel(companyId).unwrap().catch(err => {
+                                    alert(`Excel export failed: ${err.data?.message || err.message}`);
+                                  });
+                                }}
+                                disabled={isExportingExcel}
+                                className="flex items-center gap-2"
+                              >
+                                <FileSpreadsheet className="h-4 w-4" />
+                                {isExportingExcel ? 'Exporting…' : 'Export Excel'}
+                              </DropdownMenuItem>
+
+                              {/* ZIP Backup */}
                               <DropdownMenuItem 
-                                onClick={(e) => handleCompanyExport(company.companyId, company.name, e)}
+                                onClick={(e) => handleCompanyExport(companyId, company.name, e)}
                                 disabled={isExporting}
                                 className="flex items-center gap-2"
                               >
                                 <Download className="h-4 w-4" />
                                 {isExporting ? 'Exporting...' : 'Backup ZIP'}
                               </DropdownMenuItem>
+
+                              {/* Restore Backup */}
                               <DropdownMenuItem 
-                                onClick={(e) => triggerFileInput(company.companyId, e)}
+                                onClick={(e) => triggerFileInput(companyId, e)}
                                 disabled={isImporting}
                                 className="flex items-center gap-2"
                               >
