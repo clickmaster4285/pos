@@ -20,18 +20,15 @@ const BillingSchema = new Schema(
     OrderId: {
       type: Schema.Types.ObjectId,
       ref: 'Orders',
-      required: true,
     },
     items: [
       {
         ProductId: {
           type: Schema.Types.ObjectId,
           ref: 'Product',
-          required: true,
         },
         OrderItemId: {
           type: Schema.Types.ObjectId,
-          required: true,
         },
 
         dynamicAttributes: {
@@ -97,6 +94,17 @@ const BillingSchema = new Schema(
       enum: ['paid', 'refunded', 'partially_refunded'],
       default: 'paid',
     },
+    // in bill schema
+    discountPercent: {
+      type: Number, // e.g. 10 means 10%
+      default: 0,
+    },
+
+    discountAmount: {
+      type: Number, // actual currency amount subtracted from subtotal
+      default: 0,
+    },
+
     deleted: {
       type: Boolean,
       default: false,
@@ -126,24 +134,19 @@ BillingSchema.pre('validate', function (next) {
 
 // Company consistency
 BillingSchema.pre('validate', async function (next) {
-  if (!this.items?.length) return next();
+  // If bill has no OrderId, skip this check (product-only bills)
+  if (!this.OrderId) return next();
 
   try {
-    const orderIds = this.items.map((it) => it.orderId).filter(Boolean);
-    if (!orderIds.length) return next();
-
-    const orders = await mongoose
-      .model('Orders') // <-- ensure model name matches your IndexModel.Orders
-      .find({ _id: { $in: orderIds } })
+    const order = await mongoose
+      .model('Orders')
+      .findById(this.OrderId)
       .select('companyId');
 
-    const mismatch = orders.find(
-      (o) => String(o.companyId) !== String(this.companyId)
-    );
-    if (mismatch) {
-      return next(
-        new Error('All items must belong to the same company as the bill')
-      );
+    if (!order) return next(); // or throw if you want strict behavior
+
+    if (String(order.companyId) !== String(this.companyId)) {
+      return next(new Error('Order company must match the bill company'));
     }
 
     next();
@@ -165,11 +168,37 @@ BillingSchema.pre('validate', function (next) {
   const n = (v) => Number(v || 0);
   const EPS = 0.01;
 
+  if (!Array.isArray(this.items) || this.items.length === 0) {
+    return next(new Error('Bill must have at least one item'));
+  }
+
+  // 🔹 If this is an EXISTING bill in a refund state,
+  //     DO NOT touch subtotal/discount/tax/total.
+  //     We want to keep original totals, and track refunds separately.
+  const isRefundState =
+    !this.isNew && ['refunded', 'partially_refunded'].includes(this.status);
+
+  if (isRefundState) {
+    // You *can* still clamp discountPercent if you want, but don't
+    // recompute subtotal/tax/total here.
+    let discountPercent = n(this.discountPercent);
+    if (discountPercent < 0) discountPercent = 0;
+    if (discountPercent > 100) discountPercent = 100;
+    this.discountPercent = discountPercent;
+    return next();
+  }
+
+  // 🔹 For NEW bills (or non-refunded ones),
+  //     do the strict math: subtotal -> discount -> tax -> total
+
+  // 1) Recalculate subtotal from items (respecting refund statuses)
   const subtotalFromItems = this.items.reduce((sum, it) => {
     const s = String(it.status || '').toLowerCase();
 
     // Exclude fully removed lines
-    if (['cancelled', 'returned_accept', 'refund_full'].includes(s)) return sum;
+    if (['cancelled', 'returned_accept', 'refund_full'].includes(s)) {
+      return sum;
+    }
 
     // For partials, subtract refundAmount
     if (['returned_request', 'refund_partial'].includes(s)) {
@@ -189,18 +218,37 @@ BillingSchema.pre('validate', function (next) {
     );
   }
 
-  const taxAmount = +(n(this.subtotal) * (n(this.taxPercent) / 100)).toFixed(2);
-  const total = +(n(this.subtotal) + taxAmount).toFixed(2);
+  // 2) Discount (percent only, keep amount in sync)
+  let discountPercent = n(this.discountPercent);
+  if (discountPercent < 0) discountPercent = 0;
+  if (discountPercent > 100) discountPercent = 100;
+  this.discountPercent = discountPercent;
 
-  // Optional: also validate tax/total with EPS
+  const expectedDiscountAmount = +(
+    subtotalFromItems *
+    (discountPercent / 100)
+  ).toFixed(2);
+
+  if (Math.abs(n(this.discountAmount) - expectedDiscountAmount) > EPS) {
+    this.discountAmount = expectedDiscountAmount;
+  }
+
+  const taxableBase = subtotalFromItems - this.discountAmount;
+
+  // 3) Tax and total
+  const taxAmount = +(taxableBase * (n(this.taxPercent) / 100)).toFixed(2);
+  const total = +(taxableBase + taxAmount).toFixed(2);
+
   if (Math.abs(n(this.taxAmount) - taxAmount) > EPS) {
-    return next(new Error('Tax amount mismatch'));
+    this.taxAmount = taxAmount;
   }
   if (Math.abs(n(this.total) - total) > EPS) {
-    return next(new Error('Total mismatch'));
+    this.total = total;
   }
 
   return next();
 });
+
+
 
 export default mongoose.model('Bill', BillingSchema);

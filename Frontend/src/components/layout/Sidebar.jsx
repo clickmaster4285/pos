@@ -3,6 +3,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useGetCompanyQuery } from '@/features/CompanyApi';
 import { useSelector } from 'react-redux';
 import {
   LayoutDashboard,
@@ -20,8 +21,8 @@ import {
   BarChart,
   Briefcase,
   Truck,
-  ChevronLeft,
-  ChevronRight,
+  ChevronUp,
+  ChevronDown,
   UserSquare2,
   Utensils,
   ListChecks,
@@ -51,11 +52,12 @@ const iconMap = {
   Warehouse: Truck,
   'Profile Setting': UserSquare2,
   Ingredient: ListChecks,
+  Inventory: BarChart,
 };
 
 function SidebarFooter({ userName, userRole }) {
   return (
-    <div className="sticky bottom-0 border-t border-sidebar-border/50 bg-sidebar/95 px-4 py-3 backdrop-blur-lg">
+    <div className="border-t border-sidebar-border/50 bg-sidebar/95 px-4 py-3 backdrop-blur-lg">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl text-primary flex items-center justify-center">
           <User className="h-5 w-5 text-secoundry" />
@@ -220,17 +222,28 @@ export default function Sidebar() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const authUser = useSelector((state) => state.auth.user); // Moved
-  // useSelector here
 
-  const industry = authUser.industryName;
+  const { data: companyRes, isLoading, isError } = useGetCompanyQuery();
+  const companyName = companyRes?.data?.name || 'Your Company';
+
+  // Groups expanded by default for better UX
+  const [openGroups, setOpenGroups] = useState({
+    inventory: true,
+    staff: true,
+    company: true,
+  });
+
+  const authUser = useSelector((state) => state.auth.user);
+  const industry = authUser?.industryName;
 
   const isSettingsMode = pathname?.startsWith('/settings');
 
   const isActive = (href) =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  const toggleGroup = (key) =>
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Get user data from Redux store on component mount
   useEffect(() => {
@@ -254,7 +267,6 @@ export default function Sidebar() {
         icon: iconMap['Product'],
         compulsory: true,
       },
-
       {
         href: '/admin/orders',
         label: 'Orders',
@@ -279,7 +291,6 @@ export default function Sidebar() {
         icon: iconMap['Settings'],
         compulsory: true,
       },
-
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
             {
@@ -299,12 +310,17 @@ export default function Sidebar() {
         icon: iconMap['Staff'],
         extraFeature: 'Staff',
       },
-
       {
         href: '/admin/permissions',
         label: 'Permission',
         icon: iconMap['Permission'],
         extraFeature: 'Permissions',
+      },
+      {
+        href: '/admin/category',
+        label: 'Category',
+        icon: iconMap['Product'],
+        extraFeature: 'Category',
       },
       {
         href: '/admin/vendors',
@@ -322,12 +338,7 @@ export default function Sidebar() {
             },
           ]
         : []),
-      {
-        href: '/admin/category',
-        label: 'Category',
-        icon: iconMap['Product'],
-        extraFeature: 'Category',
-      },
+
       {
         href: '#',
         label: 'Warehouse',
@@ -393,7 +404,7 @@ export default function Sidebar() {
       ],
       guest: [],
     };
-  }, [user]);
+  }, [user, industry]);
 
   const mainLinks = useMemo(() => {
     if (loading || !user?.role) return roleBasedLinks.guest;
@@ -426,116 +437,236 @@ export default function Sidebar() {
     return links.length > 0 ? links : roleBasedLinks.guest;
   }, [user, loading, roleBasedLinks]);
 
+  // --------- GROUPS (UI only) ---------
+  const inventoryLabels = [
+    'Product',
+    'Orders',
+    'Billing',
+    'Category',
+    'Warehouse',
+    'Vendors',
+    'Couriers & Shipment',
+  ];
+
+  const staffManagementLabels = [
+    'Staff',
+    'Staff Salaries',
+    'Permission',
+    'Manage Attendance',
+    'Attendance Devices Setting',
+  ];
+
+  const companyManagementLabels = ['Setting', 'Company Profile'];
+
+  const groupedLabels = new Set([
+    ...inventoryLabels,
+    ...staffManagementLabels,
+    ...companyManagementLabels,
+  ]);
+
+  // Top-level (non-grouped) links
+  const mainMenuLinks = useMemo(
+    () => mainLinks.filter((link) => !groupedLabels.has(link.label)),
+    [mainLinks]
+  );
+
+  const inventoryMenuItems = useMemo(
+    () => mainLinks.filter((link) => inventoryLabels.includes(link.label)),
+    [mainLinks]
+  );
+
+  const staffMenuItems = useMemo(
+    () =>
+      mainLinks.filter((link) => staffManagementLabels.includes(link.label)),
+    [mainLinks]
+  );
+
+  const companyMenuItems = useMemo(
+    () =>
+      mainLinks.filter((link) => companyManagementLabels.includes(link.label)),
+    [mainLinks]
+  );
+
+  const renderLink = ({ href, label, icon: Icon, companyName }) => {
+    const active = isActive(href);
+    return (
+      <li key={label}>
+        <Link
+          href={href}
+          className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
+            active
+              ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
+          }`}
+          aria-current={active ? 'page' : undefined}
+          onMouseEnter={() => setHoveredItem(label)}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <div className="relative">
+            <Icon
+              className={`transition-transform duration-200 ${
+                hoveredItem === label ? 'scale-110' : 'scale-100'
+              } mr-3 h-5 w-5`}
+            />
+          </div>
+          <span className="transition-all duration-200 truncate">{label}</span>
+        </Link>
+      </li>
+    );
+  };
+
+  const renderGroupHeader = (key, title, Icon, isOpen, companyName) => {
+    return (
+      <li
+        key={`${key}-group-header`}
+        className="sticky top-0 z-10 bg-sidebar/95 backdrop-blur-sm"
+      >
+        <button
+          type="button"
+          onClick={() => toggleGroup(key)}
+          className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200 border-b border-sidebar-border/30"
+        >
+          <div className="flex items-center min-w-0">
+            <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+            <span className="truncate">{title}</span>
+          </div>
+          {isOpen ? (
+            <ChevronUp className="h-4 w-4 opacity-80 flex-shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 opacity-80 flex-shrink-0" />
+          )}
+        </button>
+      </li>
+    );
+  };
+
   return (
-    <aside
-      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col transition-all duration-300 z-50 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
-    >
-      <div className="px-6 py-5 border-b border-sidebar-border/30">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col z-50">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-sidebar-border/30 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent">
-              {user?.toolName || 'AutoMotive'}
+            <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent truncate">
+              {/* {user?.toolName || 'AutoMotive'} */}
+              {companyName || 'SmartPOS'}
             </h1>
           </div>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-            <p className="text-sidebar-accent-foreground/70 text-sm">
-              Loading...
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col">
-          {!isSettingsMode ? (
-            <>
-              <nav className="flex-1 overflow-y-auto px-3 py-4">
-                <ul className="space-y-1">
-                  {mainLinks.map(({ href, label, icon: Icon }) => {
-                    const active = isActive(href);
-                    return (
-                      <li key={label}>
-                        <Link
-                          href={href}
-                          className={`group flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
-                            active
-                              ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
-                              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
-                          } ${collapsed ? 'justify-center' : ''}`}
-                          aria-current={active ? 'page' : undefined}
-                          onMouseEnter={() => setHoveredItem(label)}
-                          onMouseLeave={() => setHoveredItem(null)}
-                        >
-                          <div className="relative">
-                            <Icon
-                              className={`transition-transform duration-200 ${
-                                hoveredItem === label
-                                  ? 'scale-110'
-                                  : 'scale-100'
-                              } ${collapsed ? 'mr-0' : 'mr-3'} h-5 w-5`}
-                            />
-                          </div>
-                          {!collapsed && (
-                            <span className="transition-all duration-200">
-                              {label}
-                            </span>
-                          )}
-                          {collapsed && (
-                            <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 whitespace-nowrap">
-                              {label}
-                            </div>
-                          )}
-                          {collapsed && active && (
-                            <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-secondary-foreground rounded-full"></div>
-                          )}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </nav>
-              <SidebarFooter userName={user?.name} userRole={user?.role} />
-            </>
-          ) : (
-            <div className="flex flex-1 flex-col">
-              <div className="px-3 py-4">
-                <button
-                  onClick={() =>
-                    router.push(mainLinks[0]?.href || '/dashboard')
-                  }
-                  className={`flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-all duration-200 hover:gap-3 ${
-                    collapsed ? 'justify-center' : ''
-                  }`}
-                  aria-label="Back to Main"
-                  title="Back to Main"
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  {!collapsed && <span>Back to Main</span>}
-                </button>
-              </div>
-              <SidebarFooter userName={user?.name} userRole={user?.role} />
+      {/* Scrollable Navigation Area */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p className="text-sidebar-accent-foreground/70 text-sm">
+                Loading...
+              </p>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col min-h-0">
+            {!isSettingsMode ? (
+              <>
+                <nav className="flex-1 overflow-y-auto overflow-x-hidden">
+                  <ul className="space-y-1 p-3">
+                    {/* Non-grouped items (Dashboard, etc.) */}
+                    {mainMenuLinks.map(renderLink)}
+
+                    {/* INVENTORY MANAGEMENT */}
+                    {inventoryMenuItems.length > 0 && (
+                      <>
+                        {renderGroupHeader(
+                          'inventory',
+                          'Inventory Management',
+                          BarChart,
+                          openGroups.inventory
+                        )}
+                        {openGroups.inventory && (
+                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                            {inventoryMenuItems.map((link) => renderLink(link))}
+                          </ul>
+                        )}
+                      </>
+                    )}
+
+                    {/* STAFF MANAGEMENT */}
+                    {staffMenuItems.length > 0 && (
+                      <>
+                        {renderGroupHeader(
+                          'staff',
+                          'Staff Management',
+                          CreditCard,
+                          openGroups.staff
+                        )}
+                        {openGroups.staff && (
+                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                            {staffMenuItems.map((link) => renderLink(link))}
+                          </ul>
+                        )}
+                      </>
+                    )}
+
+                    {/* COMPANY MANAGEMENT */}
+                    {companyMenuItems.length > 0 && (
+                      <>
+                        {renderGroupHeader(
+                          'company',
+                          'Company Management',
+                          Building,
+                          openGroups.company
+                        )}
+                        {openGroups.company && (
+                          <ul className="space-y-1 mt-1 ml-4 border-l border-sidebar-border/30 pl-2">
+                            {companyMenuItems.map((link) => renderLink(link))}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                  </ul>
+                </nav>
+
+                {/* Footer - positioned at bottom */}
+                <div className="shrink-0">
+                  <SidebarFooter userName={user?.name} userRole={user?.role} />
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col">
+                <div className="px-3 py-4">
+                  <button
+                    onClick={() =>
+                      router.push(mainLinks[0]?.href || '/dashboard')
+                    }
+                    className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-all duration-200 hover:gap-3"
+                    aria-label="Back to Main"
+                    title="Back to Main"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                    <span>Back to Main</span>
+                  </button>
+                </div>
+                <div className="shrink-0 mt-auto">
+                  <SidebarFooter userName={user?.name} userRole={user?.role} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

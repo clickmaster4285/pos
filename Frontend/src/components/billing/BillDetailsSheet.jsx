@@ -21,14 +21,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import {
   Calendar,
   User,
   ShoppingCart,
   History as HistoryIcon,
   RefreshCw,
-  Printer,
   FileText,
 } from 'lucide-react';
 
@@ -63,25 +61,6 @@ const statusTone = (s) => {
 };
 
 // Renders any dynamicAttributes as small chips: key: value
-function AttrChips({ attrs }) {
-  const entries = Object.entries(attrs || {}).filter(
-    ([, v]) => v !== undefined && v !== null && String(v).trim() !== ''
-  );
-  if (!entries.length) return <span className="text-muted-foreground">—</span>;
-  return (
-    <div className="flex flex-wrap gap-1">
-      {entries.map(([k, v]) => (
-        <span
-          key={k}
-          className="text-[11px] px-2 py-0.5 rounded-full border bg-muted/50"
-          title={`${k}: ${v}`}
-        >
-          <span className="capitalize">{k}</span>: {String(v)}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 export default function BillDetailsSheet({
   open,
@@ -100,10 +79,7 @@ export default function BillDetailsSheet({
   const buyer = bill?.buyer || {};
   const items = Array.isArray(bill?.items) ? bill.items : [];
   const refundDetails = bill?.refundDetails || null;
-  const refundHistory = Array.isArray(bill?.refundHistory)
-    ? bill.refundHistory
-    : [];
-  const history = Array.isArray(bill?.history) ? bill.history : [];
+  const historyRaw = Array.isArray(bill?.history) ? bill.history : [];
 
   // Map items from your structure:
   // root: itemName, quantity, price, total, refundAmount, dynamicAttributes{...}
@@ -116,7 +92,7 @@ export default function BillDetailsSheet({
       const refundAmount = Number(row?.refundAmount ?? dyn.refundAmount ?? 0);
       return {
         id: row?._id || row?.OrderItemId || row?.ProductId,
-        itemName: row?.itemName || '—',
+        itemName: row?.itemName || dyn.itemName || '—',
         attrs: dyn,
         quantity: qty,
         price,
@@ -126,23 +102,97 @@ export default function BillDetailsSheet({
     });
   }, [items]);
 
+  // Subtotal / discount / tax / total (current)
   const totals = useMemo(() => {
     const givenSubtotal = Number(bill?.subtotal ?? 0);
     const taxPercent = Number(bill?.taxPercent ?? 0);
     const givenTaxAmount = Number(bill?.taxAmount ?? 0);
     const givenTotal = bill?.total !== undefined ? Number(bill.total) : NaN;
 
+    const discountPercent = Number(bill?.discountPercent ?? 0);
+    const givenDiscountAmount = Number(bill?.discountAmount ?? 0);
+
     const computedSubtotal =
       givenSubtotal ||
       mappedItems.reduce((s, it) => s + (Number(it.total) || 0), 0);
-    const taxAmount =
-      givenTaxAmount || (computedSubtotal * (taxPercent || 0)) / 100;
+
+    const discountAmount =
+      givenDiscountAmount || (computedSubtotal * (discountPercent || 0)) / 100;
+
+    const taxableBase = Math.max(computedSubtotal - discountAmount, 0);
+
+    const taxAmount = givenTaxAmount || (taxableBase * (taxPercent || 0)) / 100;
+
     const total = Number.isFinite(givenTotal)
       ? givenTotal
-      : computedSubtotal + taxAmount;
+      : taxableBase + taxAmount;
 
-    return { subtotal: computedSubtotal, taxPercent, taxAmount, total };
+    return {
+      subtotal: computedSubtotal,
+      discountPercent,
+      discountAmount,
+      taxPercent,
+      taxAmount,
+      total,
+    };
   }, [bill, mappedItems]);
+
+  // Total refunded (bill-level or per-item fallback)
+  const refundedAmount = useMemo(() => {
+    const topLevel =
+      Number(bill?.refundDetails?.totalRefundAmount ?? 0) ||
+      Number(bill?.totalRefundAmount ?? 0);
+
+    if (topLevel) return topLevel;
+
+    // fallback: sum from items
+    return items.reduce((sum, item) => {
+      if (!item) return sum;
+
+      if (item.refundAmount != null) {
+        return sum + Number(item.refundAmount || 0);
+      }
+
+      const hist = Array.isArray(item.refundHistory) ? item.refundHistory : [];
+      const histSum = hist.reduce((s, r) => s + Number(r.refundAmount || 0), 0);
+
+      return sum + histSum;
+    }, 0);
+  }, [bill, items]);
+
+  // current total (already after refunds in your backend)
+  const netTotal = totals.total;
+  // approximate "original" total before refunds
+  const originalTotal = netTotal + refundedAmount;
+
+  // Flatten per-item refund history for display
+  const refundHistory = useMemo(() => {
+    const rows = [];
+
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        const itemName =
+          item?.itemName || item?.dynamicAttributes?.itemName || '—';
+        const hist = Array.isArray(item?.refundHistory)
+          ? item.refundHistory
+          : [];
+
+        hist.forEach((r) => {
+          rows.push({
+            _id: r._id,
+            itemName,
+            refundQuantity: r.refundQuantity,
+            refundAmount: r.refundAmount,
+            refundReason: r.refundReason,
+            refundedBy: r.refundedBy,
+            refundedAt: r.refundedAt,
+          });
+        });
+      }
+    }
+
+    return rows;
+  }, [items]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -181,26 +231,39 @@ export default function BillDetailsSheet({
             <TabsTrigger value="items" className="flex items-center gap-2">
               <ShoppingCart className="w-4 h-4" /> Items
             </TabsTrigger>
-           
+
             <TabsTrigger value="history" className="flex items-center gap-2">
               <HistoryIcon className="w-4 h-4" /> History
             </TabsTrigger>
           </TabsList>
 
-          {/* ITEMS */}
+          {/* ITEMS TAB */}
           <TabsContent value="items" className="mt-6 space-y-6">
             {/* Overview */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Overview</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">Subtotal</div>
                   <div className="text-lg font-semibold">
                     {money(totals.subtotal, currencySymbol)}
                   </div>
                 </div>
+
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Discount
+                    {totals.discountPercent
+                      ? ` (${totals.discountPercent}%)`
+                      : ''}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {money(totals.discountAmount, currencySymbol)}
+                  </div>
+                </div>
+
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">
                     Tax ({totals.taxPercent}%)
@@ -209,6 +272,23 @@ export default function BillDetailsSheet({
                     {money(totals.taxAmount, currencySymbol)}
                   </div>
                 </div>
+
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">Refunded</div>
+                  <div className="text-lg font-semibold text-amber-700">
+                    {money(refundedAmount, currencySymbol)}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Total (Current)
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {money(netTotal, currencySymbol)}
+                  </div>
+                </div>
+
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">
                     Payment Method
@@ -217,16 +297,54 @@ export default function BillDetailsSheet({
                     {bill?.paymentMethod || '—'}
                   </div>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="text-lg font-semibold">
-                    {money(totals.total, currencySymbol)}
+              </CardContent>
+            </Card>
+
+            {/* Customer & Payment */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">
+                  Customer &amp; Payment
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Customer</div>
+                  <div className="font-medium flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    {buyer?.name || '—'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Email: {buyer?.email || '—'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Phone: {buyer?.phone || '—'}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">
+                    Payment Details
+                  </div>
+                  <div className="font-medium capitalize">
+                    Method: {bill?.paymentMethod || '—'}
+                  </div>
+                  {bill?.paymentNumber && (
+                    <div className="text-xs text-muted-foreground">
+                      Reference: {bill.paymentNumber}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Original Total (approx):{' '}
+                    <span className="font-semibold">
+                      {money(originalTotal, currencySymbol)}
+                    </span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Items Table: itemName, dynamicAttributes (chips), Qty, Price, Total, Refund Amount */}
+            {/* Items Table */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">
@@ -238,18 +356,16 @@ export default function BillDetailsSheet({
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-medium">Item</TableHead>
-                      <TableHead className="font-medium">Attributes</TableHead>
-                      <TableHead className="text-right font-medium">
-                        Qty
-                      </TableHead>
+
                       <TableHead className="text-right font-medium">
                         Price
                       </TableHead>
                       <TableHead className="text-right font-medium">
-                        Total
+                        Qty
                       </TableHead>
+
                       <TableHead className="text-right font-medium">
-                        Refund Amount
+                        Total
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -257,7 +373,7 @@ export default function BillDetailsSheet({
                     {mappedItems.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={6}
+                          colSpan={5}
                           className="text-center text-muted-foreground"
                         >
                           No items found
@@ -268,25 +384,16 @@ export default function BillDetailsSheet({
                         <TableRow key={it.id}>
                           <TableCell className="align-top">
                             <div className="font-medium">{it.itemName}</div>
-                            {/* (Optional) tiny ids line if you want:
-                            <div className="text-[11px] text-muted-foreground">
-                              {it.id}
-                            </div> */}
                           </TableCell>
-                          <TableCell className="align-top">
-                            <AttrChips attrs={it.attrs} />
+
+                          <TableCell className="text-right align-top">
+                            {money(it.price, currencySymbol)}
                           </TableCell>
                           <TableCell className="text-right align-top">
                             {it.quantity}
                           </TableCell>
                           <TableCell className="text-right align-top">
-                            {money(it.price, currencySymbol)}
-                          </TableCell>
-                          <TableCell className="text-right align-top">
                             {money(it.total, currencySymbol)}
-                          </TableCell>
-                          <TableCell className="text-right align-top">
-                            {money(it.refundAmount, currencySymbol)}
                           </TableCell>
                         </TableRow>
                       ))
@@ -358,6 +465,7 @@ export default function BillDetailsSheet({
                       <Table>
                         <TableHeader className="bg-muted/50">
                           <TableRow>
+                            <TableHead className="font-medium">Item</TableHead>
                             <TableHead className="font-medium">Qty</TableHead>
                             <TableHead className="font-medium">
                               Amount
@@ -365,19 +473,20 @@ export default function BillDetailsSheet({
                             <TableHead className="font-medium">
                               Reason
                             </TableHead>
-                            <TableHead className="font-medium">By</TableHead>
+
                             <TableHead className="font-medium">At</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {refundHistory.map((r) => (
                             <TableRow key={r._id}>
+                              <TableCell>{r.itemName || '—'}</TableCell>
                               <TableCell>{r.refundQuantity}</TableCell>
                               <TableCell>
                                 {money(r.refundAmount, currencySymbol)}
                               </TableCell>
                               <TableCell>{r.refundReason || '—'}</TableCell>
-                              <TableCell>{r.refundedBy || '—'}</TableCell>
+
                               <TableCell>{fmtDate(r.refundedAt)}</TableCell>
                             </TableRow>
                           ))}
@@ -390,10 +499,9 @@ export default function BillDetailsSheet({
             )}
           </TabsContent>
 
-
-          {/* HISTORY */}
+          {/* HISTORY TAB */}
           <TabsContent value="history" className="mt-6">
-            {history.length === 0 ? (
+            {historyRaw.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center text-muted-foreground">
                   No history available
@@ -403,16 +511,16 @@ export default function BillDetailsSheet({
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium">
-                    Activity Timeline ({history.length})
+                    Activity Timeline ({historyRaw.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {history.map((h, idx) => (
+                    {historyRaw.map((h, idx) => (
                       <div key={h._id || idx} className="flex gap-3">
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 bg-primary rounded-full mt-1.5" />
-                          {idx < history.length - 1 && (
+                          {idx < historyRaw.length - 1 && (
                             <div className="w-px h-full bg-border mt-2" />
                           )}
                         </div>
@@ -449,14 +557,15 @@ export default function BillDetailsSheet({
         <SheetFooter className="mt-6 pt-4 border-t">
           <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="text-xs text-muted-foreground flex flex-col">
-              <span className="flex items-center gap-1">
-                <FileText className="w-3 h-3" /> ID: {bill?._id || '—'}
-              </span>
+             
               <span>Updated: {fmtDate(updatedAt)}</span>
             </div>
-           
-            
-          
+
+            {onPrint && (
+              <Button variant="outline" size="sm" onClick={() => onPrint(bill)}>
+                Print Bill
+              </Button>
+            )}
           </div>
         </SheetFooter>
       </SheetContent>

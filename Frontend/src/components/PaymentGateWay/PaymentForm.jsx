@@ -227,11 +227,11 @@ function CheckoutForm({
                     className="text-sm text-gray-600 cursor-pointer"
                   >
                     I agree to the{' '}
-                    <a href="/terms" className="text-primary/60 hover:underline">
+                    <a href="/admin/terms" className="text-primary/60 hover:underline">
                       Terms and Conditions
                     </a>{' '}
                     and{' '}
-                    <a href="/privacy" className="text-primary/60 hover:underline">
+                    <a href="/admin/privacy" className="text-primary/60 hover:underline">
                       Privacy Policy
                     </a>
                   </Label>

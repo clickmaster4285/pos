@@ -56,6 +56,7 @@ const getSingleOrderId = (billData, items) =>
 export default function BillingPage() {
   const [bills, setBills] = useState([]);
   const [selectedBill, setSelectedBill] = useState(null);
+  const [detailsBill, setDetailsBill] = useState(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [refundType, setRefundType] = useState('partial');
@@ -68,6 +69,7 @@ export default function BillingPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [items, setItems] = useState([]);
   const [buyer, setBuyer] = useState({ name: '', email: '', phone: '' });
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [taxPercent, setTaxPercent] = useState(0);
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.CASH);
@@ -98,6 +100,7 @@ export default function BillingPage() {
   const settingsRaw = company?.invoiceSettings ?? {};
   const currencySymbol =
     settingsRaw?.currency?.symbol ?? company?.currency?.symbol ?? '€';
+  
 
   useEffect(() => {
     if (company) {
@@ -195,16 +198,24 @@ export default function BillingPage() {
 
   const updateQty = (index, qty) => {
     setItems((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              qty: Math.max(1, Math.min(qty, item.availableQty)),
-              lineTotal:
-                Math.max(1, Math.min(qty, item.availableQty)) * item.price,
-            }
-          : item
-      )
+      prev.map((item, i) => {
+        if (i !== index) return item;
+
+        const raw = Number(qty) || 1;
+
+        const maxQty =
+          typeof item.availableQty === 'number' && item.availableQty > 0
+            ? item.availableQty
+            : raw; // if no availableQty, don't clamp by stock
+
+        const safeQty = Math.max(1, Math.min(raw, maxQty));
+
+        return {
+          ...item,
+          qty: safeQty,
+          lineTotal: safeQty * Number(item.price || 0),
+        };
+      })
     );
   };
 
@@ -216,28 +227,28 @@ export default function BillingPage() {
     return items.reduce((sum, item) => sum + item.lineTotal, 0);
   }, [items]);
 
+  const discountAmount = useMemo(() => {
+    const p = Number(discountPercent) || 0;
+    return (subtotal * p) / 100;
+  }, [subtotal, discountPercent]);
+
   const taxAmount = useMemo(() => {
-    return (subtotal * (Number(taxPercent) || 0)) / 100;
-  }, [subtotal, taxPercent]);
+    const taxableBase = Math.max(subtotal - discountAmount, 0);
+    return (taxableBase * (Number(taxPercent) || 0)) / 100;
+  }, [subtotal, discountAmount, taxPercent]);
 
   const grandTotal = useMemo(() => {
-    return subtotal + taxAmount;
-  }, [subtotal, taxAmount]);
+    const taxableBase = Math.max(subtotal - discountAmount, 0);
+    return taxableBase + taxAmount;
+  }, [subtotal, discountAmount, taxAmount]);
 
-  // UPDATED: Only shape and mapping changed to match your controller
   const handleCreateBill = async (billData) => {
     try {
       setCreating(true);
 
-      // 1) Collect orderIds the same way you already do
-      const orderIds = extractOrderIds(billData, items);
+      // 1) Collect orderIds from billData or items
+      const orderIds = extractOrderIds(billData, billData?.items || items);
 
-      if (!orderIds.length) {
-        alert('Please select one order to bill (missing orderId).');
-        return;
-      }
-
-      // If your schema supports ONLY ONE OrderId, enforce it here:
       if (orderIds.length > 1) {
         alert(
           'Only one order can be billed at a time. Please remove extra orders.'
@@ -245,17 +256,27 @@ export default function BillingPage() {
         return;
       }
 
-      const orderId = String(orderIds[0]); // <— SINGLE string now
+      const orderId = orderIds[0] ? String(orderIds[0]) : undefined;
 
-      // 2) Build payload your controller expects (single orderId)
+      // 2) Items to send (use what CreateBillDialog built in draftBill)
+      const apiItems = Array.isArray(billData?.items) ? billData.items : [];
+
+      if (!apiItems.length && !orderId) {
+        alert('Please add at least one item or select an order.');
+        return;
+      }
+
+      // 3) Build payload for controller (order bill, product bill, or mixed)
       const payload = {
-        orderId, // <— NOT an array
+        ...(orderId ? { orderId } : {}),
+        items: apiItems, // controller handles qty/quantity & total/lineTotal
         buyer: {
           name: buyer?.name || '',
           email: buyer?.email || '',
           phone: buyer?.phone || '',
         },
         taxPercent: Number(taxPercent) || 0,
+        discountPercent: Number(discountPercent) || 0,
         notes: notes || '',
         paymentMethod: toBackendPaymentMethod(paymentMethod),
         ...(paymentMethod !== PAYMENT_METHODS.CASH && paymentNumber
@@ -281,15 +302,6 @@ export default function BillingPage() {
     } finally {
       setCreating(false);
     }
-  };
-
-  const handlePrint = (bill) => {
-    console.log('Printing bill:', bill.billNumber);
-  };
-
-  const handlePrintThermal = (bill) => {
-    // This function will be passed to BillRow to trigger thermal printing
-    console.log('Triggering thermal print for bill:', bill.billNumber);
   };
 
   const handleDelete = async (billId) => {
@@ -334,7 +346,7 @@ export default function BillingPage() {
     try {
       setRefunding(true);
       const payload = buildRefundPayload(bill, refundData);
-console.log("payload" , payload)
+      console.log('payload', payload);
       if (!payload.billId) return alert('No bill id provided');
       if (!payload.refundItems.length)
         return alert('Select at least one item to refund');
@@ -361,6 +373,7 @@ console.log("payload" , payload)
     setPaymentNumber('');
     setPaymentMethod(PAYMENT_METHODS.CASH);
     setTaxPercent(taxRates.taxRateCash);
+    setDiscountPercent(0); // 👈 reset discount
   };
 
   return (
@@ -402,14 +415,12 @@ console.log("payload" , payload)
                     }))
                   }
                   onEdit={(bill, type) => {
-                    setSelectedBill(bill);
+                    setSelectedBill(bill); // 👉 makes !!selectedBill = true
                     setRefundType(type);
                     setIsRefundDialogOpen(true);
                   }}
-                  onPrint={handlePrint}
-                  onPrintThermal={handlePrintThermal}
                   onDelete={handleDelete}
-                  onView={() => setSelectedBill(bill)}
+                  onView={() => setDetailsBill(bill)}
                   updatePermission={true}
                   deletePermission={true}
                   currencySymbol={currencySymbol}
@@ -420,11 +431,13 @@ console.log("payload" , payload)
         </div>
       </div>
       <BillDetailsSheet
-        open={!!selectedBill}
-        onOpenChange={() => setSelectedBill(null)}
-        bill={selectedBill}
-        onPrint={handlePrint}
-        totalRefundQty={selectedBill?.items?.reduce(
+        open={!!detailsBill} // ✅ controlled by detailsBill
+        onOpenChange={(open) => {
+          if (!open) setDetailsBill(null); // close sheet
+        }}
+        bill={detailsBill}
+        totalRefundQty={detailsBill?.items?.reduce(
+          // ✅ use detailsBill here too
           (sum, item) =>
             sum +
             (item.refundHistory?.reduce(
@@ -435,6 +448,7 @@ console.log("payload" , payload)
         )}
         currencySymbol={currencySymbol}
       />
+
       <CreateBillDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
@@ -469,6 +483,9 @@ console.log("payload" , payload)
         taxRates={taxRates}
         companyLoading={companyLoading}
         currencySymbol={currencySymbol}
+        discountPercent={discountPercent}
+        discountAmount={discountAmount}
+        setDiscountPercent={setDiscountPercent}
       />
       <RefundDialog
         open={isRefundDialogOpen}
@@ -479,8 +496,9 @@ console.log("payload" , payload)
         refundType={refundType}
         currencySymbol={currencySymbol}
       />
-      {selectedBill && (
-        <ThermalPrintSlip bill={selectedBill} currencySymbol={currencySymbol} />
+
+      {detailsBill && (
+        <ThermalPrintSlip bill={detailsBill} currencySymbol={currencySymbol} />
       )}
     </div>
   );

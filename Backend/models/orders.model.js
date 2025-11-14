@@ -31,7 +31,7 @@ const OrderSchema = new Schema(
 
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'partial', 'paid'],
+      enum: ['unpaid', 'partial', 'paid', 'refunded', 'partial_refunded'],
       default: 'unpaid',
     },
     shippingAddressId: {

@@ -20,10 +20,9 @@ export default function CreateNewOrderInBill({ onCreated }) {
 
   const handleSubmit = async (payload) => {
     try {
-      const created = await createOrder(payload).unwrap(); // ← server returns created order (or {data: order})
+      const created = await createOrder(payload).unwrap();
       const orderObj = created?.data || created;
       toast.success('Order created');
-      // Send the freshly created order up to the bill dialog
       await onCreated?.(orderObj);
       setOpen(false);
     } catch (err) {
@@ -46,14 +45,18 @@ export default function CreateNewOrderInBill({ onCreated }) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 border-b bg-muted/40">
             <DialogTitle>Create New Order</DialogTitle>
             <DialogDescription>
               Fill in the order details and submit.
             </DialogDescription>
           </DialogHeader>
-          <OrderForm onSubmit={handleSubmit} loading={isLoading} />
+
+          {/* Scrollable form area */}
+          <div className="overflow-y-auto px-6 py-4">
+            <OrderForm onSubmit={handleSubmit} loading={isLoading} />
+          </div>
         </DialogContent>
       </Dialog>
     </>

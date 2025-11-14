@@ -41,7 +41,8 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
+import { useSelector } from 'react-redux';
+import { useGetCompanyQuery } from '@/features/CompanyApi';
 const num = (v) => Number(v || 0);
 
 const getRefundedAmount = (bill = {}) => {
@@ -101,9 +102,7 @@ export function BillRow({
   deletePermission,
   currencySymbol = '€',
 }) {
-
   const refundedAmount = useMemo(() => getRefundedAmount(bill), [bill]);
-
 
   const handleDownloadPDF = () => {
     try {
@@ -211,45 +210,56 @@ export function BillRow({
       alert('Failed to generate PDF. Please check the console for details.');
     }
   };
+  const user = useSelector((state) => state.auth.user);
+
+  const { data: companyRes, isLoading, isError } = useGetCompanyQuery();
+  const companyName = companyRes?.data.name || null;
 
   const handleThermalPrint = () => {
     console.log('Initiating thermal print for bill:', bill.billNumber);
+    const companyName = companyRes?.data.name || null;
+
     const formattedContent = [
       '==============================',
       `Bill #${bill.billNumber}`,
       `Date: ${new Date(bill.createdAt).toLocaleString()}`,
       '==============================',
+      'Buyer:',
+      `  Name: ${bill.buyer?.name || '—'}`,
+      `  Phone: ${bill.buyer?.phone || '—'}`,
+      '==============================',
       'Items:',
       ...bill.items.flatMap((item) => [
         `${item.quantity}x ${item.itemName}`,
-
         `  ${currencySymbol}${num(item.price).toFixed(2)} x ${
           item.quantity
         } = ${currencySymbol}${num(item.total).toFixed(2)}`,
       ]),
+      `Payment: ${bill.paymentMethod.replace('_', ' ')}`,
+      ...(bill.paymentNumber ? [`  Ref: ${bill.paymentNumber}`] : []),
       '==============================',
       `Subtotal: ${currencySymbol}${num(bill.subtotal).toFixed(2)}`,
+      `Discount: ${currencySymbol}${num(bill.discountAmount).toFixed(2)}`,
       `Tax (${bill.taxPercent}%): ${currencySymbol}${num(
         bill.taxAmount
       ).toFixed(2)}`,
       `Total: ${currencySymbol}${num(bill.total).toFixed(2)}`,
-      '==============================',
-      'Buyer:',
-      `  Name: ${bill.buyer?.name || '—'}`,
-      `  Email: ${bill.buyer?.email || '—'}`,
-      `  Phone: ${bill.buyer?.phone || '—'}`,
-      `Payment: ${bill.paymentMethod.replace('_', ' ')}`,
-      ...(bill.paymentNumber ? [`  Ref: ${bill.paymentNumber}`] : []),
       '==============================',
       'Thank you for your purchase!',
     ].join('\n');
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
-      <pre style="font-family: monospace; font-size: 12px; line-height: 1.2;">
+    <div style="font-family: monospace; line-height: 1.2;">
+      <div style="font-weight: 900; font-size: 16px; margin-top: 6px;">
+        ${companyName.toUpperCase()}
+      </div>
+      <pre style="font-size: 12px;">
 ${formattedContent}
       </pre>
-    `);
+    </div>
+  `);
+
     printWindow.document.close();
     printWindow.print();
     console.log('Thermal print completed for bill:', bill.billNumber);
