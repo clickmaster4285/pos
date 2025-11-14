@@ -27,6 +27,7 @@ import { landingApi } from '@/features/landingApi';
 import { orderApi } from '@/features/orderApi';
 import { tableApi } from '@/features/tableApi';
 import { dataManagementApi } from '@/features/dataManagementApi';
+import { companyExcelApi } from '@/features/companyExcelApi';
 
 export const store = configureStore({
   reducer: {
@@ -56,6 +57,7 @@ export const store = configureStore({
     [superAdminApi.reducerPath]: superAdminApi.reducer,
     [landingApi.reducerPath]: landingApi.reducer,
     [dataManagementApi.reducerPath]: dataManagementApi.reducer,
+    [companyExcelApi.reducerPath]: companyExcelApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -84,6 +86,7 @@ export const store = configureStore({
       landingApi.middleware,
       tableApi.middleware,
       dataManagementApi.middleware,
+      companyExcelApi.middleware,
     ),
 });
 

@@ -7,7 +7,7 @@ import {
   cleanupTempFiles ,
   exportCompanyData,
   importCompanyData,
-} from '../backup/dataManagementController.js';
+} from '../backup/dataManagement.controller.js';
 import passport from '../middleware/passportAuth.middleware.js';
 
 const router = express.Router();
