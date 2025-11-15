@@ -1,107 +1,122 @@
 // src/controllers/companyExcelController.js
 import ExcelJS from "exceljs";
 import { MongoClient } from "mongodb";
-// import Company from '../models/company.model.js';
 
 const MONGO_URI = process.env.MONGO_URI;
 
 export const exportCompanyExcel = async (req, res) => {
   const { companyId } = req.query;
-  const user = req.user; // attached by auth middleware
-  console.log("the companyId: ", companyId);
-  // ------------------------------------------------------------
-  // 1. Permission check
-  // ------------------------------------------------------------
-  // const isSuperAdmin = user?.role === 'superadmin';
-  // console.log("teh e ")
-  // if (!isSuperAdmin) {
-  //   const company = await Company.findOne({ companyId: companyId, owner: user.userId });
-  //   if (!company) return res.status(403).json({ message: 'Forbidden' });
-  // }
-
   let client;
+
   try {
-    // ------------------------------------------------------------
-    // 2. Connect once
-    // ------------------------------------------------------------
     client = new MongoClient(MONGO_URI);
     await client.connect();
     const db = client.db();
 
-    // ------------------------------------------------------------
-    // 3. Find **all** collections that contain at least one doc
-    //     with `companyId` field equal to the requested id
-    // ------------------------------------------------------------
+    // Find relevant collections
     const allColls = await db.listCollections().toArray();
     const relevantColls = [];
 
     for (const collInfo of allColls) {
       const coll = db.collection(collInfo.name);
-      const sample = await coll.findOne({ companyId: companyId });
+      const sample = await coll.findOne({ companyId });
       if (sample) {
         relevantColls.push({ name: collInfo.name, collection: coll });
       }
     }
 
     if (relevantColls.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No data found for this company" });
+      return res.status(404).json({ message: "No data found for this company" });
     }
 
-    // ------------------------------------------------------------
-    // 4. Build Excel workbook
-    // ------------------------------------------------------------
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "YourApp";
     workbook.created = new Date();
 
-    for (const { name: sheetName, collection } of relevantColls) {
-      // fetch *all* docs for this collection
+    const detailSheetMap = {}; // To store detail sheet references
+
+    for (const { name: collName, collection } of relevantColls) {
       const docs = await collection.find({ companyId }).toArray();
-      if (!docs.length) continue; // safety
+      if (!docs.length) continue;
 
-      const worksheet = workbook.addWorksheet(sheetName);
+      const sanitizedName = collName.replace(/[^a-zA-Z0-9]/g, "_");
+      const worksheet = workbook.addWorksheet(sanitizedName.slice(0, 31)); // Excel limit
 
-      // ---- Header (keys of first document, skip internal fields) ----
-      const first = docs[0];
-      const keys = Object.keys(first).filter(
-        (k) => !k.startsWith("__") && k !== "_id"
-      );
+      // Define allowed fields per collection
+      const fieldConfig = getFieldConfig(collName);
+      const mainFields = fieldConfig.main;
 
-      worksheet.addRow(keys); // header row
+      // Add header
+      worksheet.addRow(mainFields);
 
-      // ---- Data rows ------------------------------------------------
-      docs.forEach((doc) => {
-        const row = keys.map((k) => {
-          const val = doc[k];
-          // format Date objects nicely
-          if (val instanceof Date) return val.toISOString().split("T")[0];
-          return val ?? "";
+      // Process each document
+      docs.forEach((doc, docIndex) => {
+        const row = [];
+
+        mainFields.forEach((field) => {
+          const value = doc[field];
+
+          // Handle objects → create detail sheet
+          if (value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0) {
+            const detailKey = `${collName}_${field}_detail_${docIndex}`;
+            if (!detailSheetMap[detailKey]) {
+              detailSheetMap[detailKey] = createObjectDetailSheet(workbook, collName, doc, field, mainFields, docIndex);
+            }
+            const sheetName = detailSheetMap[detailKey].name;
+            row.push({
+              text: "View Detail",
+              hyperlink: `#'${sheetName}'!A1`,
+              tooltip: `View full ${field}`
+            });
+          }
+          // Handle arrays
+          else if (Array.isArray(value) && value.length > 0) {
+            const detailKey = `${collName}_${field}_detail_${docIndex}`;
+            if (!detailSheetMap[detailKey]) {
+              detailSheetMap[detailKey] = createArrayDetailSheet(workbook, collName, doc, field, mainFields, docIndex);
+            }
+            const sheetName = detailSheetMap[detailKey].name;
+            row.push({
+              text: "View Detail",
+              hyperlink: `#'${sheetName}'!A1`,
+              tooltip: `View ${value.length} ${field}`
+            });
+          }
+          // Normal value
+          else {
+            row.push(value ?? "");
+          }
         });
-        worksheet.addRow(row);
+
+        const rowObj = worksheet.addRow(row);
+
+        // Apply hyperlinks
+        mainFields.forEach((field, colIdx) => {
+          const cell = rowObj.getCell(colIdx + 1);
+          const val = doc[field];
+          if ((Array.isArray(val) && val.length > 0) || (val && typeof val === "object" && Object.keys(val).length > 0)) {
+            cell.font = { color: { argb: "FF0000FF" }, underline: true };
+            cell.value = row[colIdx]; // already has hyperlink
+          }
+        });
       });
 
-      // ---- Auto-size columns ----------------------------------------
-      worksheet.columns = keys.map((key) => ({
+      // Auto-size columns
+      worksheet.columns = mainFields.map((key) => ({
         header: key,
         key,
-        width: Math.max(key.length, 12),
+        width: Math.max(key.length + 2, 15),
       }));
     }
 
-    // ------------------------------------------------------------
-    // 5. Stream the file back to the client
-    // ------------------------------------------------------------
+    // Write file
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="company-${companyId}-export-${new Date()
-        .toISOString()
-        .slice(0, 10)}.xlsx"`
+      `attachment; filename="company-${companyId}-export-${new Date().toISOString().slice(0, 10)}.xlsx"`
     );
 
     await workbook.xlsx.write(res);
@@ -113,3 +128,122 @@ export const exportCompanyExcel = async (req, res) => {
     if (client) await client.close();
   }
 };
+
+// Helper: Define which fields to show per collection
+function getFieldConfig(collectionName) {
+  const commonExclude = ["_id", "history", "__v", "isActive", "deleted", "createdAt", "updatedAt"];
+
+  const configs = {
+    products: {
+      main: ["companyId", "productName", "SKU", "description", "tags", "imgUrl", "category", "subCategoryName", "vendor", "ingredient", "metaData", "sellingPrice", "costPrice", "quantity", "minStockLevel", "createdBy"]
+    },
+    categories: {
+      main: ["categoryName", "subCategory", "companyId", "description", "tags", "createdBy"]
+    },
+    companies: {
+      main: ["name", "companyId", "industryName", "address", "contactEmail", "contactPhone", "plan", "owner", "gain", "invoiceSettings", "companyLogo"]
+    },
+    vendors: {
+      main: ["name", "contactName", "email", "phone", "address", "companyId", "paymentType", "createdBy"]
+    },
+    bills: {
+      main: ["billNumber", "companyId", "createdBy", "buyer", "items", "subtotal", "taxPercent", "taxAmount", "total", "paymentMethod", "notes", "refundDetails", "status", "discountPercent", "discountAmount"]
+    },
+    users: {
+      main: ["name", "userId", "companyId", "email", "role", "address", "baseSalaryMonthly"]
+    }
+  };
+
+  const config = configs[collectionName] || { main: [] };
+  return {
+    main: config.main.filter(f => !commonExclude.includes(f))
+  };
+}
+
+// Create detail sheet for object field (with parent row context)
+function createObjectDetailSheet(workbook, collName, doc, fieldName, mainFields, docIndex) {
+  const safeName = `${collName}_${fieldName}_detail_${docIndex}`.slice(0, 31);
+  let sheet = workbook.getWorksheet(safeName);
+  if (sheet) return { name: safeName };
+
+  sheet = workbook.addWorksheet(safeName);
+
+  // Add parent row context header
+  sheet.addRow([`Full Details for ${collName} Row ${docIndex + 1}`]);
+  mainFields.forEach(field => {
+    if (typeof doc[field] !== "object" || doc[field] == null) { // Only simple fields
+      sheet.addRow([field, doc[field] ?? ""]);
+    }
+  });
+  sheet.addRow([]); // Spacer
+
+  // Now the specific object field
+  const data = doc[fieldName];
+  if (!data || typeof data !== "object") return { name: safeName };
+
+  sheet.addRow([`Expanded: ${fieldName}`]);
+  const keys = Object.keys(data).filter(k => !k.startsWith("__") && k !== "_id");
+  sheet.addRow(["Field", "Value"]);
+  keys.forEach(key => {
+    const val = data[key];
+    const displayVal = Array.isArray(val) ? JSON.stringify(val) : (val ?? "");
+    sheet.addRow([key, displayVal]);
+  });
+
+  sheet.columns = [
+    { width: 25 }, { width: 40 }
+  ];
+
+  return { name: safeName };
+}
+
+// Create detail sheet for array field (with parent row context)
+function createArrayDetailSheet(workbook, collName, doc, fieldName, mainFields, docIndex) {
+  const safeName = `${collName}_${fieldName}_detail_${docIndex}`.slice(0, 31);
+  let sheet = workbook.getWorksheet(safeName);
+  if (sheet) return { name: safeName };
+
+  sheet = workbook.addWorksheet(safeName);
+
+  // Add parent row context header
+  sheet.addRow([`Full Details for ${collName} Row ${docIndex + 1}`]);
+  mainFields.forEach(field => {
+    if (typeof doc[field] !== "object" || doc[field] == null) { // Only simple fields
+      sheet.addRow([field, doc[field] ?? ""]);
+    }
+  });
+  sheet.addRow([]); // Spacer
+
+  // Now the specific array field
+  const array = doc[fieldName];
+  sheet.addRow([`Expanded: ${fieldName} (${array.length} items)`]);
+  sheet.addRow([]);
+
+  if (array.length === 0) {
+    sheet.addRow(["No items"]);
+    return { name: safeName };
+  }
+
+  // If array of objects → show as table
+  if (array.every(item => item && typeof item === "object")) {
+    const keys = [...new Set(array.flatMap(Object.keys))].filter(k => !k.startsWith("__") && k !== "_id");
+    sheet.addRow(keys);
+
+    array.forEach(item => {
+      const row = keys.map(k => {
+        const val = item[k];
+        return val ?? "";
+      });
+      sheet.addRow(row);
+    });
+    sheet.columns = keys.map(() => ({ width: 20 }));
+  } else {
+    // Primitive array
+    array.forEach((item, i) => {
+      sheet.addRow([i + 1, item]);
+    });
+    sheet.columns = [{ width: 10 }, { width: 30 }];
+  }
+
+  return { name: safeName };
+}
