@@ -4,8 +4,31 @@ import { MongoClient, ObjectId } from "mongodb";
 
 const MONGO_URI = process.env.MONGO_URI;
 
-// Common fields to exclude from ALL collections
-const commonExclude = ["_id", "history", "__v", "isActive", "deleted", "updatedAt"];
+// Fields to exclude from every collection
+const commonExclude = ["_id", "history", "__v", "isActive", "deleted", "updatedAt", "companyId", "imgUrl"];
+
+// Colour palette
+const COLORS = {
+  primary: '4F81BD',
+  secondary: 'D0CECE',
+  accent: 'FFC000',
+  success: '70AD47',
+  header: '4F81BD',
+  lightBlue: 'DDEBF7',
+  lightGray: 'F2F2F2',
+  white: 'FFFFFF',
+  border: 'A5A5A5'
+};
+
+/* -------------------------------------------------
+   Helper: "-" for any empty value
+   ------------------------------------------------- */
+const toDash = (v) => {
+  if (v === null || v === undefined || v === "") return "-";
+  if (Array.isArray(v) && v.length === 0) return "-";
+  if (typeof v === "object" && Object.keys(v).length === 0) return "-";
+  return v;
+};
 
 export const exportCompanyExcel = async (req, res) => {
   const { companyId } = req.query;
@@ -22,10 +45,10 @@ export const exportCompanyExcel = async (req, res) => {
     const nameCache = {
       users: {},     // userId → name
       companies: {}, // companyId → name
-      ids: {}        // flat cache for any ObjectId → name
+      ids: {}        // ObjectId → name
     };
 
-    // Preload users
+    // Pre‑load users
     const usersColl = db.collection("users");
     const users = await usersColl.find({ companyId }).toArray();
     users.forEach(u => {
@@ -33,7 +56,7 @@ export const exportCompanyExcel = async (req, res) => {
       nameCache.users[key] = u.name || u.email || "Unknown User";
     });
 
-    // Preload companies
+    // Pre‑load companies
     const companiesColl = db.collection("companies");
     const companies = await companiesColl.find({ companyId }).toArray();
     companies.forEach(c => {
@@ -46,6 +69,7 @@ export const exportCompanyExcel = async (req, res) => {
     // -------------------------------------------------
     const allColls = await db.listCollections().toArray();
     const relevantColls = [];
+    const detailSheets = [];
 
     for (const collInfo of allColls) {
       if (collInfo.name === "companies") continue;
@@ -62,18 +86,14 @@ export const exportCompanyExcel = async (req, res) => {
     }
 
     // -------------------------------------------------
-    // RESOLVE ANY OBJECTID → NAME (search across relevant collections)
+    // RESOLVE OBJECTID → NAME
     // -------------------------------------------------
     const resolveIdToName = async (id) => {
-      if (!id) return "";
+      if (!id) return "-";
       const idStr = id.toString();
-
-      if (nameCache.ids[idStr]) {
-        return nameCache.ids[idStr];
-      }
+      if (nameCache.ids[idStr]) return nameCache.ids[idStr];
 
       const objId = id instanceof ObjectId ? id : new ObjectId(id);
-
       for (const { name: collName, collection } of relevantColls) {
         const doc = await collection.findOne({ _id: objId });
         if (doc) {
@@ -83,7 +103,6 @@ export const exportCompanyExcel = async (req, res) => {
           return name;
         }
       }
-
       return idStr;
     };
 
@@ -94,41 +113,36 @@ export const exportCompanyExcel = async (req, res) => {
     workbook.creator = "YourApp";
     workbook.created = new Date();
 
-    const detailSheetMap = {};
-
     // -------------------------------------------------
-    // GET MAIN FIELDS (dynamic + special case for users)
+    // GET MAIN FIELDS – scan **all** docs (no .limit)
     // -------------------------------------------------
     const getMainFields = async (collName, collection) => {
-      // Special case: users sheet uses fixed fields
       if (collName === "users") {
         return ["name", "email", "role", "subRole", "department", "phone", "address", "baseSalaryMonthly"];
       }
 
-      // For all other collections: discover fields from first 5 docs
-      const cursor = collection.find({ companyId }).limit(5);
-      const samples = await cursor.toArray();
-      if (!samples.length) return [];
+      const docs = await collection.find({ companyId }).toArray();
+      if (!docs.length) return [];
 
       const keySet = new Set();
-      samples.forEach(doc => {
+      docs.forEach(doc => {
         Object.keys(doc).forEach(k => {
           if (!commonExclude.includes(k)) keySet.add(k);
         });
       });
 
-      // Order: fields present in all samples first
-      const alwaysPresent = samples.reduce((acc, doc) => {
+      // fields present in **every** document first
+      const alwaysPresent = docs.reduce((acc, doc) => {
         const present = Object.keys(doc).filter(k => !commonExclude.includes(k));
         return acc.filter(k => present.includes(k));
-      }, Object.keys(samples[0]).filter(k => !commonExclude.includes(k)));
+      }, [...keySet]);
 
       const rest = [...keySet].filter(k => !alwaysPresent.includes(k));
       return [...alwaysPresent, ...rest];
     };
 
     // -------------------------------------------------
-    // PROCESS EACH COLLECTION
+    // PROCESS EACH COLLECTION (MAIN SHEETS)
     // -------------------------------------------------
     for (const { name: collName, collection } of relevantColls) {
       const docs = collName === "users"
@@ -144,86 +158,132 @@ export const exportCompanyExcel = async (req, res) => {
       const mainFields = await getMainFields(collName, collection);
       if (!mainFields.length) continue;
 
-      // Header row (camelCase → Title Case)
-      worksheet.addRow(mainFields.map(camelToTitle));
+      // ---------- TITLE (collection name) ----------
+      const titleRow = worksheet.addRow([`${camelToTitle(sheetName)} Data`]);
+      titleRow.font = { size: 16, bold: true, color: { argb: COLORS.white } };
+      titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.primary } };
+      titleRow.alignment = { horizontal: 'left', vertical: 'middle' };
+      worksheet.mergeCells(1, 1, 1, mainFields.length);
 
+      // ---------- HEADER (field titles) ----------
+      const headerRow = worksheet.addRow(mainFields.map(camelToTitle));
+      headerRow.font = { bold: true, color: { argb: COLORS.white } };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.header } };
+      headerRow.alignment = { horizontal: 'left', vertical: 'middle' };
+      headerRow.eachCell(cell => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: COLORS.border } },
+          left: { style: 'thin', color: { argb: COLORS.border } },
+          bottom: { style: 'thin', color: { argb: COLORS.border } },
+          right: { style: 'thin', color: { argb: COLORS.border } }
+        };
+      });
+
+      // ---------- DATA ROWS ----------
       for (const [docIndex, doc] of docs.entries()) {
         const row = [];
 
         for (const field of mainFields) {
           let value = doc[field];
 
-          // Special: userId / createdBy
           if (field === "userId" || field === "createdBy") {
-            value = nameCache.users[value] || value || "";
-          }
-          // Special: companyId
-          else if (field === "companyId") {
-            value = nameCache.companies[value] || value || "";
-          }
-          // Handle ObjectId or hex string → resolve name
-          else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
+            value = nameCache.users[value] || value || "-";
+          } else if (field === "companyId") {
+            value = nameCache.companies[value] || value || "-";
+          } else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
             value = await resolveIdToName(value);
           }
-          // Nested object → detail sheet
+          // nested object → detail sheet
           else if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof ObjectId) && Object.keys(value).length) {
-            const key = `${collName}_${field}_detail_${docIndex}`;
-            if (!detailSheetMap[key]) {
-              detailSheetMap[key] = await createObjectDetailSheet(
-                workbook, collName, doc, field, mainFields, docIndex,
-                nameCache, resolveIdToName
-              );
-            }
-            const sName = detailSheetMap[key].name;
+            const detailSheet = await createObjectDetailSheet(
+              workbook, collName, doc, field, mainFields, docIndex,
+              nameCache, resolveIdToName
+            );
+            detailSheets.push(detailSheet);
             row.push({
-              text: "View Detail",
-              hyperlink: `#'${sName}'!A1`,
-              tooltip: `View full ${field}`
+              text: "View Details",
+              hyperlink: `#'${detailSheet.name}'!A1`,
+              tooltip: `View full ${field} details`
             });
             continue;
           }
-          // Array → detail sheet
+          // array → detail sheet
           else if (Array.isArray(value) && value.length) {
-            const key = `${collName}_${field}_detail_${docIndex}`;
-            if (!detailSheetMap[key]) {
-              detailSheetMap[key] = await createArrayDetailSheet(
-                workbook, collName, doc, field, mainFields, docIndex,
-                nameCache, resolveIdToName
-              );
-            }
-            const sName = detailSheetMap[key].name;
+            const detailSheet = await createArrayDetailSheet(
+              workbook, collName, doc, field, mainFields, docIndex,
+              nameCache, resolveIdToName
+            );
+            detailSheets.push(detailSheet);
             row.push({
-              text: "View Detail",
-              hyperlink: `#'${sName}'!A1`,
-              tooltip: `View ${value.length} ${field}`
+              text: `View ${value.length} Items`,
+              hyperlink: `#'${detailSheet.name}'!A1`,
+              tooltip: `View ${value.length} ${field} items`
             });
             continue;
           }
 
-          row.push(value ?? "-");
+          row.push(toDash(value));
         }
 
         const rowObj = worksheet.addRow(row);
 
-        // Style hyperlinks
+        // alternate row colour
+        if (docIndex % 2 === 0) {
+          rowObj.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } });
+        } else {
+          rowObj.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } });
+        }
+
+        // hyperlink style + borders + left‑align (numbers/booleans stay centered)
         mainFields.forEach((f, i) => {
           const cell = rowObj.getCell(i + 1);
           const val = doc[f];
+
           if ((Array.isArray(val) && val.length) ||
               (val && typeof val === "object" && !(val instanceof ObjectId) && Object.keys(val).length)) {
             cell.font = { color: { argb: "FF0000FF" }, underline: true };
             cell.value = row[i];
           }
+
+          cell.border = {
+            top: { style: 'thin', color: { argb: COLORS.border } },
+            left: { style: 'thin', color: { argb: COLORS.border } },
+            bottom: { style: 'thin', color: { argb: COLORS.border } },
+            right: { style: 'thin', color: { argb: COLORS.border } }
+          };
+
+          // left‑align everything except numbers/booleans
+          if (typeof cell.value === 'number' || typeof cell.value === 'boolean') {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
         });
       }
 
-      // Column config
+      // ---------- COLUMN SETTINGS ----------
+      const displayName = collName === "users" ? "Staff" : camelToTitle(collName);
       worksheet.columns = mainFields.map(k => ({
-        header: camelToTitle(k),
+        header: displayName,//camelToTitle(k)
         key: k,
-        width: Math.max(k.length + 2, 15)
+        width: Math.max(k.length + 4, 12),
+        style: { alignment: { vertical: 'middle' } }
       }));
+
+      // freeze title + header
+      worksheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 2 }];
     }
+
+    // -------------------------------------------------
+    // RE‑ORDER SHEETS – main first, details last
+    // -------------------------------------------------
+    workbook.worksheets.sort((a, b) => {
+      const aMain = !a.name.includes('_detail_');
+      const bMain = !b.name.includes('_detail_');
+      if (aMain && !bMain) return -1;
+      if (!aMain && bMain) return 1;
+      return 0;
+    });
 
     // -------------------------------------------------
     // SEND FILE
@@ -267,41 +327,87 @@ async function createObjectDetailSheet(
   if (sheet) return { name: safeName };
 
   sheet = workbook.addWorksheet(safeName);
-  sheet.addRow([`Details for ${collName} Row ${docIndex + 1}`]);
+
+  // title
+  const titleRow = sheet.addRow([`Details: ${camelToTitle(collName)} - ${camelToTitle(fieldName)} (Row ${docIndex + 1})`]);
+  titleRow.font = { size: 14, bold: true, color: { argb: COLORS.white } };
+  titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.accent } };
+  titleRow.alignment = { horizontal: 'left', vertical: 'middle' };
+  sheet.mergeCells(1, 1, 1, 2);
   sheet.addRow([]);
 
-  // Main fields
+  // main fields header
+  const mfHeader = sheet.addRow(["Main Document Fields"]);
+  mfHeader.font = { bold: true, color: { argb: COLORS.white } };
+  mfHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.secondary } };
+  mfHeader.alignment = { horizontal: 'left' };
+  sheet.mergeCells(3, 1, 3, 2);
+
+  // main fields rows
   for (const field of mainFields) {
     let value = doc[field];
-    if (field === "userId" || field === "createdBy") {
-      value = nameCache.users[value] || value || "";
-    } else if (field === "companyId") {
-      value = nameCache.companies[value] || value || "";
-    } else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
-      value = await resolveIdToName(value);
-    }
+    if (field === "userId" || field === "createdBy") value = nameCache.users[value] || value || "-";
+    else if (field === "companyId") value = nameCache.companies[value] || value || "-";
+    else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) value = await resolveIdToName(value);
+
     if (typeof value !== "object" || value == null) {
-      sheet.addRow([field, value ?? "-"]);
+      const r = sheet.addRow([camelToTitle(field), toDash(value)]);
+      r.alignment = { horizontal: 'left', vertical: 'middle' };
+      if (sheet.rowCount % 2 === 0) {
+        r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } };
+      } else {
+        r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } };
+      }
     }
   }
 
   sheet.addRow([]);
-  sheet.addRow([`Expanded: ${fieldName}`]);
-  sheet.addRow(["Field", "Value"]);
+
+  // expanded object header
+  const expHeader = sheet.addRow([`Expanded: ${camelToTitle(fieldName)}`]);
+  expHeader.font = { bold: true, color: { argb: COLORS.white } };
+  expHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.secondary } };
+  expHeader.alignment = { horizontal: 'left' };
+  sheet.mergeCells(sheet.rowCount, 1, sheet.rowCount, 2);
+
+  const subHeader = sheet.addRow(["Field", "Value"]);
+  subHeader.font = { bold: true, color: { argb: COLORS.white } };
+  subHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.header } };
+  subHeader.alignment = { horizontal: 'left' };
 
   const data = doc[fieldName];
   const keys = Object.keys(data).filter(k => !k.startsWith("__") && k !== "_id");
   for (const key of keys) {
     let val = data[key];
-    if (val && (val instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(val))) {
-      val = await resolveIdToName(val);
-    } else if (Array.isArray(val)) {
-      val = JSON.stringify(val);
+    if (val && (val instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(val))) val = await resolveIdToName(val);
+    else if (Array.isArray(val)) val = JSON.stringify(val);
+    const r = sheet.addRow([camelToTitle(key), toDash(val)]);
+    r.alignment = { horizontal: 'left', vertical: 'middle' };
+    if (sheet.rowCount % 2 === 0) {
+      r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } };
+    } else {
+      r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } };
     }
-    sheet.addRow([key, val ?? "-"]);
   }
 
-  sheet.columns = [{ width: 25 }, { width: 40 }];
+  // borders
+  for (let i = 1; i <= sheet.rowCount; i++) {
+    for (let j = 1; j <= 2; j++) {
+      const c = sheet.getCell(i, j);
+      c.border = {
+        top: { style: 'thin', color: { argb: COLORS.border } },
+        left: { style: 'thin', color: { argb: COLORS.border } },
+        bottom: { style: 'thin', color: { argb: COLORS.border } },
+        right: { style: 'thin', color: { argb: COLORS.border } }
+      };
+    }
+  }
+
+  sheet.columns = [
+    { width: 25, style: { alignment: { vertical: 'middle' } } },
+    { width: 40, style: { alignment: { vertical: 'middle' } } }
+  ];
+
   return { name: safeName };
 }
 
@@ -315,54 +421,113 @@ async function createArrayDetailSheet(
   if (sheet) return { name: safeName };
 
   sheet = workbook.addWorksheet(safeName);
-  sheet.addRow([`Details for ${collName} Row ${docIndex + 1}`]);
+
+  // title
+  const titleRow = sheet.addRow([`Details: ${camelToTitle(collName)} - ${camelToTitle(fieldName)} (Row ${docIndex + 1})`]);
+  titleRow.font = { size: 14, bold: true, color: { argb: COLORS.white } };
+  titleRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.accent } };
+  titleRow.alignment = { horizontal: 'left', vertical: 'middle' };
+  sheet.mergeCells(1, 1, 1, 2);
   sheet.addRow([]);
 
-  // Main fields
+  // main fields header
+  const mfHeader = sheet.addRow(["Main Document Fields"]);
+  mfHeader.font = { bold: true, color: { argb: COLORS.white } };
+  mfHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.secondary } };
+  mfHeader.alignment = { horizontal: 'left' };
+  sheet.mergeCells(3, 1, 3, 2);
+
+  // main fields rows
   for (const field of mainFields) {
     let value = doc[field];
-    if (field === "userId" || field === "createdBy") {
-      value = nameCache.users[value] || value || "";
-    } else if (field === "companyId") {
-      value = nameCache.companies[value] || value || "";
-    } else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
-      value = await resolveIdToName(value);
-    }
+    if (field === "userId" || field === "createdBy") value = nameCache.users[value] || value || "-";
+    else if (field === "companyId") value = nameCache.companies[value] || value || "-";
+    else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) value = await resolveIdToName(value);
+
     if (typeof value !== "object" || value == null) {
-      sheet.addRow([field, value ?? "-"]);
+      const r = sheet.addRow([camelToTitle(field), toDash(value)]);
+      r.alignment = { horizontal: 'left', vertical: 'middle' };
+      if (sheet.rowCount % 2 === 0) {
+        r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } };
+      } else {
+        r.getCell(1).fill = r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } };
+      }
     }
   }
 
   sheet.addRow([]);
   const array = doc[fieldName];
-  sheet.addRow([`Expanded: ${fieldName} (${array.length} items)`]);
-  sheet.addRow([]);
+
+  // array header
+  const arrHeader = sheet.addRow([`Expanded: ${camelToTitle(fieldName)} (${array.length} items)`]);
+  arrHeader.font = { bold: true, color: { argb: COLORS.white } };
+  arrHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.secondary } };
+  arrHeader.alignment = { horizontal: 'left' };
 
   if (array.length === 0) {
-    sheet.addRow(["No items"]);
+    sheet.mergeCells(sheet.rowCount, 1, sheet.rowCount, 2);
+    const noRow = sheet.addRow(["-"]);
+    noRow.alignment = { horizontal: 'left' };
+    sheet.mergeCells(sheet.rowCount, 1, sheet.rowCount, 2);
     return { name: safeName };
   }
 
   if (array.every(item => item && typeof item === "object")) {
     const keys = [...new Set(array.flatMap(Object.keys))].filter(k => !k.startsWith("__") && k !== "_id");
-    sheet.addRow(keys);
+    const headerRow = sheet.addRow(keys.map(camelToTitle));
+    headerRow.font = { bold: true, color: { argb: COLORS.white } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.header } };
+    headerRow.alignment = { horizontal: 'left' };
+    sheet.mergeCells(sheet.rowCount - 1, 1, sheet.rowCount - 1, keys.length || 1);
 
-    for (const item of array) {
-      const row = await Promise.all(keys.map(async (k) => {
-        let val = item[k];
-        if (val && (val instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(val))) {
-          val = await resolveIdToName(val);
-        }
-        return val ?? "-";
+    for (const [idx, item] of array.entries()) {
+      const row = await Promise.all(keys.map(async k => {
+        let v = item[k];
+        if (v && (v instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(v))) v = await resolveIdToName(v);
+        return toDash(v);
       }));
-      sheet.addRow(row);
+      const dataRow = sheet.addRow(row);
+      dataRow.alignment = { horizontal: 'left', vertical: 'middle' };
+      if (idx % 2 === 0) {
+        dataRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } });
+      } else {
+        dataRow.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } });
+      }
     }
-    sheet.columns = keys.map(() => ({ width: 20 }));
+    sheet.columns = keys.map(() => ({ width: 20, style: { alignment: { vertical: 'middle' } } }));
   } else {
+    sheet.mergeCells(sheet.rowCount, 1, sheet.rowCount, 2);
+    const simpleHeader = sheet.addRow(["Index", "Value"]);
+    simpleHeader.font = { bold: true, color: { argb: COLORS.white } };
+    simpleHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.header } };
+    simpleHeader.alignment = { horizontal: 'left' };
+
     array.forEach((item, i) => {
-      sheet.addRow([i + 1, item]);
+      const r = sheet.addRow([i + 1, toDash(item)]);
+      r.alignment = { horizontal: 'left', vertical: 'middle' };
+      if (i % 2 === 0) {
+        r.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightBlue } });
+      } else {
+        r.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.lightGray } });
+      }
     });
-    sheet.columns = [{ width: 10 }, { width: 30 }];
+    sheet.columns = [
+      { width: 10, style: { alignment: { vertical: 'middle' } } },
+      { width: 30, style: { alignment: { vertical: 'middle' } } }
+    ];
+  }
+
+  // borders for whole sheet
+  for (let i = 1; i <= sheet.rowCount; i++) {
+    const row = sheet.getRow(i);
+    row.eachCell(cell => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: COLORS.border } },
+        left: { style: 'thin', color: { argb: COLORS.border } },
+        bottom: { style: 'thin', color: { argb: COLORS.border } },
+        right: { style: 'thin', color: { argb: COLORS.border } }
+      };
+    });
   }
 
   return { name: safeName };
