@@ -4,6 +4,9 @@ import { MongoClient, ObjectId } from "mongodb";
 
 const MONGO_URI = process.env.MONGO_URI;
 
+// Common fields to exclude from ALL collections
+const commonExclude = ["_id", "history", "__v", "isActive", "deleted", "updatedAt"];
+
 export const exportCompanyExcel = async (req, res) => {
   const { companyId } = req.query;
   let client;
@@ -13,14 +16,16 @@ export const exportCompanyExcel = async (req, res) => {
     await client.connect();
     const db = client.db();
 
-    // Master cache
+    // -------------------------------------------------
+    // CACHES
+    // -------------------------------------------------
     const nameCache = {
-      users: {},     // userId -> name
-      companies: {}, // companyId -> name
-      collections: {} // collectionName -> { _id -> displayName }
+      users: {},     // userId → name
+      companies: {}, // companyId → name
+      ids: {}        // flat cache for any ObjectId → name
     };
 
-    // Preload users & companies
+    // Preload users
     const usersColl = db.collection("users");
     const users = await usersColl.find({ companyId }).toArray();
     users.forEach(u => {
@@ -28,6 +33,7 @@ export const exportCompanyExcel = async (req, res) => {
       nameCache.users[key] = u.name || u.email || "Unknown User";
     });
 
+    // Preload companies
     const companiesColl = db.collection("companies");
     const companies = await companiesColl.find({ companyId }).toArray();
     companies.forEach(c => {
@@ -35,71 +41,111 @@ export const exportCompanyExcel = async (req, res) => {
       nameCache.companies[key] = c.name || "Unknown Company";
     });
 
-    // Find relevant collections
+    // -------------------------------------------------
+    // FIND RELEVANT COLLECTIONS
+    // -------------------------------------------------
     const allColls = await db.listCollections().toArray();
     const relevantColls = [];
 
     for (const collInfo of allColls) {
+      if (collInfo.name === "companies") continue;
       const coll = db.collection(collInfo.name);
-      const sample = await coll.findOne({ companyId });
-      if (sample) {
-        relevantColls.push({ name: collInfo.name, collection: coll });
-      }
+      const sample = collInfo.name === "users"
+        ? await coll.findOne({ companyId, role: "staff" })
+        : await coll.findOne({ companyId });
+
+      if (sample) relevantColls.push({ name: collInfo.name, collection: coll });
     }
 
-    if (relevantColls.length === 0) {
+    if (!relevantColls.length) {
       return res.status(404).json({ message: "No data found for this company" });
     }
 
+    // -------------------------------------------------
+    // RESOLVE ANY OBJECTID → NAME (search across relevant collections)
+    // -------------------------------------------------
+    const resolveIdToName = async (id) => {
+      if (!id) return "";
+      const idStr = id.toString();
+
+      if (nameCache.ids[idStr]) {
+        return nameCache.ids[idStr];
+      }
+
+      const objId = id instanceof ObjectId ? id : new ObjectId(id);
+
+      for (const { name: collName, collection } of relevantColls) {
+        const doc = await collection.findOne({ _id: objId });
+        if (doc) {
+          const name = doc.productName || doc.name || doc.vendorName ||
+                       doc.categoryName || doc.billNumber || idStr;
+          nameCache.ids[idStr] = name;
+          return name;
+        }
+      }
+
+      return idStr;
+    };
+
+    // -------------------------------------------------
+    // EXCEL SETUP
+    // -------------------------------------------------
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "YourApp";
     workbook.created = new Date();
 
     const detailSheetMap = {};
 
-    // Helper: Resolve any ObjectId/string to name
-    const resolveIdToName = async (collectionName, id) => {
-      if (!id) return "";
-
-      const idStr = id.toString();
-      if (!nameCache.collections[collectionName]) {
-        nameCache.collections[collectionName] = {};
-      }
-      if (nameCache.collections[collectionName][idStr]) {
-        return nameCache.collections[collectionName][idStr];
+    // -------------------------------------------------
+    // GET MAIN FIELDS (dynamic + special case for users)
+    // -------------------------------------------------
+    const getMainFields = async (collName, collection) => {
+      // Special case: users sheet uses fixed fields
+      if (collName === "users") {
+        return ["name", "email", "role", "subRole", "department", "phone", "address", "baseSalaryMonthly"];
       }
 
-      const coll = db.collection(collectionName);
-      const doc = await coll.findOne({ _id: id instanceof ObjectId ? id : new ObjectId(id) });
-      if (!doc) return idStr;
+      // For all other collections: discover fields from first 5 docs
+      const cursor = collection.find({ companyId }).limit(5);
+      const samples = await cursor.toArray();
+      if (!samples.length) return [];
 
-      const name = doc.productName || doc.name || doc.vendorName || doc.categoryName || doc.billNumber || idStr;
-      nameCache.collections[collectionName][idStr] = name;
-      return name;
+      const keySet = new Set();
+      samples.forEach(doc => {
+        Object.keys(doc).forEach(k => {
+          if (!commonExclude.includes(k)) keySet.add(k);
+        });
+      });
+
+      // Order: fields present in all samples first
+      const alwaysPresent = samples.reduce((acc, doc) => {
+        const present = Object.keys(doc).filter(k => !commonExclude.includes(k));
+        return acc.filter(k => present.includes(k));
+      }, Object.keys(samples[0]).filter(k => !commonExclude.includes(k)));
+
+      const rest = [...keySet].filter(k => !alwaysPresent.includes(k));
+      return [...alwaysPresent, ...rest];
     };
 
-    // Guess collection from field name (e.g., "category" → "categories")
-    const guessCollectionFromField = (field) => {
-      const normalized = field.toLowerCase();
-      if (normalized.includes("category")) return "categories";
-      if (normalized.includes("vendor")) return "vendors";
-      if (normalized.includes("buyer")) return "vendors"; // or customers?
-      if (normalized.includes("product")) return "products";
-      if (normalized.includes("bill")) return "bills";
-      return field.replace(/s?$/i, "s"); // fallback: pluralize
-    };
-
+    // -------------------------------------------------
+    // PROCESS EACH COLLECTION
+    // -------------------------------------------------
     for (const { name: collName, collection } of relevantColls) {
-      const docs = await collection.find({ companyId }).toArray();
+      const docs = collName === "users"
+        ? await collection.find({ companyId, role: "staff" }).toArray()
+        : await collection.find({ companyId }).toArray();
+
       if (!docs.length) continue;
 
-      const sanitizedName = collName.replace(/[^a-zA-Z0-9]/g, "_");
-      const worksheet = workbook.addWorksheet(sanitizedName.slice(0, 31));
+      const sanitized = collName.replace(/[^a-zA-Z0-9]/g, "_");
+      const sheetName = (collName === "users" ? "staff" : sanitized).slice(0, 31);
+      const worksheet = workbook.addWorksheet(sheetName);
 
-      const fieldConfig = getFieldConfig(collName);
-      const mainFields = fieldConfig.main;
+      const mainFields = await getMainFields(collName, collection);
+      if (!mainFields.length) continue;
 
-      worksheet.addRow(mainFields);
+      // Header row (camelCase → Title Case)
+      worksheet.addRow(mainFields.map(camelToTitle));
 
       for (const [docIndex, doc] of docs.entries()) {
         const row = [];
@@ -115,76 +161,73 @@ export const exportCompanyExcel = async (req, res) => {
           else if (field === "companyId") {
             value = nameCache.companies[value] || value || "";
           }
-          // Detect ObjectId or hex string
-          else if (value && (value instanceof ObjectId || (typeof value === "string" && /^[0-9a-fA-F]{24}$/.test(value)))) {
-            const possibleColl = guessCollectionFromField(field);
-            if (relevantColls.some(c => c.name === possibleColl)) {
-              value = await resolveIdToName(possibleColl, value);
-            } else {
-              // Fallback: same collection
-              value = await resolveIdToName(collName, value);
-            }
+          // Handle ObjectId or hex string → resolve name
+          else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
+            value = await resolveIdToName(value);
           }
-          // Handle objects → detail sheet
-          else if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof ObjectId) && Object.keys(value).length > 0) {
-            const detailKey = `${collName}_${field}_detail_${docIndex}`;
-            if (!detailSheetMap[detailKey]) {
-              detailSheetMap[detailKey] = await createObjectDetailSheet(
+          // Nested object → detail sheet
+          else if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof ObjectId) && Object.keys(value).length) {
+            const key = `${collName}_${field}_detail_${docIndex}`;
+            if (!detailSheetMap[key]) {
+              detailSheetMap[key] = await createObjectDetailSheet(
                 workbook, collName, doc, field, mainFields, docIndex,
-                nameCache, resolveIdToName, guessCollectionFromField
+                nameCache, resolveIdToName
               );
             }
-            const sheetName = detailSheetMap[detailKey].name;
+            const sName = detailSheetMap[key].name;
             row.push({
               text: "View Detail",
-              hyperlink: `#'${sheetName}'!A1`,
+              hyperlink: `#'${sName}'!A1`,
               tooltip: `View full ${field}`
             });
             continue;
           }
-          // Handle arrays
-          else if (Array.isArray(value) && value.length > 0) {
-            const detailKey = `${collName}_${field}_detail_${docIndex}`;
-            if (!detailSheetMap[detailKey]) {
-              detailSheetMap[detailKey] = await createArrayDetailSheet(
+          // Array → detail sheet
+          else if (Array.isArray(value) && value.length) {
+            const key = `${collName}_${field}_detail_${docIndex}`;
+            if (!detailSheetMap[key]) {
+              detailSheetMap[key] = await createArrayDetailSheet(
                 workbook, collName, doc, field, mainFields, docIndex,
-                nameCache, resolveIdToName, guessCollectionFromField
+                nameCache, resolveIdToName
               );
             }
-            const sheetName = detailSheetMap[detailKey].name;
+            const sName = detailSheetMap[key].name;
             row.push({
               text: "View Detail",
-              hyperlink: `#'${sheetName}'!A1`,
+              hyperlink: `#'${sName}'!A1`,
               tooltip: `View ${value.length} ${field}`
             });
             continue;
           }
 
-          row.push(value ?? "");
+          row.push(value ?? "-");
         }
 
         const rowObj = worksheet.addRow(row);
 
-        // Hyperlink styling
-        mainFields.forEach((field, colIdx) => {
-          const cell = rowObj.getCell(colIdx + 1);
-          const val = doc[field];
-          if ((Array.isArray(val) && val.length > 0) || 
-              (val && typeof val === "object" && !(val instanceof ObjectId) && Object.keys(val).length > 0)) {
+        // Style hyperlinks
+        mainFields.forEach((f, i) => {
+          const cell = rowObj.getCell(i + 1);
+          const val = doc[f];
+          if ((Array.isArray(val) && val.length) ||
+              (val && typeof val === "object" && !(val instanceof ObjectId) && Object.keys(val).length)) {
             cell.font = { color: { argb: "FF0000FF" }, underline: true };
-            cell.value = row[colIdx];
+            cell.value = row[i];
           }
         });
       }
 
-      worksheet.columns = mainFields.map((key) => ({
-        header: key,
-        key,
-        width: Math.max(key.length + 2, 15),
+      // Column config
+      worksheet.columns = mainFields.map(k => ({
+        header: camelToTitle(k),
+        key: k,
+        width: Math.max(k.length + 2, 15)
       }));
     }
 
-    // Write response
+    // -------------------------------------------------
+    // SEND FILE
+    // -------------------------------------------------
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -204,49 +247,30 @@ export const exportCompanyExcel = async (req, res) => {
   }
 };
 
-// === Field Config ===
-function getFieldConfig(collectionName) {
-  const commonExclude = ["_id", "history", "__v", "isActive", "deleted", "createdAt", "updatedAt"];
-
-  const configs = {
-    products: {
-      main: ["companyId", "productName", "SKU", "description", "tags", "imgUrl", "category", "subCategoryName", "vendor", "ingredient", "metaData", "sellingPrice", "costPrice", "quantity", "minStockLevel", "createdBy"]
-    },
-    categories: {
-      main: ["categoryName", "subCategory", "companyId", "description", "tags", "createdBy"]
-    },
-    companies: {
-      main: ["name", "companyId", "industryName", "address", "contactEmail", "contactPhone", "plan", "owner", "gain", "invoiceSettings", "companyLogo"]
-    },
-    vendors: {
-      main: ["name", "contactName", "email", "phone", "address", "companyId", "paymentType", "createdBy"]
-    },
-    bills: {
-      main: ["billNumber", "companyId", "createdBy", "buyer", "items", "subtotal", "taxPercent", "taxAmount", "total", "paymentMethod", "notes", "refundDetails", "status", "discountPercent", "discountAmount"]
-    },
-    users: {
-      main: ["name", "userId", "companyId", "email", "role", "address", "baseSalaryMonthly"]
-    }
-  };
-
-  const config = configs[collectionName] || { main: [] };
-  return {
-    main: config.main.filter(f => !commonExclude.includes(f))
-  };
+// -------------------------------------------------
+// UTILS
+// -------------------------------------------------
+function camelToTitle(str) {
+  return str
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, s => s.toUpperCase())
+    .trim();
 }
 
 // === Detail Sheet: Object ===
 async function createObjectDetailSheet(
   workbook, collName, doc, fieldName, mainFields, docIndex,
-  nameCache, resolveIdToName, guessCollectionFromField
+  nameCache, resolveIdToName
 ) {
   const safeName = `${collName}_${fieldName}_detail_${docIndex}`.slice(0, 31);
   let sheet = workbook.getWorksheet(safeName);
   if (sheet) return { name: safeName };
 
   sheet = workbook.addWorksheet(safeName);
-  sheet.addRow([`Full Details for ${collName} Row ${docIndex + 1}`]);
+  sheet.addRow([`Details for ${collName} Row ${docIndex + 1}`]);
+  sheet.addRow([]);
 
+  // Main fields
   for (const field of mainFields) {
     let value = doc[field];
     if (field === "userId" || field === "createdBy") {
@@ -254,31 +278,27 @@ async function createObjectDetailSheet(
     } else if (field === "companyId") {
       value = nameCache.companies[value] || value || "";
     } else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
-      const possibleColl = guessCollectionFromField(field);
-      value = await resolveIdToName(possibleColl, value);
+      value = await resolveIdToName(value);
     }
     if (typeof value !== "object" || value == null) {
-      sheet.addRow([field, value ?? ""]);
+      sheet.addRow([field, value ?? "-"]);
     }
   }
-  sheet.addRow([]); // spacer
 
-  const data = doc[fieldName];
-  if (!data || typeof data !== "object") return { name: safeName };
-
+  sheet.addRow([]);
   sheet.addRow([`Expanded: ${fieldName}`]);
-  const keys = Object.keys(data).filter(k => !k.startsWith("__") && k !== "_id");
   sheet.addRow(["Field", "Value"]);
 
+  const data = doc[fieldName];
+  const keys = Object.keys(data).filter(k => !k.startsWith("__") && k !== "_id");
   for (const key of keys) {
     let val = data[key];
     if (val && (val instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(val))) {
-      const possibleColl = guessCollectionFromField(key);
-      val = await resolveIdToName(possibleColl, val);
+      val = await resolveIdToName(val);
     } else if (Array.isArray(val)) {
       val = JSON.stringify(val);
     }
-    sheet.addRow([key, val ?? ""]);
+    sheet.addRow([key, val ?? "-"]);
   }
 
   sheet.columns = [{ width: 25 }, { width: 40 }];
@@ -288,15 +308,17 @@ async function createObjectDetailSheet(
 // === Detail Sheet: Array ===
 async function createArrayDetailSheet(
   workbook, collName, doc, fieldName, mainFields, docIndex,
-  nameCache, resolveIdToName, guessCollectionFromField
+  nameCache, resolveIdToName
 ) {
   const safeName = `${collName}_${fieldName}_detail_${docIndex}`.slice(0, 31);
   let sheet = workbook.getWorksheet(safeName);
   if (sheet) return { name: safeName };
 
   sheet = workbook.addWorksheet(safeName);
-  sheet.addRow([`Full Details for ${collName} Row ${docIndex + 1}`]);
+  sheet.addRow([`Details for ${collName} Row ${docIndex + 1}`]);
+  sheet.addRow([]);
 
+  // Main fields
   for (const field of mainFields) {
     let value = doc[field];
     if (field === "userId" || field === "createdBy") {
@@ -304,15 +326,14 @@ async function createArrayDetailSheet(
     } else if (field === "companyId") {
       value = nameCache.companies[value] || value || "";
     } else if (value && (value instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(value))) {
-      const possibleColl = guessCollectionFromField(field);
-      value = await resolveIdToName(possibleColl, value);
+      value = await resolveIdToName(value);
     }
     if (typeof value !== "object" || value == null) {
-      sheet.addRow([field, value ?? ""]);
+      sheet.addRow([field, value ?? "-"]);
     }
   }
-  sheet.addRow([]);
 
+  sheet.addRow([]);
   const array = doc[fieldName];
   sheet.addRow([`Expanded: ${fieldName} (${array.length} items)`]);
   sheet.addRow([]);
@@ -330,10 +351,9 @@ async function createArrayDetailSheet(
       const row = await Promise.all(keys.map(async (k) => {
         let val = item[k];
         if (val && (val instanceof ObjectId || /^[0-9a-fA-F]{24}$/.test(val))) {
-          const possibleColl = guessCollectionFromField(k);
-          val = await resolveIdToName(possibleColl, val);
+          val = await resolveIdToName(val);
         }
-        return val ?? "";
+        return val ?? "-";
       }));
       sheet.addRow(row);
     }
