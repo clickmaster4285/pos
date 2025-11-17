@@ -133,7 +133,7 @@ export default function Navbar() {
           {/* Desktop navigation */}
           <div className="flex items-center gap-3">
             {/* ---- GLOBAL EXPORT BUTTON (visible on md+) ---- */}
-            {user.role !== "superAdmin" && (
+            {user.role === "admin" && (
             <Button
               variant="outline"
               size="sm"
