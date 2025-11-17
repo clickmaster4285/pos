@@ -58,13 +58,13 @@ const permissionsCatalog = {
     "updateCourier",
     "viewCourier",
     "deleteCourier",
+    "createOrder",
+    "viewOrder",
+    "updateOrderStatus",
   ],
 
   restaurant: [
     "manageTables",
-    "createOrder",
-    "viewOrder",
-    "updateOrderStatus",
     "createIngredient",
     "updateIngredient",
     "viewIngredient",

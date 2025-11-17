@@ -527,6 +527,8 @@ const getCompany = async (req, res) => {
       deleted: false,
     });
 
+    const companyAdmin = await IndexModel.User.findOne({userId:company.owner })
+
     if (!company) {
       return res.status(404).json({
         success: false,
@@ -537,6 +539,7 @@ const getCompany = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: company,
+      permissions: companyAdmin.permissions,
     });
   } catch (error) {
     return res.status(500).json({
