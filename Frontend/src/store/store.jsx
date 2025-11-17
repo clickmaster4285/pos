@@ -6,7 +6,6 @@ import { toastMiddleware } from '@/middleware/toastMiddleware';
 import { companyApi } from '@/features/CompanyApi';
 import { userApi } from '@/features/userApi';
 import { planApi } from '@/features/planApi';
-
 import { vendorApi } from '@/features/vendorApi';
 import { staffApi } from '@/features/staffApi';
 import { addressApi } from '@/features/addressApi';
@@ -28,6 +27,89 @@ import { orderApi } from '@/features/orderApi';
 import { tableApi } from '@/features/tableApi';
 import { dataManagementApi } from '@/features/dataManagementApi';
 import { companyExcelApi } from '@/features/companyExcelApi';
+
+// 🔄 Enhanced Auto-refresh middleware
+const autoRefreshMiddleware = (store) => (next) => (action) => {
+  const result = next(action);
+  
+  // Check if this is a successful mutation that should trigger refetches
+  if (action.type?.endsWith('/fulfilled')) {
+    const actionType = action.type;
+    
+    // Debug: Log all fulfilled actions to see the exact pattern
+    console.log('🔄 Action fulfilled:', actionType);
+    
+    // Define which mutations should trigger which queries to refetch
+    const refreshRules = [
+      {
+        api: 'orderApi',
+        mutations: ['createOrder', 'updateStatus', 'cancelOrder', 'refundOrder'],
+        refreshQueries: ['productApi', 'ingredientApi']
+      },
+      {
+        api: 'billsApi', 
+        mutations: ['createBill', 'updateBillStatus'],
+        refreshQueries: ['productApi', 'ingredientApi']
+      },
+      {
+        api: 'productApi',
+        mutations: ['createProduct', 'updateProduct', 'updateProductStock', 'toggleProductStatus'],
+        refreshQueries: ['productApi']
+      },
+      {
+        api: 'ingredientApi',
+        mutations: ['createIngredient', 'updateIngredient', 'updateIngredientStock', 'toggleIngredientStatus'],
+        refreshQueries: ['ingredientApi']
+      },
+    ];
+
+    // Check each rule
+    refreshRules.forEach((rule) => {
+      const shouldRefresh = rule.mutations.some(mutation => {
+        // Try different patterns for RTK Query action types
+        const patterns = [
+          `${rule.api}/endpoints/${mutation}/fulfilled`,
+          `${rule.api}/executeMutation/fulfilled`,
+          actionType.includes(rule.api) && actionType.includes(mutation)
+        ];
+        
+        return patterns.some(pattern => 
+          typeof pattern === 'string' ? actionType.includes(pattern) : pattern
+        );
+      });
+
+      if (shouldRefresh) {
+        console.log(`🔄 Auto-refresh triggered: ${rule.api} → refreshing:`, rule.refreshQueries);
+        
+        // Dispatch actions to refetch the specified queries
+        rule.refreshQueries.forEach(queryApi => {
+          switch(queryApi) {
+            case 'productApi':
+              console.log('🔄 Invalidating Product tags');
+              store.dispatch(productApi.util.invalidateTags(['Product']));
+              break;
+            case 'ingredientApi':
+              console.log('🔄 Invalidating Ingredient tags');
+              store.dispatch(ingredientApi.util.invalidateTags(['Ingredient']));
+              break;
+            case 'orderApi':
+              console.log('🔄 Invalidating Order tags');
+              store.dispatch(orderApi.util.invalidateTags(['Order']));
+              break;
+            case 'billsApi':
+              console.log('🔄 Invalidating Bills tags');
+              store.dispatch(billsApi.util.invalidateTags(['Bills']));
+              break;
+            default:
+              break;
+          }
+        });
+      }
+    });
+  }
+
+  return result;
+};
 
 export const store = configureStore({
   reducer: {
@@ -60,34 +142,36 @@ export const store = configureStore({
     [companyExcelApi.reducerPath]: companyExcelApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(
-      authApi.middleware,
-      toastMiddleware,
-      companyApi.middleware,
-      userApi.middleware,
-      planApi.middleware,
-      orderApi.middleware,
-      vendorApi.middleware,
-      staffApi.middleware,
-      addressApi.middleware,
-      billsApi.middleware,
-      settingsApi.middleware,
-      activityApi.middleware,
-      StaffSalary.middleware,
-      attendanceDeviceApi.middleware,
-      attendanceApi.middleware,
-      shipmentsApi.middleware,
-      couriersApi.middleware,
-      paymentGatewayApi.middleware,
-      categoryApi.middleware,
-      productApi.middleware,
-      ingredientApi.middleware,
-      superAdminApi.middleware,
-      landingApi.middleware,
-      tableApi.middleware,
-      dataManagementApi.middleware,
-      companyExcelApi.middleware,
-    ),
+    getDefaultMiddleware()
+      .concat(
+        authApi.middleware,
+        toastMiddleware,
+        companyApi.middleware,
+        userApi.middleware,
+        planApi.middleware,
+        orderApi.middleware,
+        vendorApi.middleware,
+        staffApi.middleware,
+        addressApi.middleware,
+        billsApi.middleware,
+        settingsApi.middleware,
+        activityApi.middleware,
+        StaffSalary.middleware,
+        attendanceDeviceApi.middleware,
+        attendanceApi.middleware,
+        shipmentsApi.middleware,
+        couriersApi.middleware,
+        paymentGatewayApi.middleware,
+        categoryApi.middleware,
+        productApi.middleware,
+        ingredientApi.middleware,
+        superAdminApi.middleware,
+        landingApi.middleware,
+        tableApi.middleware,
+        dataManagementApi.middleware,
+        companyExcelApi.middleware,
+        autoRefreshMiddleware // 🔄 Add our auto-refresh middleware
+      ),
 });
 
 export default store;

@@ -24,7 +24,7 @@ const createPlan = async (req, res, next) => {
     const plan = await IndexModel.Plan.create({
       name,
       description,
-      price,
+      price: price||0,
       limitations,
       validateDays,
       currencyCode,

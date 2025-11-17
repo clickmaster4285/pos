@@ -142,7 +142,7 @@ export default function Navbar() {
               disabled={isExporting}
             >
               <FiDownload className="h-4 w-4" />
-              {isExporting ? 'Exporting…' : 'Export All'}
+              {isExporting ? 'Excel Exporting…' : 'Export Excel'}
             </Button>
             )}
             {/* Notifications */}
