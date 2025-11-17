@@ -6,6 +6,7 @@ import fs from "fs";
 import bcrypt from "bcrypt";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
+import {getPermissionsByIndustry} from "../utils/UserPermissionsCatelogs.js"
 
 const createSuperAdmin = async () => {
   try {
@@ -201,7 +202,6 @@ export const createCompanybySuperAdmin = async (req, res) => {
       });
     }
     const { company, admin } = req.body;
-
     // Validate required fields
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
@@ -209,6 +209,7 @@ export const createCompanybySuperAdmin = async (req, res) => {
         error: "Company name, contact email, and plan are required",
       });
     }
+    const dynamicPermissions = getPermissionsByIndustry(company.industryName);
 
     if (!admin || !admin.name || !admin.email || !admin.password) {
       return res.status(400).json({
@@ -281,38 +282,7 @@ export const createCompanybySuperAdmin = async (req, res) => {
         updatedAt: new Date(),
       },
       isActive: true,
-      permissions: {
-        approveRequests: true,
-        assignTasks: true,
-        manageAppointments: true,
-        createProduct: true,
-        updateProduct: true,
-        viewProduct: true,
-        deleteProduct: true,
-        managePlans: true,
-        manageTeams: true,
-        createVendors: true,
-        updateVendors: true,
-        deleteVendors: true,
-        viewVendors: true,
-        staffCreate: true,
-        staffDelete: true,
-        staffUpdate: true,
-        viewReports: true,
-        viewallstaff: true,
-        editBilling: true,
-        deleteBilling: true,
-        addBilling: true,
-        viewBilling: true,
-        createPayment: true,
-        viewAllStaffSalaries: true,
-        updateSalary: true,
-        deletePayment: true,
-        staffSummary: true,
-        viewActiveLog: true,
-        viewCompanySummary: true,
-        companyprofileupdate: true,
-      },
+        permissions: dynamicPermissions,
       history: [
         {
           action: "Admin created by SuperAdmin",
