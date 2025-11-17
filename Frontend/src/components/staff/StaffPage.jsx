@@ -53,7 +53,6 @@ const StaffPage = () => {
       .sort();
   }, [companyRes?.permissions]);
 
-  console.log("availablePermissionKeys aer : ", availablePermissionKeys)
   // Auto generate nice labels
   const permissionLabels = useMemo(() => {
     const labels = {};
