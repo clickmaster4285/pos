@@ -222,8 +222,13 @@ const googleSignIn = async (req, res, next) => {
     let user = await User.findOne({ $or: [{ email }, { googleId }] }).select(
       "+password"
     );
-    const isNewUser = !user;
-
+    let companyMember;
+    if (user) {
+      companyMember = await IndexModel.Company.findOne({
+        owner: user.userId,
+      });
+    }
+    const isNewUser = !user || !companyMember;
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
@@ -296,6 +301,12 @@ const googleSignIn = async (req, res, next) => {
     }
 
     if (isNewUser) {
+      if (user && !companyMember) {
+        await User.updateOne(
+          { userId: user.userId },
+          { $set: { googleId: googleId } }
+        );
+      }
       return res.status(200).json({
         success: true,
         onboarding: true,
