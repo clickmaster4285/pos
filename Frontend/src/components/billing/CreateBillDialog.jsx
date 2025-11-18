@@ -1,6 +1,7 @@
+// Modified: CreateBillDialog.jsx (passed items to BillItemsSection for hasExistingOrder check, minor prop updates)
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,15 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader, Printer, CreditCard } from 'lucide-react';
-import PropTypes from 'prop-types';
+import { Button } from '@/components/ui/button';
 
-import { useClickOutside } from '@/utils/useClickOutside';
-import { useDebounce } from '@/utils/useDebounce';
+import { Loader2, Printer } from 'lucide-react';
+import PropTypes from 'prop-types';
 import { PAYMENT_METHODS } from '@/utils/paymentMethods';
 import { useGetOrdersQuery } from '@/features/orderApi';
 import { useGetAllProductsQuery } from '@/features/productApi';
-
 import CreateNewOrderInBill from './createNewOrderInBill';
 import BillItemsSection from './BillItemsSection';
 import BillDetailsSection from './BillDetailsSection';
@@ -26,27 +25,18 @@ CreateBillDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onOpenChange: PropTypes.func.isRequired,
   creating: PropTypes.bool.isRequired,
-
-  searchRef: PropTypes.shape({ current: PropTypes.any }),
+  searchRef: PropTypes.object,
   searchProduct: PropTypes.string.isRequired,
   setSearchProduct: PropTypes.func.isRequired,
   showSearchResults: PropTypes.bool.isRequired,
   setShowSearchResults: PropTypes.func.isRequired,
-
   addItemToBill: PropTypes.func.isRequired,
-  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  items: PropTypes.array.isRequired,
   updateQty: PropTypes.func.isRequired,
   removeItem: PropTypes.func.isRequired,
-
-  buyer: PropTypes.shape({
-    name: PropTypes.string,
-    email: PropTypes.string,
-    phone: PropTypes.string,
-  }).isRequired,
+  buyer: PropTypes.object.isRequired,
   setBuyer: PropTypes.func.isRequired,
-
-  taxPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
-    .isRequired,
+  taxPercent: PropTypes.number.isRequired,
   setTaxPercent: PropTypes.func.isRequired,
   notes: PropTypes.string.isRequired,
   setNotes: PropTypes.func.isRequired,
@@ -59,17 +49,11 @@ CreateBillDialog.propTypes = {
   setPaymentMethod: PropTypes.func.isRequired,
   paymentNumber: PropTypes.string,
   setPaymentNumber: PropTypes.func,
-  companyId: PropTypes.string,
-  taxRates: PropTypes.shape({
-    taxRateCash: PropTypes.number,
-    taxRateCard: PropTypes.number,
-  }),
-  companyLoading: PropTypes.bool,
+  taxRates: PropTypes.object,
   currencySymbol: PropTypes.string,
-  discountPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  discountPercent: PropTypes.number,
   discountAmount: PropTypes.number,
   setDiscountPercent: PropTypes.func,
-
 };
 
 export function CreateBillDialog({
@@ -100,373 +84,166 @@ export function CreateBillDialog({
   setPaymentMethod,
   paymentNumber,
   setPaymentNumber,
-  companyId,
   taxRates,
-  companyLoading,
-  currencySymbol,
-  discountPercent,
-  discountAmount,
+  currencySymbol = '€',
+  discountPercent = 0,
+  discountAmount = 0,
   setDiscountPercent,
-
 }) {
   const [buyerTouched, setBuyerTouched] = useState(false);
   const [orderId, setOrderId] = useState([]);
 
-  const {
-    data: ordersResp,
-    isLoading: ordersLoading,
-    isFetching: isValidatingOrders,
-    refetch,
-  } = useGetOrdersQuery();
+  const { data: ordersResp, isLoading: ordersLoading, refetch } = useGetOrdersQuery();
+  const { data: productsResp, isLoading: productsLoading } = useGetAllProductsQuery();
 
-  const {
-    data: productsResp,
-    isLoading: productsLoading,
-    isFetching: isValidatingProducts,
-  } = useGetAllProductsQuery();
-
-  // normalize orders array
   const allOrders = useMemo(() => {
-    if (Array.isArray(ordersResp?.data)) return ordersResp.data;
-    if (Array.isArray(ordersResp)) return ordersResp;
-    return [];
+    return Array.isArray(ordersResp?.data) ? ordersResp.data : (ordersResp || []);
   }, [ordersResp]);
 
-  // normalize products array
   const allProducts = useMemo(() => {
-    if (Array.isArray(productsResp?.data)) return productsResp.data;
-    if (Array.isArray(productsResp)) return productsResp;
-    return [];
+    return Array.isArray(productsResp?.data) ? productsResp.data : (productsResp || []);
   }, [productsResp]);
 
-  const extractBuyerFromOrder = (orderObj) => {
-    const name =
-      orderObj?.customerName ||
-      orderObj?.buyer?.name ||
-      orderObj?.user?.name ||
-      '';
-    const phone =
-      orderObj?.customerPhone ||
-      orderObj?.buyer?.phone ||
-      orderObj?.user?.phone ||
-      '';
-    return { name, phone };
-  };
-
-  const debouncedSearch = useDebounce(searchProduct, 300);
-
-  // Orders filter
-  const filteredOrders = useMemo(() => {
-    const q = (debouncedSearch || '').toLowerCase().trim();
-
-    const base = allOrders.filter((o) => {
-      const status = String(o?.paymentStatus || '').toLowerCase();
-      const id = String(o?._id || '');
-      return (
-        status === 'unpaid' &&
-        (orderId.length === 0 || orderId.includes(id)) &&
-        (o?.items?.length ?? 0) > 0
-      );
-    });
-
-    if (!q) return base;
-
-    return base.filter((o) => {
-      const orderNo = String(o.orderNo || o.orderNumber || '').toLowerCase();
-      const customer = String(o.customerName || '').toLowerCase();
-      return orderNo.includes(q) || customer.includes(q);
-    });
-  }, [allOrders, debouncedSearch, orderId]);
-
-  // Products filter
-  const filteredProducts = useMemo(() => {
-    const q = (debouncedSearch || '').toLowerCase().trim();
-    if (!q) return allProducts.slice(0, 20);
-
-    return allProducts.filter((p) => {
-      const name = String(p.productName || p.name || '').toLowerCase();
-      const sku = String(p.SKU || p.sku || '').toLowerCase();
-      return name.includes(q) || sku.includes(q);
-    });
-  }, [allProducts, debouncedSearch]);
-
-  // When items change, sync orderId
+  // Auto-switch tax when payment method changes
   useEffect(() => {
-    const first =
-      (items ?? []).map((it) => String(it.orderId || '')).find(Boolean) || '';
-    setOrderId((prev) => {
-      if (!first) return [];
-      if (Array.isArray(prev) && prev.includes(first)) return prev;
-      return first ? [first] : [];
-    });
-  }, [items]);
-
-  useClickOutside(searchRef, () => setShowSearchResults(false));
-
-  // tax rate by payment method
-  useEffect(() => {
-    if (!taxRates) {
-      setTaxPercent(0);
-      return;
+    if (paymentMethod === PAYMENT_METHODS.CASH) {
+      setTaxPercent(taxRates?.taxRateCash);
+    } else {
+      setTaxPercent(taxRates?.taxRateCard);
     }
-    if (paymentMethod === PAYMENT_METHODS.CASH)
-      setTaxPercent(taxRates.taxRateCash ?? 0);
-    else if (
-      paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
-      paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
-    )
-      setTaxPercent(taxRates.taxRateCard ?? 0);
-    else setTaxPercent(0);
   }, [paymentMethod, taxRates, setTaxPercent]);
 
-  const buyerDetailsRequired =
-    paymentMethod === PAYMENT_METHODS.CREDIT_CARD ||
-    paymentMethod === PAYMENT_METHODS.BANK_TRANSFER;
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        setShowSearchResults(false);
+        searchRef.current?.blur();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [searchRef, setShowSearchResults]);
 
-  const isBuyerDetailsValid = useMemo(() => {
-    if (!buyerDetailsRequired) return true;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return (
-      !!buyer.name?.trim() &&
-      emailRegex.test(buyer.email?.trim()) &&
-      !!buyer.phone?.trim() &&
-      !!paymentNumber?.trim()
-    );
-  }, [buyer, buyerDetailsRequired, paymentNumber]);
+  const extractBuyerFromOrder = (order) => {
+    return {
+      name: order?.customerName || order?.buyer?.name || '',
+      phone: order?.customerPhone || order?.buyer?.phone || '',
+      email: order?.buyer?.email || '',
+    };
+  };
 
-  const draftBill = useMemo(
-    () => ({
-      _id: 'PREVIEW',
-      billNumber: '(Preview)',
-      createdAt: new Date().toISOString(),
-      buyer,
-      companyId,
-      orderId,
-      items: items.map((it) => ({
-        productId: it.productId,
-        orderItemId: it.orderItemId || undefined,
-        itemName: it.itemName,
-        categoryName: it.categoryName,
-        subCategory: it.subCategory,
-        quantity: it.qty,
-        price: it.price,
-        total: it.lineTotal,
-        orderId: it.orderId || undefined,
-      })),
-      subtotal,
-      // 👇 NEW
-      discountPercent: Number(discountPercent) || 0,
-      discountAmount: Number(discountAmount) || 0,
-      // ------
-      taxPercent: Number(taxPercent || 0),
-      taxAmount,
-      total: grandTotal,
-      paymentMethod,
-      paymentNumber,
-      notes,
-      status: paymentMethod === PAYMENT_METHODS.CASH ? 'paid' : 'pending',
-    }),
-    [
-      buyer,
-      companyId,
-      orderId,
-      items,
-      subtotal,
-      discountPercent,
-      discountAmount,
-      taxPercent,
-      taxAmount,
-      grandTotal,
-      paymentMethod,
-      paymentNumber,
-      notes,
-    ]
-  );
-
-  // inject an order’s items into the bill
   const addOrderToBill = (order) => {
     if (!order?.items?.length) return;
 
-    const id = String(order._id || '');
-    if (!id) return;
-
-    if (orderId.length > 0 && !orderId.includes(id)) {
-      alert('You can only add items from one order per bill.');
-      return;
-    }
-
     if (!buyerTouched) {
       const inferred = extractBuyerFromOrder(order);
-      if (
-        (inferred.name && !buyer?.name) ||
-        (inferred.phone && !buyer?.phone)
-      ) {
-        setBuyer({
-          name: buyer?.name || inferred.name || '',
-          phone: buyer?.phone || inferred.phone || '',
-          email: buyer?.email || '',
-        });
+      if (inferred.name || inferred.phone) {
+        setBuyer(prev => ({ ...prev, ...inferred }));
+        setBuyerTouched(true);
       }
     }
 
-    if (orderId.includes(id)) return;
-
-    const orderNo = order.orderNo || order.orderNumber || '';
-
-    const batch = order.items.map((it) => {
-      const qty = Number(it.qty ?? it.quantity ?? 1);
-      const price = Number(it.price ?? 0);
-      const productId =
-        it.productId ||
-        it.product?._id ||
-        it.product ||
-        it.pid ||
-        it.dynamicAttributes?.productId ||
-        '';
-
-      return {
-        productId,
-        orderItemId: String(it._id || it.id || ''),
-        sku: orderNo,
-        itemName: it.name || it.itemName || 'Item',
-        categoryName: it.categoryName || '',
-        subCategory: it.subCategory || '',
-        qty,
-        price,
-        lineTotal: qty * price,
-        orderId: String(order._id || ''),
-        orderNo,
-      };
+    order.items.forEach(it => {
+      addItemToBill({
+        ...it,
+        itemName: it.name,
+        orderId: order._id,
+        orderNo: order.orderNo,
+        qty: it.qty,
+        price: it.price,
+        total: it.total,
+      });
     });
-
-    addItemToBill(batch);
-    setOrderId((prev) => (Array.isArray(prev) ? [...prev, id] : [id]));
     setShowSearchResults(false);
     setSearchProduct('');
   };
 
-  // add a product directly to the bill
   const addProductToBill = (product) => {
-    if (!product) return;
-
-    const qty = 1;
-    const price = Number(product.sellingPrice ?? product.price ?? 0);
-
-    const lineItem = {
+    addItemToBill({
       productId: product._id,
-      orderItemId: undefined,
-      sku: product.SKU || product.sku || '',
-      itemName: product.productName || product.name || 'Product',
-      categoryName: product.categoryName || product.category || '',
-      subCategory: product.subCategoryName || '',
-      qty,
-      price,
-      lineTotal: qty * price,
-      orderId: null,
-      orderNo: '',
-    };
-
-    addItemToBill([lineItem]);
+      itemName: product.productName || product.name,
+      price: product.sellingPrice || product.price || 0,
+      qty: 1,
+      total: product.sellingPrice || product.price || 0,
+    });
     setShowSearchResults(false);
     setSearchProduct('');
-  };
-
-  const handleSave = async () => {
-    try {
-      await onSave?.(draftBill);
-      await refetch();
-      onReset?.();
-      onOpenChange?.(false);
-    } catch (e) {
-      console.error('Save bill failed:', e);
-    }
   };
 
   const handleSaveAndPrint = async () => {
-    await onSave?.(draftBill);
-    await refetch();
+    const result = await onSave();
+    if (!result) return;
+
     const printWindow = window.open('', '_blank');
-    const formattedContent = [
-      '==============================',
-      `Bill #${draftBill.billNumber}`,
-      `Date: ${new Date(draftBill.createdAt).toLocaleString()}`,
-      '==============================',
-      'Items:',
-      ...draftBill.items.flatMap((item) => [
-        `${item.quantity}x ${item.itemName}`,
-        `  ${currencySymbol}${Number(item.price || 0).toFixed(2)} x ${
-          item.quantity
-        } = ${currencySymbol}${Number(item.total || 0).toFixed(2)}`,
-      ]),
-      '==============================',
-      `Subtotal: ${currencySymbol}${Number(draftBill.subtotal || 0).toFixed(
-        2
-      )}`,
-      `Tax (${draftBill.taxPercent}%): ${currencySymbol}${Number(
-        draftBill.taxAmount || 0
-      ).toFixed(2)}`,
-      `Total: ${currencySymbol}${Number(draftBill.total || 0).toFixed(2)}`,
-      '==============================',
-      'Buyer:',
-      `  Name: ${draftBill.buyer?.name || '—'}`,
-      `  Email: ${draftBill.buyer?.email || '—'}`,
-      `  Phone: ${draftBill.buyer?.phone || '—'}`,
-      `Payment: ${draftBill.paymentMethod.replace('_', ' ')}`,
-      ...(draftBill.paymentNumber ? [`  Ref: ${draftBill.paymentNumber}`] : []),
-      '==============================',
-      'Thank you for your purchase!',
-    ].join('\n');
-    printWindow.document.write(`
-      <pre style="font-family: monospace; font-size: 12px; line-height: 1.2;">
-${formattedContent}
-      </pre>
-    `);
+    const content = `
+<!DOCTYPE html>
+<html><head><style>
+  body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 10mm; font-size: 12px; }
+  .center { text-align: center; }
+  .line { border-top: 2px dashed #000; margin: 10px 0; }
+  .bold { font-weight: bold; }
+  .large { font-size: 1.4em; }
+</style></head><body>
+  <div class="center bold large">YOUR RESTAURANT</div>
+  <div class="center">Tax ID: 123456789</div>
+  <div class="line"></div>
+  <div>Bill #: <b>#${result.billNumber}</b></div>
+  <div>Date: ${new Date().toLocaleString()}</div>
+  <div class="line"></div>
+  ${items.map(i => `
+    <div style="display:flex;justify-content:space-between">
+      <span>${i.qty}x ${i.itemName}</span>
+      <span>${currencySymbol}${Number(i.total).toFixed(2)}</span>
+    </div>`).join('')}
+  <div class="line"></div>
+  <div style="display:flex;justify-content:space-between" class="bold large">
+    <span>TOTAL</span>
+    <span>${currencySymbol}${grandTotal.toFixed(2)}</span>
+  </div>
+  <div class="line"></div>
+  <div class="center">Thank You!</div>
+</body></html>`;
+    printWindow.document.write(content);
     printWindow.document.close();
+    printWindow.focus();
     printWindow.print();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="min-w-[70rem] max-h-[90vh] overflow-y-auto"
-        aria-describedby="create-bill-description"
-      >
-        <DialogHeader>
-          <DialogTitle>Create New Bill (from Orders / Products)</DialogTitle>
-          <DialogDescription id="create-bill-description">
-            Search existing orders or products and add their items to this bill.
-            Then enter buyer and payment details.
-          </DialogDescription>
+      <DialogContent className="min-w-[70rem] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 border-b">
+          <DialogTitle className="text-2xl">Create New Bill</DialogTitle>
+          <DialogDescription>Search orders or products to add items quickly</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <BillItemsSection
-              currencySymbol={currencySymbol}
-              items={items}
-              removeItem={removeItem}
-              updateQty={updateQty}
-              searchRef={searchRef}
-              searchProduct={searchProduct}
-              setSearchProduct={setSearchProduct}
-              showSearchResults={showSearchResults}
-              setShowSearchResults={setShowSearchResults}
-              ordersLoading={ordersLoading}
-              isValidatingOrders={isValidatingOrders}
-              productsLoading={productsLoading}
-              isValidatingProducts={isValidatingProducts}
-              filteredOrders={filteredOrders}
-              filteredProducts={filteredProducts}
-              addOrderToBill={addOrderToBill}
-              addProductToBill={addProductToBill}
-              CreateNewOrderInBill={CreateNewOrderInBill}
-              extractBuyerFromOrder={extractBuyerFromOrder}
-              buyerTouched={buyerTouched}
-              setBuyerTouched={setBuyerTouched}
-              setBuyer={setBuyer}
-              refetchOrders={refetch}
-            />
+        <div className="flex-1 overflow-y-auto px-6 py-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <BillItemsSection
+            currencySymbol={currencySymbol}
+            items={items}
+            removeItem={removeItem}
+            updateQty={updateQty}
+            searchRef={searchRef}
+            searchProduct={searchProduct}
+            setSearchProduct={setSearchProduct}
+            showSearchResults={showSearchResults}
+            setShowSearchResults={setShowSearchResults}
+            ordersLoading={ordersLoading}
+            productsLoading={productsLoading}
+            filteredOrders={allOrders.filter(o => o.paymentStatus === 'unpaid')}
+            filteredProducts={allProducts}
+            addOrderToBill={addOrderToBill}
+            addProductToBill={addProductToBill}
+            CreateNewOrderInBill={CreateNewOrderInBill}
+            extractBuyerFromOrder={extractBuyerFromOrder}
+            buyerTouched={buyerTouched}
+            setBuyerTouched={setBuyerTouched}
+            setBuyer={setBuyer}
+            refetchOrders={refetch}
+          />
 
+          <div className="space-y-6">
             <BillDetailsSection
               buyer={buyer}
               setBuyer={setBuyer}
@@ -476,30 +253,39 @@ ${formattedContent}
               setPaymentMethod={setPaymentMethod}
               paymentNumber={paymentNumber}
               setPaymentNumber={setPaymentNumber}
-              buyerDetailsRequired={buyerDetailsRequired}
               notes={notes}
               setNotes={setNotes}
               subtotal={subtotal}
               taxPercent={taxPercent}
               taxAmount={taxAmount}
               grandTotal={grandTotal}
-              currencySymbol={currencySymbol}
               discountPercent={discountPercent}
               discountAmount={discountAmount}
               setDiscountPercent={setDiscountPercent}
+              currencySymbol={currencySymbol}
             />
           </div>
+        </div>
 
-          <BillActionsFooter
-            onOpenChange={onOpenChange}
-            onReset={onReset}
-            setOrderId={setOrderId}
-            handleSaveAndPrint={handleSaveAndPrint}
-            handleSave={handleSave}
-            creating={creating}
-            itemsLength={items.length}
-            isBuyerDetailsValid={isBuyerDetailsValid}
-          />
+        {/* Floating Action Bar */}
+        <div className="border-t bg-background p-4 flex justify-end gap-3 sticky bottom-0">
+          <Button variant="outline" onClick={onReset}>Reset</Button>
+          <Button
+            size="lg"
+            onClick={onSave}
+            disabled={creating || items.length === 0}
+          >
+            {creating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Bill'}
+          </Button>
+          <Button
+            size="lg"
+            variant="default"
+            onClick={handleSaveAndPrint}
+            disabled={creating || items.length === 0}
+          >
+            <Printer className="mr-2 h-5 w-5" />
+            Save & Print
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

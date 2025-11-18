@@ -183,7 +183,11 @@ export default function Navbar() {
                   <div className="p-3 border-b border-gray-200">
                     <p className="text-sm font-medium text-gray-800">{user?.name || "User"}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
+                    <div className="flex space-x-2">
                     <p className="text-xs text-blue-600 font-medium capitalize">{user?.role}</p>
+                    <p className="text-xs text-blue-900 font-medium capitalize">{user?.userId || user?.id}</p>
+
+                    </div>
                   </div>
                   <div className="p-1">
                     <Link

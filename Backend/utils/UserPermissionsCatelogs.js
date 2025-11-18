@@ -61,6 +61,15 @@ const permissionsCatalog = {
     "createOrder",
     "viewOrder",
     "updateOrderStatus",
+    "createVendors",
+    "updateVendors",
+    "deleteVendors",
+    "viewVendors",
+    "createCategory",
+    "updateCategory",
+    "viewCategory",
+    "deleteCategory",
+    "manageAppointments",
   ],
 
   restaurant: [
@@ -72,48 +81,16 @@ const permissionsCatalog = {
   ],
 
   fashion: [
-    "createCategory",
-    "updateCategory",
-    "viewCategory",
-    "deleteCategory",
-    "createVendors",
-    "updateVendors",
-    "deleteVendors",
-    "viewVendors",
+    
   ],
 
   pharmacy: [
-    "createCategory",
-    "updateCategory",
-    "viewCategory",
-    "deleteCategory",
-    "createVendors",
-    "updateVendors",
-    "deleteVendors",
-    "viewVendors",
   ],
 
   electronics: [
-    "createCategory",
-    "updateCategory",
-    "viewCategory",
-    "deleteCategory",
-    "createVendors",
-    "updateVendors",
-    "deleteVendors",
-    "viewVendors",
   ],
 
   generalshop: [
-    "createCategory",
-    "updateCategory",
-    "viewCategory",
-    "deleteCategory",
-    "manageAppointments",
-    "createVendors",
-    "updateVendors",
-    "deleteVendors",
-    "viewVendors",
   ],
 };
 

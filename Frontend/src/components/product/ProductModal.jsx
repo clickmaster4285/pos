@@ -1,19 +1,19 @@
 // ProductModal.jsx
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import { useState, useEffect, useMemo, memo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import dynamic from "next/dynamic";
+import { useState, useEffect, useMemo, memo } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -21,29 +21,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Tag, X, PlusCircle, Image as ImageIcon } from 'lucide-react';
-import { getProductFields } from '@/utils/industryFields';
-import { useSelector } from 'react-redux';
-import { useCreateCategoryMutation } from '@/features/categoryApi';
-import { useCreateVendorMutation } from '@/features/vendorApi';
-import { useCreateIngredientMutation } from '@/features/ingredientApi';
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Tag, X, PlusCircle, Image as ImageIcon } from "lucide-react";
+import { 
+  getProductFields, 
+  filterFieldsByProductType, 
+  getRequiredFields,
+  getFieldRules
+} from "@/utils/industryFields";
+import { useSelector } from "react-redux";
+import { useCreateCategoryMutation } from "@/features/categoryApi";
+import { useCreateVendorMutation } from "@/features/vendorApi";
+import { useCreateIngredientMutation } from "@/features/ingredientApi";
 
 const CategoryModal = dynamic(
   () =>
-    import('@/components/category/CategoryModal').then(
+    import("@/components/category/CategoryModal").then(
       (m) => m.default ?? m.CategoryModal
     ),
   { ssr: false }
 );
-import { VendorModal } from '@/components/vendors/vendor-modal';
-import { IngredientModal } from '@/components/ingredients/IngredientModal';
+import { VendorModal } from "@/components/vendors/vendor-modal";
+import { IngredientModal } from "@/components/ingredients/IngredientModal";
 
 const useIndustry = (user) => user?.industryName;
 const useFeatureFlags = (user) => ({
-  hasCategories: (user?.extraFeature || []).includes('Category'),
-  hasVendors: (user?.extraFeature || []).includes('Vendors'),
+  hasCategories: (user?.extraFeature || []).includes("Category"),
+  hasVendors: (user?.extraFeature || []).includes("Vendors"),
 });
 
 export const ProductModal = memo(function ProductModal({
@@ -62,50 +67,51 @@ export const ProductModal = memo(function ProductModal({
 
   const industryFields = useMemo(() => getProductFields(industry), [industry]);
 
-  /* ----------------------------------------------------------------- */
-  /*  MANUAL FIELDS – never added by dynamic loop                      */
-  /* ----------------------------------------------------------------- */
   const MANUAL_FIELDS = useMemo(
     () =>
       new Set([
-        'productName',
-        'description',
-        'tags',
-        'productImage',
-        'SKU',
-        ...(hasCategories ? ['category', 'subCategoryName'] : []),
-        ...(hasVendors ? ['vendor'] : []),
+        "productName",
+        "description",
+        "tags",
+        "productImage",
+        "SKU",
+        ...(hasCategories ? ["category", "subCategoryName"] : []),
+        ...(hasVendors ? ["vendor"] : []),
       ]),
     [hasCategories, hasVendors]
   );
-
-  const dynamicFields = useMemo(() => {
-    return industryFields.filter((f) => !MANUAL_FIELDS.has(f.name));
-  }, [industryFields, MANUAL_FIELDS]);
-
+  
   const emptyForm = () => ({
-    id: '',
-    productName: '',
-    description: '',
+    id: "",
+    productName: "",
+    description: "",
     tags: [],
     imgUrl: [],
     productImage: [],
     ingredients: [],
-    category: '',
-    subCategoryName: '',
-    vendor: '',
-    SKU: '',
+    category: "",
+    subCategoryName: "",
+    vendor: "",
+    SKU: "",
     isAutoSKU: true,
+    productType: industry?.toLowerCase() === "restaurant" ? "prepared" : null,
     ...industryFields.reduce((acc, f) => {
-      if (f.type === 'ingredients-array') acc[f.name] = [];
-      else if (f.type === 'checkbox') acc[f.name] = false;
-      else acc[f.name] = '';
+      if (f.type === "ingredients-array") acc[f.name] = [];
+      else if (f.type === "checkbox") acc[f.name] = false;
+      else acc[f.name] = "";
       return acc;
     }, {}),
   });
-
   const [formData, setFormData] = useState(emptyForm());
-  const [newTag, setNewTag] = useState('');
+
+  const dynamicFields = useMemo(() => {
+    const allDynamicFields = industryFields.filter(f => !MANUAL_FIELDS.has(f.name));
+    return filterFieldsByProductType(allDynamicFields, industry, formData.productType);
+  }, [industryFields, MANUAL_FIELDS, industry, formData.productType]);
+
+  const requiredFields = ["productName"];
+
+  const [newTag, setNewTag] = useState("");
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
   const [localCategories, setLocalCategories] = useState(categories);
   const [localVendors, setLocalVendors] = useState(vendors);
@@ -118,27 +124,42 @@ export const ProductModal = memo(function ProductModal({
   const [createVendor] = useCreateVendorMutation();
   const [createIngredient] = useCreateIngredientMutation();
 
+  const isRestaurant = industry?.toLowerCase() === "restaurant";
+  const isRawMaterial = formData.productType === "raw";
+  const isReadOnly = mode === "view";
+
+  // New helper to check if a field should be hidden based on industryFields.js rules
+  const isFieldHidden = (fieldName) => {
+    const rules = getFieldRules(industry);
+    if (rules.global?.alwaysHidden?.includes(fieldName)) return true;
+    if (isRestaurant) {
+      if (formData.productType === 'raw') {
+        return rules.raw?.hidden?.includes(fieldName) || false;
+      } else if (formData.productType === 'prepared') {
+        return rules.prepared?.hidden?.includes(fieldName) || false;
+      }
+    }
+    return false;
+  };
+
   useEffect(() => setLocalCategories(categories), [categories]);
   useEffect(() => setLocalVendors(vendors), [vendors]);
   useEffect(() => setLocalIngredients(ingredients), [ingredients]);
 
-  /* ----------------------------------------------------------------- */
-  /*  Reset form when dialog opens/closes                               */
-  /* ----------------------------------------------------------------- */
   useEffect(() => {
     if (!isOpen) {
       setFormData(emptyForm());
-      setNewTag('');
+      setNewTag("");
       return;
     }
 
     if (product) {
       const base = {
-        id: product.id || product._id || '',
-        productName: product.productName || '',
-        description: product.description || '',
+        id: product.id || product._id || "",
+        productName: product.productName || "",
+        description: product.description || "",
         tags: product.tags || [],
-        vendor: product.vendor?._id || product.vendor || '',
+        vendor: product.vendor?._id || product.vendor || "",
         imgUrl: Array.isArray(product.imgUrl)
           ? product.imgUrl
           : product.imgUrl
@@ -147,32 +168,36 @@ export const ProductModal = memo(function ProductModal({
         productImage: [],
         ingredients: Array.isArray(product.ingredient)
           ? product.ingredient.map((i) => ({
-              ingredientId: i.ingredientId?._id || i.ingredientId || '',
-              ingredientName: i.ingredientName || '',
-              quantity: i.quantity || '',
-              unit: i.unit || '',
+              ingredientId: i.ingredientId?._id || i.ingredientId || "",
+              ingredientName: i.ingredientName || "",
+              quantity: i.quantity || "",
+              unit: i.unit || "",
             }))
           : [],
-        category: product.category?._id || product.category || '',
-        subCategoryName: product.subCategoryName || '',
-        SKU: product.SKU || '',
+        category: product.category?._id || product.category || "",
+        subCategoryName: product.subCategoryName || "",
+        SKU: product.SKU || "",
         isAutoSKU: !product.SKU,
+        productType:
+          product.productType ||
+          (isRestaurant
+            ? product.ingredients?.length > 0
+              ? "prepared"
+              : "raw"
+            : null),
       };
 
       const dyn = {};
       industryFields.forEach((f) => {
-        dyn[f.name] = product[f.name] ?? (f.type === 'checkbox' ? false : '');
+        dyn[f.name] = product[f.name] ?? (f.type === "checkbox" ? false : "");
       });
 
       setFormData({ ...emptyForm(), ...base, ...dyn });
     } else {
       setFormData(emptyForm());
     }
-  }, [product, isOpen, industryFields]);
+  }, [product, isOpen, industryFields, isRestaurant]);
 
-  /* ----------------------------------------------------------------- */
-  /*  Sub-category list – updates when category changes                 */
-  /* ----------------------------------------------------------------- */
   useEffect(() => {
     if (!hasCategories || !formData.category) {
       setAvailableSubCategories([]);
@@ -183,50 +208,49 @@ export const ProductModal = memo(function ProductModal({
     setAvailableSubCategories(subs);
 
     if (formData.subCategoryName && !subs.includes(formData.subCategoryName)) {
-      setFormData((prev) => ({ ...prev, subCategoryName: '' }));
+      setFormData((prev) => ({ ...prev, subCategoryName: "" }));
     }
   }, [formData.category, localCategories, hasCategories]);
 
-  /* ----------------------------------------------------------------- */
-  /*  Helper change handlers                                            */
-  /* ----------------------------------------------------------------- */
   const handleChange = (field, value) =>
     setFormData((p) => ({ ...p, [field]: value }));
 
   const addTag = () => {
     const t = newTag.trim();
     if (t && !formData.tags.includes(t)) {
-      handleChange('tags', [...formData.tags, t]);
-      setNewTag('');
+      handleChange("tags", [...formData.tags, t]);
+      setNewTag("");
     }
   };
+
   const removeTag = (i) =>
     handleChange(
-      'tags',
+      "tags",
       formData.tags.filter((_, idx) => idx !== i)
     );
 
   const addIngredient = () =>
-    handleChange('ingredients', [
+    handleChange("ingredients", [
       ...(formData.ingredients || []),
-      { ingredientId: '', ingredientName: '', quantity: '', unit: '' },
+      { ingredientId: "", ingredientName: "", quantity: "", unit: "" },
     ]);
 
   const updateIngredient = (idx, field, value) => {
     const copy = [...formData.ingredients];
     copy[idx][field] = value;
-    if (field === 'ingredientId') {
+    if (field === "ingredientId") {
       const ing = localIngredients.find((i) => i._id === value);
       if (ing) {
         copy[idx].ingredientName = ing.name;
-        copy[idx].unit = ing.unit || '';
+        copy[idx].unit = ing.unit || "";
       }
     }
-    handleChange('ingredients', copy);
+    handleChange("ingredients", copy);
   };
+
   const removeIngredient = (i) =>
     handleChange(
-      'ingredients',
+      "ingredients",
       formData.ingredients.filter((_, idx) => idx !== i)
     );
 
@@ -239,7 +263,7 @@ export const ProductModal = memo(function ProductModal({
       productImage: [...prev.productImage, ...files],
     }));
 
-    e.target.value = '';
+    e.target.value = "";
   };
 
   const removeImage = (i) => {
@@ -249,30 +273,47 @@ export const ProductModal = memo(function ProductModal({
     }));
   };
 
-  /* ----------------------------------------------------------------- */
-  /*  Submit – builds FormData **exactly once**                         */
-  /* ----------------------------------------------------------------- */
+  const validateForm = () => {
+    for (const fieldName of requiredFields) {
+      const value = formData[fieldName];
+      if (!value || (typeof value === 'string' && !value.trim())) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    if (!validateForm()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
     const fd = new FormData();
 
-    fd.append('productName', formData.productName || '');
-    fd.append('description', formData.description || '');
-    fd.append('tags', JSON.stringify(formData.tags || []));
+    fd.append("productName", formData.productName || "");
+    fd.append("description", formData.description || "");
+    fd.append("tags", JSON.stringify(formData.tags || []));
+
+    if (isRestaurant) {
+      fd.append("productType", formData.productType);
+    }
 
     (formData.productImage || []).forEach((file) =>
-      fd.append('productImage', file)
+      fd.append("productImage", file)
     );
 
-    if (!formData.isAutoSKU && formData.SKU) fd.append('SKU', formData.SKU);
+    if (!formData.isAutoSKU && formData.SKU) fd.append("SKU", formData.SKU);
 
     if (hasCategories) {
-      if (formData.category) fd.append('category', formData.category);
+      if (formData.category) fd.append("category", formData.category);
       if (formData.subCategoryName)
-        fd.append('subCategoryName', formData.subCategoryName);
+        fd.append("subCategoryName", formData.subCategoryName);
     }
-    if (hasVendors && formData.vendor) fd.append('vendor', formData.vendor);
+    if (hasVendors && formData.vendor) fd.append("vendor", formData.vendor);
 
     industryFields.forEach((field) => {
       if (MANUAL_FIELDS.has(field.name)) return;
@@ -282,7 +323,7 @@ export const ProductModal = memo(function ProductModal({
 
       if (
         Array.isArray(value) ||
-        (typeof value === 'object' && value !== null)
+        (typeof value === "object" && value !== null)
       ) {
         fd.append(field.name, JSON.stringify(value));
       } else {
@@ -294,16 +335,179 @@ export const ProductModal = memo(function ProductModal({
     onClose();
   };
 
-  const isReadOnly = mode === 'view';
+  const renderField = (field) => {
+    const placeholder = field.placeholder || "";
+    const value = formData[field.name] || "";
+    const isRequired = requiredFields.includes(field.name);
 
-  /* ----------------------------------------------------------------- */
-  /*  Create helpers                                                    */
-  /* ----------------------------------------------------------------- */
+    if (field.name === "SKU") {
+      return (
+        <div key="SKU" className="space-y-2">
+          <Label>
+            {field.label}
+            {isRequired && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={formData.SKU}
+              onChange={(e) => handleChange("SKU", e.target.value.toUpperCase())}
+              placeholder={
+                formData.isAutoSKU
+                  ? "Auto-generated"
+                  : placeholder || "Enter custom SKU"
+              }
+              disabled={formData.isAutoSKU || isReadOnly}
+              className="flex-1"
+              required={isRequired}
+            />
+            <Button
+              type="button"
+              variant={formData.isAutoSKU ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                const newAuto = !formData.isAutoSKU;
+                handleChange("isAutoSKU", newAuto);
+                if (newAuto) handleChange("SKU", "");
+              }}
+              disabled={isReadOnly}
+            >
+              {formData.isAutoSKU ? "Custom" : "Auto"}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (field.type === "date") {
+      return (
+        <div key={field.name} className="space-y-2">
+          <Label>
+            {field.label}
+            {isRequired && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          <Input
+            type="date"
+            value={value}
+            onChange={(e) => handleChange(field.name, e.target.value)}
+            disabled={isReadOnly}
+            required={isRequired}
+          />
+        </div>
+      );
+    }
+
+    switch (field.type) {
+      case "number":
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              type="number"
+              min={field.min}
+              step={field.step || 1}
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              disabled={isReadOnly}
+              placeholder={placeholder}
+              required={isRequired}
+            />
+          </div>
+        );
+
+      case "text":
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              disabled={isReadOnly}
+              placeholder={placeholder}
+              required={isRequired}
+            />
+          </div>
+        );
+
+      case "textarea":
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Textarea
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              disabled={isReadOnly}
+              placeholder={placeholder}
+              required={isRequired}
+            />
+          </div>
+        );
+
+      case "select":
+        return (
+          <div key={field.name} className="space-y-2">
+            <Label>
+              {field.label}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Select
+              value={value}
+              onValueChange={(v) => handleChange(field.name, v)}
+              disabled={isReadOnly}
+              required={isRequired}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    placeholder ||
+                    `Select ${String(field.label || "").toLowerCase()}`
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case "checkbox":
+        return (
+          <div key={field.name} className="flex items-center space-y-2">
+            <input
+              type="checkbox"
+              checked={!!value}
+              onChange={(e) => handleChange(field.name, e.target.checked)}
+              disabled={isReadOnly}
+              className="mr-2"
+            />
+            <Label className="cursor-pointer">{field.label}</Label>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   const saveNewCategoryToDb = async (payload) => {
     try {
       const created = await createCategory({
-        categoryName: payload?.categoryName?.trim() || '',
-        description: payload?.description || '',
+        categoryName: payload?.categoryName?.trim() || "",
+        description: payload?.description || "",
         subCategory: Array.isArray(payload?.subCategory)
           ? payload.subCategory
           : [],
@@ -317,22 +521,22 @@ export const ProductModal = memo(function ProductModal({
         return exists ? prev : [...prev, created];
       });
 
-      handleChange('category', created._id || created.id);
+      handleChange("category", created._id || created.id);
       setIsCatModalOpen(false);
     } catch (err) {
-      console.error('Create category failed:', err);
+      console.error("Create category failed:", err);
     }
   };
 
   const saveNewVendorToDb = async (payload) => {
     try {
       const created = await createVendor({
-        name: payload?.name?.trim() || '',
-        email: payload?.email || '',
-        contactName: payload?.contactName || '',
-        phone: payload?.phone || '',
-        address: payload?.address || '',
-        paymentType: payload?.paymentType || '',
+        name: payload?.name?.trim() || "",
+        email: payload?.email || "",
+        contactName: payload?.contactName || "",
+        phone: payload?.phone || "",
+        address: payload?.address || "",
+        paymentType: payload?.paymentType || "",
       }).unwrap();
 
       setLocalVendors((prev) => {
@@ -342,186 +546,66 @@ export const ProductModal = memo(function ProductModal({
           : [...prev, created];
       });
 
-      handleChange('vendor', created._id || created.id);
+      handleChange("vendor", created._id || created.id);
       setIsVendorModalOpen(false);
     } catch (err) {
-      console.error('Create vendor failed:', err);
+      console.error("Create vendor failed:", err);
     }
   };
 
-  /* ----------------------------------------------------------------- */
-  /*  Render helpers                                                    */
-  /* ----------------------------------------------------------------- */
-const renderField = (field) => {
-  const placeholder = field.placeholder || ''; // <= central place
-
-  if (field.name === 'SKU') {
-    return (
-      <div key="SKU" className="space-y-2">
-        <Label>{field.label}</Label>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            value={formData.SKU}
-            onChange={(e) => handleChange('SKU', e.target.value.toUpperCase())}
-            placeholder={
-              formData.isAutoSKU
-                ? 'Auto-generated'
-                : placeholder || 'Enter custom SKU'
-            }
-            disabled={formData.isAutoSKU || isReadOnly}
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            variant={formData.isAutoSKU ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => {
-              const newAuto = !formData.isAutoSKU;
-              handleChange('isAutoSKU', newAuto);
-              if (newAuto) handleChange('SKU', '');
-            }}
-            disabled={isReadOnly}
-          >
-            {formData.isAutoSKU ? 'Custom' : 'Auto'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (field.type === 'date') {
-    return (
-      <div key={field.name} className="space-y-2">
-        <Label>{field.label}</Label>
-        <Input
-          type="date"
-          value={formData[field.name] || ''}
-          onChange={(e) => handleChange(field.name, e.target.value)}
-          disabled={isReadOnly}
-        />
-      </div>
-    );
-  }
-
-  switch (field.type) {
-    case 'number':
-      return (
-        <div key={field.name} className="space-y-2">
-          <Label>{field.label}</Label>
-          <Input
-            type="number"
-            min={field.min}
-            step={field.step || 1}
-            value={formData[field.name] || ''}
-            onChange={(e) => handleChange(field.name, e.target.value)}
-            disabled={isReadOnly}
-            placeholder={placeholder}
-          />
-        </div>
-      );
-
-    case 'text':
-      return (
-        <div key={field.name} className="space-y-2">
-          <Label>{field.label}</Label>
-          <Input
-            value={formData[field.name] || ''}
-            onChange={(e) => handleChange(field.name, e.target.value)}
-            disabled={isReadOnly}
-            placeholder={placeholder}
-          />
-        </div>
-      );
-
-    case 'textarea':
-      return (
-        <div key={field.name} className="space-y-2">
-          <Label>{field.label}</Label>
-          <Textarea
-            value={formData[field.name] || ''}
-            onChange={(e) => handleChange(field.name, e.target.value)}
-            disabled={isReadOnly}
-            placeholder={placeholder}
-          />
-        </div>
-      );
-
-    case 'select':
-      return (
-        <div key={field.name} className="space-y-2">
-          <Label>{field.label}</Label>
-          <Select
-            value={formData[field.name]}
-            onValueChange={(v) => handleChange(field.name, v)}
-            disabled={isReadOnly}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  placeholder ||
-                  `Select ${String(field.label || '').toLowerCase()}`
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {field.options.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      );
-
-    case 'checkbox':
-      return (
-        <div key={field.name} className="flex items-center space-y-2">
-          <input
-            type="checkbox"
-            checked={!!formData[field.name]}
-            onChange={(e) => handleChange(field.name, e.target.checked)}
-            disabled={isReadOnly}
-            className="mr-2"
-          />
-          <Label className="cursor-pointer">{field.label}</Label>
-        </div>
-      );
-
-    default:
-      return null;
-  }
-};
-
-
-  /* ----------------------------------------------------------------- */
-  /*  JSX                                                               */
-  /* ----------------------------------------------------------------- */
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-3xl w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {mode === 'create'
-                ? 'Add Product'
-                : mode === 'edit'
-                ? 'Edit Product'
-                : 'View Product'}
+              {mode === "create"
+                ? "Add Product"
+                : mode === "edit"
+                ? "Edit Product"
+                : "View Product"}
             </DialogTitle>
             <DialogDescription>
-              {mode === 'create'
-                ? 'Fill in the details to create a new product.'
-                : 'Update product information.'}
+              {mode === "create"
+                ? "Fill in the details to create a new product."
+                : "Update product information."}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* ==================== TWO-COLUMN SECTION ==================== */}
+            {isRestaurant && (
+              <div className="space-y-3">
+                <Label>Product Type</Label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="productType"
+                      value="raw"
+                      checked={isRawMaterial}
+                      onChange={() => handleChange("productType", "raw")}
+                      disabled={isReadOnly}
+                      className="radio radio-primary"
+                    />
+                    <span className="font-medium">Raw Material</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="productType"
+                      value="prepared"
+                      checked={!isRawMaterial}
+                      onChange={() => handleChange("productType", "prepared")}
+                      disabled={isReadOnly}
+                      className="radio radio-primary"
+                    />
+                    <span className="font-medium">Prepared (Cooked)</span>
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div>
-              {/* ---- Images ---- */}
               <div className="space-y-3 mb-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -537,16 +621,15 @@ const renderField = (field) => {
                   {formData.imgUrl.length + formData.productImage.length >
                     0 && (
                     <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                      {formData.imgUrl.length + formData.productImage.length}{' '}
+                      {formData.imgUrl.length + formData.productImage.length}{" "}
                       image
                       {formData.imgUrl.length + formData.productImage.length > 1
-                        ? 's'
-                        : ''}
+                        ? "s"
+                        : ""}
                     </span>
                   )}
                 </div>
 
-                {/* Preview gallery */}
                 {(formData.imgUrl.length > 0 ||
                   formData.productImage.length > 0) && (
                   <div className="rounded-xl border bg-muted/40 p-3">
@@ -562,7 +645,7 @@ const renderField = (field) => {
                             className="h-full w-full object-cover cursor-pointer"
                             onClick={() =>
                               !isReadOnly &&
-                              document.getElementById('image-upload').click()
+                              document.getElementById("image-upload").click()
                             }
                           />
                           {!isReadOnly && (
@@ -595,7 +678,7 @@ const renderField = (field) => {
                             className="h-full w-full object-cover cursor-pointer"
                             onClick={() =>
                               !isReadOnly &&
-                              document.getElementById('image-upload').click()
+                              document.getElementById("image-upload").click()
                             }
                           />
                           {!isReadOnly && (
@@ -613,13 +696,12 @@ const renderField = (field) => {
                   </div>
                 )}
 
-                {/* Upload area */}
                 {!isReadOnly && (
                   <>
                     <div
                       className="mt-1 border-2 border-dashed border-muted-foreground/40 rounded-xl px-4 py-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() =>
-                        document.getElementById('image-upload').click()
+                        document.getElementById("image-upload").click()
                       }
                     >
                       <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground" />
@@ -653,53 +735,47 @@ const renderField = (field) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* ---- Product Name ---- */}
-                <div className="space-y-2 ">
-                  <Label>Name *</Label>
+                <div className="space-y-2">
+                  <Label>
+                    Name
+                    <span className="text-red-500 ml-1">*</span>
+                  </Label>
                   <Input
                     value={formData.productName}
-                    onChange={(e) =>
-                      handleChange('productName', e.target.value)
-                    }
+                    onChange={(e) => handleChange("productName", e.target.value)}
                     required
                     disabled={isReadOnly}
-                    placeholder={'Enter Product Name'}
+                    placeholder="Enter Product Name"
                   />
                 </div>
 
-                {/* ---- SKU (if defined) ---- */}
-                {industryFields.some((f) => f.name === 'SKU') &&
-                  renderField(industryFields.find((f) => f.name === 'SKU'))}
+                {!isFieldHidden('SKU') && industryFields.some((f) => f.name === "SKU") &&
+                  renderField(industryFields.find((f) => f.name === "SKU"))}
 
-                {/* ---- Vendor (if enabled) ---- */}
-                {hasVendors &&
-                  industryFields.some((f) => f.type === 'select-vendor') && (
-                    <div className="space-y-2 ">
+                {!isFieldHidden('vendor') && hasVendors &&
+                  industryFields.some((f) => f.type === "select-vendor") && (
+                    <div className="space-y-2">
                       <Label className="text-sm font-medium">Vendor</Label>
-
                       <Select
                         value={formData.vendor || undefined}
                         onValueChange={(val) => {
-                          if (val === '__create_vendor__') {
-                            // open vendor create modal, don't set value
+                          if (val === "__create_vendor__") {
                             setIsVendorModalOpen(true);
                             return;
                           }
-                          handleChange('vendor', val);
+                          handleChange("vendor", val);
                         }}
                         disabled={isReadOnly}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select vendor" />
                         </SelectTrigger>
-
                         <SelectContent>
                           {localVendors.map((v) => (
                             <SelectItem key={v._id} value={v._id}>
                               {v.name}
                             </SelectItem>
                           ))}
-
                           {!isReadOnly && (
                             <>
                               <div className="my-1 border-t" />
@@ -716,36 +792,34 @@ const renderField = (field) => {
                     </div>
                   )}
 
-                {/* ---- Category (if enabled) ---- */}
-                {hasCategories &&
-                  industryFields.some((f) => f.type === 'select-category') && (
-                    <div className="space-y-2 ">
-                      <Label className="text-sm font-medium">Category *</Label>
-
+                {!isFieldHidden('category') && hasCategories && 
+                  industryFields.some((f) => f.type === "select-category") && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Category
+                        {requiredFields.includes('category') && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
                       <Select
                         value={formData.category || undefined}
                         onValueChange={(val) => {
-                          if (val === '__create_category__') {
-                            // open category create modal, skip storing this value
+                          if (val === "__create_category__") {
                             setIsCatModalOpen(true);
                             return;
                           }
-                          handleChange('category', val);
+                          handleChange("category", val);
                         }}
                         disabled={isReadOnly}
-                        required
+                        required={requiredFields.includes('category')}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
-
                         <SelectContent>
                           {localCategories.map((c) => (
                             <SelectItem key={c._id} value={c._id}>
                               {c.categoryName}
                             </SelectItem>
                           ))}
-
                           {!isReadOnly && (
                             <>
                               <div className="my-1 border-t" />
@@ -762,13 +836,12 @@ const renderField = (field) => {
                     </div>
                   )}
 
-                {/* ---- Sub-Category (if category selected) ---- */}
-                {hasCategories && formData.category && (
+                {!isFieldHidden('subCategoryName') && hasCategories && formData.category && (
                   <div className="space-y-2 -mt-1">
                     <Label className="text-sm font-medium">Sub Category</Label>
                     <Select
                       value={formData.subCategoryName}
-                      onValueChange={(v) => handleChange('subCategoryName', v)}
+                      onValueChange={(v) => handleChange("subCategoryName", v)}
                       disabled={isReadOnly}
                     >
                       <SelectTrigger className="w-full">
@@ -785,96 +858,103 @@ const renderField = (field) => {
                   </div>
                 )}
 
-                {/* ---- Dynamic Industry Fields ---- */}
                 {dynamicFields.map(renderField)}
               </div>
             </div>
-            {/* ==================== FULL-WIDTH INGREDIENTS ==================== */}
-            {industryFields.some((f) => f.type === 'ingredients-array') && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Ingredients</Label>
-                  {!isReadOnly && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsIngredientModalOpen(true)}
-                    >
-                      <PlusCircle className="h-4 w-4 mr-1" /> New
-                    </Button>
-                  )}
-                </div>
 
-                {formData.ingredients.map((ing, idx) => (
-                  <div key={idx} className="flex gap-2 items-end">
-                    <Select
-                      value={ing.ingredientId}
-                      onValueChange={(v) =>
-                        updateIngredient(idx, 'ingredientId', v)
-                      }
-                      disabled={isReadOnly}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select ingredient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {localIngredients.map((i) => (
-                          <SelectItem key={i._id} value={i._id}>
-                            {i.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Input
-                      type="text"
-                      value={ing.quantity}
-                      onChange={(e) =>
-                        updateIngredient(idx, 'quantity', e.target.value)
-                      }
-                      placeholder="Qty"
-                      disabled={isReadOnly}
-                      className="w-24"
-                    />
-
-                    <Input
-                      type="text"
-                      value={ing.unit || ''}
-                      readOnly
-                      disabled
-                      className="w-28 bg-muted text-muted-foreground"
-                    />
-
+            {isRestaurant &&
+              !isRawMaterial &&
+              industryFields.some((f) => f.type === "ingredients-array") && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Ingredients</Label>
                     {!isReadOnly && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeIngredient(idx)}
-                        className="h-8 w-8 p-0"
+                        onClick={() => setIsIngredientModalOpen(true)}
                       >
-                        <X className="h-4 w-4" />
+                        <PlusCircle className="h-4 w-4 mr-1" /> New
                       </Button>
                     )}
                   </div>
-                ))}
 
-                {!isReadOnly && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addIngredient}
-                    className="gap-2"
-                  >
-                    <PlusCircle className="h-4 w-4" /> Add Ingredient
-                  </Button>
-                )}
-              </div>
-            )}
+                  {formData.ingredients.map((ing, idx) => (
+                    <div key={idx} className="flex gap-2 items-end">
+                      <Select
+                        value={ing.ingredientId}
+                        onValueChange={(v) =>
+                          updateIngredient(idx, "ingredientId", v)
+                        }
+                        disabled={isReadOnly}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select ingredient" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {localIngredients
+                            .filter(
+                              (i) =>
+                                !formData.ingredients.some(
+                                  (ing) => ing.ingredientId === i._id
+                                ) || i._id === ing.ingredientId
+                            )
+                            .map((i) => (
+                              <SelectItem key={i._id} value={i._id}>
+                                {i.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
 
-            {/* ==================== TAGS (FULL-WIDTH) ==================== */}
+                      <Input
+                        type="text"
+                        value={ing.quantity}
+                        onChange={(e) =>
+                          updateIngredient(idx, "quantity", e.target.value)
+                        }
+                        placeholder="Qty"
+                        disabled={isReadOnly}
+                        className="w-24"
+                      />
+
+                      <Input
+                        type="text"
+                        value={ing.unit || ""}
+                        readOnly
+                        disabled
+                        className="w-28 bg-muted text-muted-foreground"
+                      />
+
+                      {!isReadOnly && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeIngredient(idx)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  {!isReadOnly && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addIngredient}
+                      className="gap-2"
+                    >
+                      <PlusCircle className="h-4 w-4" /> Add Ingredient
+                    </Button>
+                  )}
+                </div>
+              )}
+
             <div className="space-y-2">
               <Label>Tags</Label>
               <div className="flex gap-2">
@@ -884,7 +964,7 @@ const renderField = (field) => {
                   placeholder="Add tag"
                   disabled={isReadOnly}
                   onKeyDown={(e) =>
-                    e.key === 'Enter' && (e.preventDefault(), addTag())
+                    e.key === "Enter" && (e.preventDefault(), addTag())
                   }
                 />
                 <Button
@@ -910,27 +990,24 @@ const renderField = (field) => {
               </div>
             </div>
 
-            {/* ==================== DESCRIPTION (FULL-WIDTH) ==================== */}
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                // required
+                onChange={(e) => handleChange("description", e.target.value)}
                 disabled={isReadOnly}
                 className="min-h-32"
                 placeholder="Enter description of the product"
               />
             </div>
 
-            {/* ==================== FOOTER ==================== */}
             <DialogFooter className="gap-2">
               <Button type="button" variant="secondary" onClick={onClose}>
-                {isReadOnly ? 'Close' : 'Cancel'}
+                {isReadOnly ? "Close" : "Cancel"}
               </Button>
               {!isReadOnly && (
                 <Button type="submit">
-                  {mode === 'create' ? 'Create Product' : 'Save Changes'}
+                  {mode === "create" ? "Create Product" : "Save Changes"}
                 </Button>
               )}
             </DialogFooter>
@@ -938,7 +1015,6 @@ const renderField = (field) => {
         </DialogContent>
       </Dialog>
 
-      {/* ==================== MODALS ==================== */}
       <CategoryModal
         isOpen={isCatModalOpen}
         onClose={() => setIsCatModalOpen(false)}
@@ -971,7 +1047,7 @@ const renderField = (field) => {
             });
             setIsIngredientModalOpen(false);
           } catch (err) {
-            console.error('Failed to create ingredient:', err);
+            console.error("Failed to create ingredient:", err);
           }
         }}
       />

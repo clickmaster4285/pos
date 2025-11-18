@@ -11,10 +11,10 @@
 const refreshMap = {
   // When these APIs mutate → refresh these getAll queries
   orderApi: ['orderApi', 'productApi', 'ingredientApi', 'tableApi', 'billsApi'],
-  productApi: ['productApi', 'orderApi', 'categoryApi'],
+  productApi: ['productApi'],
   ingredientApi: ['ingredientApi', 'orderApi'],
   tableApi: ['tableApi', 'orderApi'],
-  billsApi: ['billsApi', 'orderApi'],
+  billsApi: ['billsApi', 'orderApi','productApi', 'tableApi','orderApi','ingredientApi'],
 
   staffApi: ['staffApi', 'StaffSalary'],
   StaffSalary: ['StaffSalary', 'staffApi'],

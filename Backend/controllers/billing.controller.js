@@ -17,8 +17,8 @@ const createBill = async (req, res) => {
   try {
     const { userId, companyId } = req.user;
     const {
-      orderId, // optional now
-      items: rawItems, // [{ productId, orderItemId, qty, price, lineTotal, ... }]
+      orderId,
+      items: rawItems,
       buyer,
       taxPercent: providedTaxPercent,
       discountPercent: providedDiscountPercent,
@@ -27,301 +27,209 @@ const createBill = async (req, res) => {
       paymentNumber,
     } = req.body ?? {};
 
-    // ---- 1) top-level validations ----
+    // === 1. Basic Validation ===
     if (!['cash', 'credit_card', 'bank_transfer'].includes(paymentMethod)) {
       throw new Error('Invalid payment method');
     }
-
-    const hasOrderId = orderId && mongoose.isValidObjectId(String(orderId));
-
-    // Non-cash needs paymentNumber
-    if (
-      ['credit_card', 'bank_transfer'].includes(paymentMethod) &&
-      !paymentNumber?.trim()
-    ) {
+    if (['credit_card', 'bank_transfer'].includes(paymentMethod) && !paymentNumber?.trim()) {
       throw new Error('Payment number is required for non-cash payments');
     }
 
     const sanitizedNotes = sanitizeInput(notes);
-    if (
-      sanitizedNotes &&
-      (typeof sanitizedNotes !== 'string' ||
-        sanitizedNotes.length > 1000 ||
-        !/^[\w\s.,!?-]*$/.test(sanitizedNotes))
-    ) {
-      throw new Error('Invalid notes format or length');
-    }
+    if (sanitizedNotes?.length > 1000) throw new Error('Notes too long');
 
-    // ---- 2) company + tax ----
-    const company = await IndexModel.Company.findOne({
-      companyId,
-      deleted: false,
-      isActive: true,
+    const hasOrderId = orderId && mongoose.isValidObjectId(String(orderId));
+
+    // === 2. Company & Tax Settings ===
+    const company = await IndexModel.Company.findOne({ 
+      companyId: companyId, deleted: false, isActive: true 
     }).lean();
-
     if (!company) throw new Error('Company not found');
 
-    const taxRates = {
-      taxRateCash: company?.invoiceSettings?.tax?.taxRateCash || 0,
-      taxRateCard: company?.invoiceSettings?.tax?.taxRateCard || 0,
-    };
+    const taxRateCash = company?.invoiceSettings?.tax?.taxRateCash || 0;
+    const taxRateCard = company?.invoiceSettings?.tax?.taxRateCard || 0;
+    const taxPercent = paymentMethod === 'cash' ? taxRateCash : taxRateCard;
 
-    let taxPercent =
-      paymentMethod === 'cash' ? taxRates.taxRateCash : taxRates.taxRateCard;
-
-    if (providedTaxPercent !== undefined) {
-      if (typeof providedTaxPercent !== 'number' || providedTaxPercent < 0) {
-        throw new Error('Provided taxPercent must be a number ≥ 0');
-      }
-      const must =
-        paymentMethod === 'cash' ? taxRates.taxRateCash : taxRates.taxRateCard;
-      if (providedTaxPercent !== must) {
-        throw new Error(
-          'Provided taxPercent does not match company tax settings'
-        );
-      }
-      taxPercent = providedTaxPercent;
+    if (providedTaxPercent !== undefined && providedTaxPercent !== taxPercent) {
+      throw new Error('Provided tax percent does not match company settings');
     }
 
-    // ---- 3) fetch order (if provided) ----
-    let order = null;
-    if (hasOrderId) {
-      order = await IndexModel.Orders.findOne({
-        _id: orderId,
-        companyId,
-        deleted: false,
-      })
-        .select(
-          '_id orderNo items subTotal dynamicAttributes customerName customerPhone paymentStatus orderStatus'
-        )
-        .lean();
-
-      if (!order) throw new Error('Order not found');
-    }
-
-    // ---- 4) build bill items (from request or from order) ----
-    const itemsArray = Array.isArray(rawItems) ? rawItems : [];
-
+    // === 3. Build Bill Items ===
     let billItems = [];
 
-    if (itemsArray.length > 0) {
-      // Use items from request (can be order items, products, or both)
-      billItems = itemsArray.map((it) => {
-        const qty = Number.isFinite(it?.qty)
-          ? Number(it.qty)
-          : Number.isFinite(it?.quantity)
-          ? Number(it.quantity)
-          : 1;
+    if (Array.isArray(rawItems) && rawItems.length > 0) {
+      billItems = rawItems.map(it => ({
+        ProductId: it.productId ? new mongoose.Types.ObjectId(String(it.productId)) : undefined,
+        OrderItemId: it.orderItemId ? new mongoose.Types.ObjectId(String(it.orderItemId)) : undefined,
+        dynamicAttributes: it.dynamicAttributes || {},
+        itemName: sanitizeInput(it.itemName || it.name || 'Item'),
+        quantity: Math.max(1, Math.floor(Number(it.qty || it.quantity || 1))),
+        price: Number(it.price || 0),
+        total: Number(it.lineTotal || it.total || (it.qty || 1) * (it.price || 0)),
+      }));
+    } else if (hasOrderId) {
+      const order = await IndexModel.Orders.findOne({ 
+        _id: orderId, companyId, deleted: false 
+      }).select('items subTotal').lean();
 
-        const price = Number.isFinite(it?.price) ? Number(it.price) : 0;
+      if (!order) throw new Error('Order not found');
 
-        const total = Number.isFinite(it?.lineTotal)
-          ? Number(it.lineTotal)
-          : Number.isFinite(it?.total)
-          ? Number(it.total)
-          : qty * price;
-
-        return {
-          ProductId: it.productId
-            ? new mongoose.Types.ObjectId(String(it.productId))
-            : undefined,
-          OrderItemId: it.orderItemId
-            ? new mongoose.Types.ObjectId(String(it.orderItemId))
-            : undefined,
-          dynamicAttributes: it.dynamicAttributes || {},
-          itemName: it.itemName || it.name || 'Item',
-          quantity: qty,
-          price,
-          total,
-        };
-      });
-    } else if (order && Array.isArray(order.items) && order.items.length > 0) {
-      // No items in body: fallback to full order items (old behavior)
-      billItems = order.items.map((it) => {
-        const qty = Number.isFinite(it?.qty)
-          ? Number(it.qty)
-          : Number.isFinite(it?.quantity)
-          ? Number(it.quantity)
-          : 1;
-
-        const price = Number.isFinite(it?.price) ? Number(it.price) : 0;
-
-        const total = Number.isFinite(it?.total)
-          ? Number(it.total)
-          : qty * price;
-
-        return {
-          ProductId: it.productId
-            ? new mongoose.Types.ObjectId(String(it.productId))
-            : undefined,
-          OrderItemId: it._id,
-          dynamicAttributes: it.dynamicAttributes || {},
-          itemName: it.name || 'Item',
-          quantity: qty,
-          price,
-          total,
-        };
-      });
+      billItems = order.items.map(it => ({
+        ProductId: it.productId ? new mongoose.Types.ObjectId(String(it.productId)) : undefined,
+        OrderItemId: it._id,
+        dynamicAttributes: it.dynamicAttributes || {},
+        itemName: it.name || 'Item',
+        quantity: Number(it.qty || 1),
+        price: Number(it.price || 0),
+        total: Number(it.total || 0),
+      }));
     } else {
-      throw new Error('No items provided to bill');
+      throw new Error('No items provided');
     }
 
-    if (!billItems.length) {
-      throw new Error('Bill must contain at least one item');
-    }
+    if (billItems.length === 0) throw new Error('Bill must have at least one item');
 
-    // Optional: enforce all items must have ProductId
-    // if (billItems.some((li) => !li.ProductId)) {
-    //   throw new Error('Each item must have a valid ProductId');
-    // }
-
-    // ---- 5) totals + discount ----
-    const subtotal = billItems.reduce(
-      (s, li) => s + (Number(li.total) || 0),
-      0
-    );
-
-    // discount in percent only
-    let discountPercent = 0;
-    if (providedDiscountPercent !== undefined) {
-      if (
-        typeof providedDiscountPercent !== 'number' ||
-        providedDiscountPercent < 0 ||
-        providedDiscountPercent > 100
-      ) {
-        throw new Error('discountPercent must be between 0 and 100');
-      }
-      discountPercent = providedDiscountPercent;
-    }
-
-    const discountAmount = +(
-      subtotal *
-      (Number(discountPercent) / 100)
-    ).toFixed(2);
-
+    // === 4. Calculate Totals ===
+    const subtotal = billItems.reduce((sum, li) => sum + Number(li.total), 0);
+    const discountPercent = Math.max(0, Math.min(100, Number(providedDiscountPercent || 0)));
+    const discountAmount = Number((subtotal * (discountPercent / 100)).toFixed(2));
     const taxableBase = subtotal - discountAmount;
+    const taxAmount = Number((taxableBase * (taxPercent / 100)).toFixed(2));
+    const total = Number((taxableBase + taxAmount).toFixed(2));
 
-    const taxAmount = +(taxableBase * (Number(taxPercent) / 100)).toFixed(2);
-
-    const total = +(taxableBase + taxAmount).toFixed(2);
-
-    // ---- 6) create bill ----
     const billNumber = await generateBillNumber(companyId);
+    const now = new Date();
 
-    // ---- 6a) Product-only stock check & deduction (no double-deduct for orders) ----
-    // Lines with ProductId but NO OrderItemId are "pure product" sales
-    const productOnlyLines = billItems.filter(
-      (li) => li.ProductId && !li.OrderItemId
-    );
+    // === 5. YOUR WORKING & PERFECT INGREDIENT + STOCK DEDUCTION ===
+    const productOnlyLines = billItems.filter(li => li.ProductId && !li.OrderItemId);
 
-    if (productOnlyLines.length) {
-      // 1) Aggregate required quantity per product
-      const wantedByProduct = productOnlyLines.reduce((acc, li) => {
-        const id = String(li.ProductId);
-        acc[id] = (acc[id] || 0) + Number(li.quantity || 0);
+    if (productOnlyLines.length > 0) {
+      const productIds = [...new Set(productOnlyLines.map(li => li.ProductId.toString()))];
+
+      const products = await IndexModel.Product.find({
+        _id: { $in: productIds.map(id => new mongoose.Types.ObjectId(id)) },
+        companyId,
+        deleted: false,
+        isActive: true
+      })
+      .populate({
+        path: 'ingredient.ingredientId',
+        select: 'name currentStock unit companyId'
+      })
+      .lean();
+
+      const productMap = new Map(products.map(p => [p._id.toString(), p]));
+
+      const neededByProduct = productOnlyLines.reduce((acc, li) => {
+        const pid = li.ProductId.toString();
+        acc[pid] = (acc[pid] || 0) + li.quantity;
         return acc;
       }, {});
 
-      const productIds = Object.keys(wantedByProduct);
+      const ingredientBulkOps = [];
+      const productBulkOps = [];
 
-      // 2) Fetch current stock for these products
-      const stockProducts = await IndexModel.Product.find(
-        {
-          _id: { $in: productIds },
-          companyId,
-          deleted: { $ne: true },
-          isActive: { $ne: false },
-        },
-        { _id: 1, productName: 1, quantity: 1 }
-      ).lean();
+      for (const [pid, neededQty] of Object.entries(neededByProduct)) {
+        const product = productMap.get(pid);
+        if (!product) throw new Error(`Product not found: ${pid}`);
 
-      const byId = new Map(stockProducts.map((p) => [String(p._id), p]));
+        const ingredients = product.ingredient || [];
 
-      // 3) Pre-check stock
-      for (const pid of productIds) {
-        const p = byId.get(pid);
-        if (!p) {
-          throw new Error(`Product not found or inactive: ${pid}`);
-        }
-        const need = wantedByProduct[pid] || 0;
-        if (Number(p.quantity) < need) {
-          throw new Error(
-            `Insufficient stock for ${p.productName}. Available ${p.quantity}, requested ${need}`
-          );
+        if (ingredients.length > 0) {
+          // RECIPE PRODUCT → DEDUCT INGREDIENTS ONLY
+          for (const ing of ingredients) {
+            const ingredient = ing.ingredientId;
+            if (!ingredient) continue;
+
+            const qtyPerUnit = Number(ing.quantity) || 1;
+            const requiredQty = neededQty * qtyPerUnit;
+
+            if (ingredient.currentStock < requiredQty) {
+              throw new Error(`Low stock: ${ingredient.name} (Need ${requiredQty}, Have ${ingredient.currentStock})`);
+            }
+
+            ingredientBulkOps.push({
+              updateOne: {
+                filter: { _id: ingredient._id, companyId },
+                update: {
+                  $inc: { currentStock: -requiredQty },
+                  $push: {
+                    history: {
+                      action: 'USED_IN_BILL',
+                      performedBy: userId,
+                      details: `-${requiredQty} ${ing.unit || ''} → ${neededQty}× ${product.productName} (Bill #${billNumber})`,
+                      timestamp: now
+                    }
+                  }
+                }
+              }
+            });
+          }
+
+          // Track sale in product (no quantity change)
+          productBulkOps.push({
+            updateOne: {
+              filter: { _id: pid, companyId },
+              update: {
+                $inc: { totalOrdered: neededQty },
+                $push: {
+                  history: {
+                    action: 'SOLD_VIA_RECIPE',
+                    performedBy: userId,
+                    details: `Recipe sale: ${neededQty} units (Bill #${billNumber})`,
+                    timestamp: now
+                  }
+                }
+              }
+            }
+          });
+
+        } else {
+          // SIMPLE PRODUCT → DEDUCT PRODUCT STOCK
+          if ((product.quantity || 0) < neededQty) {
+            throw new Error(`Out of stock: ${product.productName} (Need ${neededQty}, Have ${product.quantity || 0})`);
+          }
+
+          productBulkOps.push({
+            updateOne: {
+              filter: { _id: pid, companyId },
+              update: {
+                $inc: { quantity: -neededQty, totalOrdered: neededQty },
+                $push: {
+                  history: {
+                    action: 'SOLD_DIRECT',
+                    performedBy: userId,
+                    details: `${neededQty} units sold (Bill #${billNumber})`,
+                    timestamp: now
+                  }
+                }
+              }
+            }
+          });
         }
       }
 
-      // 4) Bulk update quantities
-      const now = new Date();
-      const bulkOps = productIds.map((pid) => {
-        const p = byId.get(pid);
-        const need = wantedByProduct[pid];
-
-        return {
-          updateOne: {
-            filter: {
-              _id: pid,
-              companyId,
-              deleted: { $ne: true },
-              isActive: { $ne: false },
-              quantity: { $gte: need },
-            },
-            update: {
-              $inc: {
-                quantity: -need,
-                totalOrdered: need, // optional: track total sold via bills too
-              },
-              $push: {
-                history: {
-                  action: `Bill ${billNumber}: -${need} ${
-                    p?.productName || ''
-                  }`,
-                  performedBy: userId || 'system',
-                  timestamp: now,
-                },
-              },
-              $set: { updatedAt: now },
-            },
-          },
-        };
-      });
-
-      if (bulkOps.length) {
-        const invResult = await IndexModel.Product.bulkWrite(bulkOps, {
-          ordered: true,
-        });
-
-        const matched =
-          invResult.matchedCount ?? invResult.result?.nMatched ?? 0;
-        if (matched !== bulkOps.length) {
-          throw new Error('Stock update failed for one or more products');
-        }
+      // Execute all stock updates
+      if (ingredientBulkOps.length > 0) {
+        await IndexModel.Ingredient.bulkWrite(ingredientBulkOps, { ordered: false });
+      }
+      if (productBulkOps.length > 0) {
+        await IndexModel.Product.bulkWrite(productBulkOps, { ordered: false });
       }
     }
 
-    // Decide history note based on presence of order + items from order
-    const hasOrderLines = billItems.some((li) => !!li.OrderItemId);
-    let historyNote = 'Bill created from products';
-
-    if (order && hasOrderLines) {
-      const fromOrder = order.orderNo || order._id;
-      const alsoProducts = billItems.some((li) => !li.OrderItemId);
-      historyNote = alsoProducts
-        ? `Bill created from order ${fromOrder} and additional products`
-        : `Bill created from order ${fromOrder}`;
-    }
-
-    const bill = new IndexModel.Bill({
+    // === 6. CREATE BILL ===
+    const bill = await IndexModel.Bill.create({
       billNumber,
       companyId,
       createdBy: userId,
-      OrderId: order ? order._id : undefined,
+      OrderId: hasOrderId ? orderId : null,
       items: billItems,
-      buyer: {
-        name: sanitizeInput(buyer?.name) || '',
-        email: sanitizeInput(buyer?.email) || '',
-        phone: sanitizeInput(buyer?.phone) || '',
-      },
+      buyer: buyer ? {
+        name: sanitizeInput(buyer.name),
+        email: sanitizeInput(buyer.email),
+        phone: sanitizeInput(buyer.phone),
+      } : undefined,
       subtotal,
       discountPercent,
       discountAmount,
@@ -329,89 +237,84 @@ const createBill = async (req, res) => {
       taxAmount,
       total,
       paymentMethod,
-      paymentNumber: paymentNumber ? sanitizeInput(paymentNumber) : '',
+      paymentNumber: paymentMethod !== 'cash' ? sanitizeInput(paymentNumber) : undefined,
       notes: sanitizedNotes,
-      history: [
-        {
-          action: 'create',
-          performedBy: userId || 'system',
-          createdAt: new Date(),
-          notes: historyNote,
-        },
-      ],
+      status: 'paid',
+      history: [{
+        action: 'CREATED',
+        performedBy: userId,
+        notes: hasOrderId ? 'Bill from order' : 'Direct bill',
+        createdAt: now,
+      }],
     });
 
-    await bill.save();
+    // === 7. UPDATE ORDER STATUS & AUTO FREE TABLE (FULLY RESTORED!) ===
+    if (hasOrderId) {
+      const order = await IndexModel.Orders.findOne({ _id: orderId, companyId }).lean();
+      if (order) {
+        const previousPaid = Number(order.paidAmount || 0);
+        const orderTotal = Number(order.subTotal || 0);
+        const newPaid = previousPaid + total;
+        const isFullyPaid = newPaid >= orderTotal - 0.01;
 
-    // ---- 7) update order payment/status (only if order exists) ----
-    if (order) {
-      const nextPaymentStatus =
-        paymentMethod === 'cash' ? 'paid' : order.paymentStatus || 'unpaid';
+        await IndexModel.Orders.updateOne(
+          { _id: orderId },
+          {
+            $inc: { paidAmount: total },
+            $set: { paymentStatus: isFullyPaid ? 'paid' : 'partial' },
+            $push: {
+              history: {
+                action: 'PAYMENT',
+                performedBy: userId,
+                createdAt: now,
+                notes: `Paid ${total} via Bill #${billNumber}`
+              }
+            }
+          }
+        );
 
-      await IndexModel.Orders.updateOne(
-        { _id: order._id, companyId },
-        {
-          $set: {
-            paymentStatus: nextPaymentStatus,
-            orderStatus: 'completed',
-            updatedBy: userId,
-            updatedAt: new Date(),
-          },
-          $push: {
-            history: {
-              action: 'billed',
-              performedBy: userId || 'system',
-              createdAt: new Date(),
-              notes: `Billed on ${billNumber}`,
-            },
-          },
-        }
-      );
+        // AUTO FREE TABLE WHEN FULLY PAID & DINE-IN
+        const orderType = (order.dynamicAttributes?.orderType || '').toLowerCase();
+        const tableId = order.dynamicAttributes?.tableNo || order.dynamicAttributes?.tableId;
 
-      // ---- 8) Dine-In table release (only if order exists) ----
-      try {
-        const isDineIn =
-          String(order?.dynamicAttributes?.orderType || '')
-            .toLowerCase()
-            .replace(/\s+/g, '-') === 'dine-in';
-
-        const tableId = order?.dynamicAttributes?.tableNo;
-        if (isDineIn && tableId && mongoose.isValidObjectId(String(tableId))) {
+        if (
+          isFullyPaid &&
+          orderType.includes('dine') &&
+          tableId &&
+          mongoose.Types.ObjectId.isValid(tableId)
+        ) {
           await IndexModel.Table.updateOne(
-            {
-              _id: String(tableId),
-              companyId,
-              deleted: { $ne: true },
-              state: 'occupied',
-            },
+            { _id: tableId, companyId, deleted: { $ne: true } },
             {
               $set: {
                 state: 'available',
+                assignedWaiterId: null,
                 updatedBy: userId,
-                updatedAt: new Date(),
-              },
+                updatedAt: new Date()
+              }
             }
           );
+
+          console.log(`Table ${tableId} automatically freed - Order fully paid (Bill #${billNumber})`);
         }
-      } catch (e) {
-        console.warn('Table state sync after billing failed:', e?.message || e);
       }
     }
 
     return res.status(201).json({
       success: true,
       message: 'Bill created successfully',
-      data: bill.toObject(),
+      data: { bill }
     });
+
   } catch (error) {
-    console.error('Error creating bill:', error.message, error.stack);
+    console.error('Create bill error:', error);
     return res.status(400).json({
       success: false,
-      message: 'Error creating bill',
-      error: error.message,
+      message: error.message || 'Failed to create bill'
     });
   }
 };
+
 
 const getBills = async (req, res) => {
   try {
