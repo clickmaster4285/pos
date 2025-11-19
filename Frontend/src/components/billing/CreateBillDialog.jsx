@@ -135,7 +135,10 @@ export function CreateBillDialog({
 
   const addOrderToBill = (order) => {
     if (!order?.items?.length) return;
-
+if (items.length > 0 && !items[0].orderId) {
+    if (!confirm("This will clear manually added items. Continue?")) return;
+    addItemToBill([]); // clear manual items
+  }
     if (!buyerTouched) {
       const inferred = extractBuyerFromOrder(order);
       if (inferred.name || inferred.phone) {
@@ -160,16 +163,22 @@ export function CreateBillDialog({
   };
 
   const addProductToBill = (product) => {
-    addItemToBill({
-      productId: product._id,
-      itemName: product.productName || product.name,
-      price: product.sellingPrice || product.price || 0,
-      qty: 1,
-      total: product.sellingPrice || product.price || 0,
-    });
-    setShowSearchResults(false);
-    setSearchProduct('');
-  };
+  // If any item has orderId → block manual add
+  if (items.some(item => item.orderId)) {
+    alert("Cannot add manual items when an order is selected.");
+    return;
+  }
+
+  addItemToBill({
+    productId: product._id,
+    itemName: product.productName || product.name,
+    price: product.sellingPrice || product.price || 0,
+    qty: 1,
+    total: product.sellingPrice || product.price || 0,
+  });
+  setShowSearchResults(false);
+  setSearchProduct('');
+};
 
   const handleSaveAndPrint = async () => {
     const result = await onSave();

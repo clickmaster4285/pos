@@ -26,7 +26,8 @@ const createBill = async (req, res) => {
       paymentMethod,
       paymentNumber,
     } = req.body ?? {};
-
+console.log("the orderId are: ", orderId)
+console.log("the items are: ", rawItems)
     // === 1. Basic Validation ===
     if (!['cash', 'credit_card', 'bank_transfer'].includes(paymentMethod)) {
       throw new Error('Invalid payment method');

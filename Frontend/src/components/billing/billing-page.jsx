@@ -250,22 +250,7 @@ const handleCreateBill = async (billData) => {
 
     const orderIds = extractOrderIds(billData, items);
 
-    // Transform current items for API
-    const apiItems = items.map(item => ({
-      ...(item.productId ? { productId: String(item.productId) } : {}),
-      ...(item.orderItemId ? { orderItemId: String(item.orderItemId) } : {}),
-      name: item.itemName,
-      quantity: Number(item.qty),
-      price: Number(item.price),
-      total: Number(item.lineTotal || item.total || item.price * item.qty),
-    }));
-
-    // VALIDATION RULES
-    if (apiItems.length === 0) {
-      alert('Please add at least one item to the bill.');
-      return;
-    }
-
+    // VALIDATION: Only one order allowed
     if (orderIds.length > 1) {
       alert('You cannot bill multiple orders together. Only one order allowed per bill.');
       return;
@@ -273,9 +258,24 @@ const handleCreateBill = async (billData) => {
 
     const orderId = orderIds[0] || undefined;
 
+    // KEY FIX: If there's an orderId → DO NOT send items!
+    let payloadItems = [];
+    if (!orderId) {
+      // Only send items if it's a manual bill
+      payloadItems = items.map(item => ({
+        ...(item.productId ? { productId: String(item.productId) } : {}),
+        ...(item.orderItemId ? { orderItemId: String(item.orderItemId) } : {}),
+        name: item.itemName,
+        quantity: Number(item.qty),
+        price: Number(item.price),
+        total: Number(item.lineTotal || item.total || item.price * item.qty),
+      }));
+    }
+    // If orderId exists → send empty items or omit entirely
+
     const payload = {
       ...(orderId ? { orderId } : {}),
-      items: apiItems,
+      ...(payloadItems.length > 0 ? { items: payloadItems } : {}), // ← only if manual
       buyer: {
         name: buyer?.name?.trim() || 'Walk-in',
         phone: buyer?.phone?.trim() || '',
@@ -289,6 +289,8 @@ const handleCreateBill = async (billData) => {
         ? { paymentNumber: String(paymentNumber) }
         : {}),
     };
+
+    console.log("Sending payload:", payload); // ← Check this!
 
     await createBill(payload).unwrap();
     refetchBills();
