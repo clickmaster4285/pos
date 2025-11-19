@@ -40,20 +40,24 @@ export default function BillItemsSection({
   setBuyer,
   refetchOrders,
 }) {
-  const hasExistingOrder = items.some(item => !!item.orderId);
+  // const hasExistingOrder = items.some(item => !!item.orderId);
 
-  const handleAddOrder = (e, order) => {
-    if (hasExistingOrder) {
-      e.currentTarget.style.backgroundColor = '#fee2e2';
-      e.currentTarget.style.border = '1px solid #ef4444';
-      setTimeout(() => {
-        e.currentTarget.style.backgroundColor = '';
-        e.currentTarget.style.border = '';
-      }, 1000);
-      return;
-    }
-    addOrderToBill(order);
-  };
+const handleAddOrder = (e, order) => {
+  const existingOrderId = items.find(item => item.orderId)?.orderId;
+
+  if (existingOrderId && existingOrderId !== order._id) {
+    // Visual flash red
+    e.currentTarget.style.backgroundColor = '#fee2e2';
+    e.currentTarget.style.border = '2px solid #ef4444';
+    setTimeout(() => {
+      e.currentTarget.style.backgroundColor = '';
+      e.currentTarget.style.border = '';
+    }, 800);
+    return;
+  }
+
+  addOrderToBill(order);
+};
 
   return (
     <Card className="lg:col-span-2 h-full flex flex-col">

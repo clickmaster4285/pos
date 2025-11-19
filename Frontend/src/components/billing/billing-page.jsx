@@ -154,49 +154,52 @@ export default function BillingPage() {
     return result;
   }, [bills, filterStatus, searchQuery]);
 
-  // BillingPage.jsx
-  const addItemToBill = (payload) => {
-    setItems((prev) => {
-      const upsert = (acc, it) => {
-        const orderKey = String(it.orderId || 'manual');
-        const skuKey = String(it.sku || it.productId || Math.random());
-        const compositeKey = `${orderKey}::${skuKey}`;
+const addItemToBill = (payload) => {
+  setItems((prev) => {
+    const upsert = (acc, it) => {
+      const orderKey = String(it.orderId || 'manual');
+      const keyId = it.sku || it.productId || it._id || Math.random().toString();
+      const compositeKey = `${orderKey}::${keyId}`;
 
-        const qty = Math.max(1, Number(it.qty ?? 1));
-        const price = Number(it.price ?? 0);
+      const qty = Math.max(1, Number(it.qty ?? it.quantity ?? 1));
+      const price = Number(it.price ?? 0);
+      const lineTotal = Number(it.lineTotal || it.total || price * qty);
 
-        const idx = acc.findIndex(
-          (x) =>
-            `${String(x.orderId || 'manual')}::${String(
-              x.sku || x.productId
-            )}` === compositeKey
-        );
+      const existingIndex = acc.findIndex((x) => {
+        const xKey = String(x.orderId || 'manual');
+        const xId = x.sku || x.productId || x._id;
+        return `${xKey}::${xId}` === compositeKey;
+      });
 
-        if (idx !== -1) {
-          const ex = acc[idx];
-          const nextQty = Number(ex.qty || 0) + qty;
-          acc[idx] = {
-            ...ex,
-            qty: nextQty,
-            price,
-            lineTotal: nextQty * price,
-          };
-          return acc;
-        }
-
+      if (existingIndex > -1) {
+        const existing = acc[existingIndex];
+        const newQty = existing.qty + qty;
+        acc[existingIndex] = {
+          ...existing,
+          qty: newQty,
+          price: price,
+          total: newQty * price,
+          lineTotal: newQty * price,
+        };
+      } else {
         acc.push({
           ...it,
           qty,
           price,
-          lineTotal: qty * price,
+          total: lineTotal,
+          lineTotal,
+          itemName: it.itemName || it.name || 'Item',
         });
-        return acc;
-      };
+      }
+      return acc;
+    };
 
-      if (Array.isArray(payload)) return payload.reduce(upsert, [...prev]);
-      return upsert([...prev], payload);
-    });
-  };
+    if (Array.isArray(payload)) {
+      return payload.reduce(upsert, [...prev]);
+    }
+    return upsert([...prev], payload);
+  });
+};
 
   const updateQty = (index, qty) => {
     setItems((prev) =>
@@ -244,61 +247,50 @@ export default function BillingPage() {
     return taxableBase + taxAmount;
   }, [subtotal, discountAmount, taxAmount]);
 
-const handleCreateBill = async (billData) => {
+const handleCreateBill = async () => {
+  if (creating || items.length === 0) return;
+  setCreating(true);
+
   try {
-    setCreating(true);
+    const hasOrder = items.some(i => i.orderId);
+    const orderId = hasOrder ? String(items.find(i => i.orderId).orderId) : null;
 
-    const orderIds = extractOrderIds(billData, items);
-
-    // VALIDATION: Only one order allowed
-    if (orderIds.length > 1) {
-      alert('You cannot bill multiple orders together. Only one order allowed per bill.');
-      return;
-    }
-
-    const orderId = orderIds[0] || undefined;
-
-    // KEY FIX: If there's an orderId → DO NOT send items!
-    let payloadItems = [];
-    if (!orderId) {
-      // Only send items if it's a manual bill
-      payloadItems = items.map(item => ({
-        ...(item.productId ? { productId: String(item.productId) } : {}),
-        ...(item.orderItemId ? { orderItemId: String(item.orderItemId) } : {}),
-        name: item.itemName,
-        quantity: Number(item.qty),
-        price: Number(item.price),
-        total: Number(item.lineTotal || item.total || item.price * item.qty),
+    const manualItems = items
+      .filter(i => !i.orderId)
+      .map(i => ({
+        productId: String(i.productId || i._id),
+        itemName: i.itemName || i.name,
+        qty: Number(i.qty || 1),
+        price: Number(i.price || 0),
+        lineTotal: Number(i.lineTotal || i.total || i.price * i.qty),
       }));
-    }
-    // If orderId exists → send empty items or omit entirely
 
     const payload = {
-      ...(orderId ? { orderId } : {}),
-      ...(payloadItems.length > 0 ? { items: payloadItems } : {}), // ← only if manual
-      buyer: {
-        name: buyer?.name?.trim() || 'Walk-in',
-        phone: buyer?.phone?.trim() || '',
-        email: buyer?.email?.trim() || '',
-      },
-      taxPercent: Number(taxPercent) || 0,
+      // Always send orderId if present
+      ...(hasOrder && { orderId }),
+
+      // Always send manual items if present
+      ...(manualItems.length > 0 && { items: manualItems }),
+
+      buyer: Object.values(buyer).some(v => v?.trim()) ? buyer : undefined,
       discountPercent: Number(discountPercent) || 0,
-      notes: notes.trim(),
+      notes: notes.trim() || undefined,
       paymentMethod: toBackendPaymentMethod(paymentMethod),
-      ...(paymentMethod !== PAYMENT_METHODS.CASH && paymentNumber
-        ? { paymentNumber: String(paymentNumber) }
-        : {}),
+      ...(paymentMethod !== PAYMENT_METHODS.CASH && paymentNumber?.trim() && {
+        paymentNumber: paymentNumber.trim(),
+      }),
     };
 
-    console.log("Sending payload:", payload); // ← Check this!
-
+    console.log("Sending mixed bill payload:", payload);
     await createBill(payload).unwrap();
-    refetchBills();
-    setIsCreateDialogOpen(false);
+
     onReset();
-  } catch (error) {
-    console.error('Failed to create bill:', error);
-    alert(error?.data?.message || 'Failed to create bill');
+    setIsCreateDialogOpen(false);
+    refetchBills();
+
+  } catch (err) {
+    console.error(err);
+    alert(err?.data?.message || "Failed to create bill");
   } finally {
     setCreating(false);
   }
@@ -462,6 +454,7 @@ const handleCreateBill = async (billData) => {
         searchResults={products.data}
         addItemToBill={addItemToBill}
         items={items}
+        setItems={setItems}
         updateQty={updateQty}
         removeItem={removeItem}
         buyer={buyer}
