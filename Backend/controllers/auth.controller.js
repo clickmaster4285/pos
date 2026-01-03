@@ -222,8 +222,13 @@ const googleSignIn = async (req, res, next) => {
     let user = await User.findOne({ $or: [{ email }, { googleId }] }).select(
       "+password"
     );
-    const isNewUser = !user;
-
+    let companyMember;
+    if (user) {
+      companyMember = await IndexModel.Company.findOne({
+        owner: user.userId,
+      });
+    }
+    const isNewUser = !user || !companyMember;
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
@@ -236,59 +241,6 @@ const googleSignIn = async (req, res, next) => {
         role: "admin",
         verified: true,
         picture,
-        permissions: {
-          approveRequests: true,
-          assignTasks: true,
-          manageAppointments: true,
-          createProduct: true,
-          updateProduct: true,
-          viewProduct: true,
-          deleteProduct: true,
-          managePlans: true,
-          manageTeams: true,
-          createVendors: true,
-          updateVendors: true,
-          deleteVendors: true,
-          viewVendors: true,
-          staffCreate: true,
-          staffDelete: true,
-          staffUpdate: true,
-          viewReports: true,
-          viewallstaff: true,
-          editBilling: true,
-          deleteBilling: true,
-          addBilling: true,
-          viewBilling: true,
-          createPayment: true,
-          viewAllStaffSalaries: true,
-          updateSalary: true,
-          deletePayment: true,
-          staffSummary: true,
-          viewActiveLog: true,
-          viewCompanySummary: true,
-          companyprofileupdate: true,
-          manageTables: true,
-          createOrder: true,
-          viewOrder: true,
-          updateOrderStatus: true,
-          createIngredient: true,
-          updateIngredient: true,
-          viewIngredient: true,
-          deleteIngredient: true,
-          createCategory: true,
-          updateCategory: true,
-          viewCategory: true,
-          deleteCategory: true,
-          updateCompanySettings: true,
-          createCourier: true,
-          updateCourier: true,
-          viewCourier: true,
-          deleteCourier: true,
-          createShipment: true,
-          updateShipment: true,
-          viewShipment: true,
-          deleteShipment: true,
-        },
         password: Math.random().toString(36).slice(-10) + "!@#",
         status: { isaccepted: true, performedBy: "google-oauth" },
       });
@@ -296,6 +248,12 @@ const googleSignIn = async (req, res, next) => {
     }
 
     if (isNewUser) {
+      if (user && !companyMember) {
+        await User.updateOne(
+          { userId: user.userId },
+          { $set: { googleId: googleId } }
+        );
+      }
       return res.status(200).json({
         success: true,
         onboarding: true,

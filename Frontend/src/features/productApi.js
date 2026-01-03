@@ -37,10 +37,6 @@ export const productApi = createApi({
     createProduct: builder.mutation({
       query: (formData) => {
         const isFormData = formData instanceof FormData;
-        console.log(
-  "formData JSON string:",
-  JSON.stringify(Object.fromEntries(formData.entries()), null, 2)
-);
 
         return {
           url: '/create-product',

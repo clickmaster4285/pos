@@ -339,12 +339,12 @@ export default function Sidebar() {
           ]
         : []),
 
-      {
-        href: '#',
-        label: 'Warehouse',
-        icon: iconMap['Warehouse'],
-        extraFeature: 'WareHouse',
-      },
+      // {
+      //   href: '#',
+      //   label: 'Warehouse',
+      //   icon: iconMap['Warehouse'],
+      //   extraFeature: 'WareHouse',
+      // },
       {
         href: '/admin/attendance-devices',
         label: 'Attendance Devices Setting',
@@ -443,7 +443,7 @@ export default function Sidebar() {
     'Orders',
     'Billing',
     'Category',
-    'Warehouse',
+    // 'Warehouse',
     'Vendors',
     'Couriers & Shipment',
   ];

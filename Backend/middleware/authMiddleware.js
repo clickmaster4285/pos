@@ -22,7 +22,10 @@ export const authenticateToken = async (req, res, next) => {
         return next(new ErrorResponse("User not found or inactive", 401));
       }
 
-      const tokenRecord = await RefreshToken.findOne({ token: refreshToken, revoked: false });
+      const tokenRecord = await RefreshToken.findOne({
+        token: refreshToken,
+        revoked: false,
+      });
       if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
         res.clearCookie("authToken", { path: "/" });
         res.clearCookie("refreshToken", { path: "/" });
@@ -66,7 +69,9 @@ export const authenticateToken = async (req, res, next) => {
     } catch (err) {
       res.clearCookie("authToken", { path: "/" });
       res.clearCookie("refreshToken", { path: "/" });
-      return next(new ErrorResponse("Invalid refresh token, please login again", 401));
+      return next(
+        new ErrorResponse("Invalid refresh token, please login again", 401)
+      );
     }
   }
 
@@ -93,7 +98,10 @@ export const authenticateToken = async (req, res, next) => {
   } catch (error) {
     if (refreshToken) {
       try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const decoded = jwt.verify(
+          refreshToken,
+          process.env.JWT_REFRESH_SECRET
+        );
         const user = await User.findOne({ userId: decoded.userId }).select(
           "userId role isActive permissions email companyId subRole"
         );
@@ -104,11 +112,16 @@ export const authenticateToken = async (req, res, next) => {
           return next(new ErrorResponse("User not found or inactive", 401));
         }
 
-        const tokenRecord = await RefreshToken.findOne({ token: refreshToken, revoked: false });
+        const tokenRecord = await RefreshToken.findOne({
+          token: refreshToken,
+          revoked: false,
+        });
         if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
           res.clearCookie("authToken", { path: "/" });
           res.clearCookie("refreshToken", { path: "/" });
-          return next(new ErrorResponse("Invalid or expired refresh token", 401));
+          return next(
+            new ErrorResponse("Invalid or expired refresh token", 401)
+          );
         }
 
         await RefreshToken.deleteOne({ token: refreshToken });
@@ -148,13 +161,17 @@ export const authenticateToken = async (req, res, next) => {
       } catch (refreshError) {
         res.clearCookie("authToken", { path: "/" });
         res.clearCookie("refreshToken", { path: "/" });
-        return next(new ErrorResponse("Invalid refresh token, please login again", 401));
+        return next(
+          new ErrorResponse("Invalid refresh token, please login again", 401)
+        );
       }
     }
 
     res.clearCookie("authToken", { path: "/" });
     res.clearCookie("refreshToken", { path: "/" });
-    return next(new ErrorResponse("Invalid or expired token, please login", 401));
+    return next(
+      new ErrorResponse("Invalid or expired token, please login", 401)
+    );
   }
 };
 
@@ -169,7 +186,10 @@ export const validateRefreshToken = async (refreshToken) => {
       throw new Error("User not found or inactive");
     }
 
-    const tokenRecord = await RefreshToken.findOne({ token: refreshToken, revoked: false });
+    const tokenRecord = await RefreshToken.findOne({
+      token: refreshToken,
+      revoked: false,
+    });
     if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
       throw new Error("Invalid or expired refresh token");
     }
@@ -177,7 +197,7 @@ export const validateRefreshToken = async (refreshToken) => {
     const newAccessToken = jwt.sign(
       { userId: user.userId, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "15m", }
+      { expiresIn: "15m" }
     );
     const newRefreshToken = jwt.sign(
       { userId: user.userId },
@@ -187,7 +207,11 @@ export const validateRefreshToken = async (refreshToken) => {
 
     await RefreshToken.updateOne(
       { token: refreshToken },
-      { token: newRefreshToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), revoked: true }
+      {
+        token: newRefreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revoked: true,
+      }
     );
     await RefreshToken.create({
       userId: user.userId,
@@ -248,7 +272,7 @@ export const checkplan = (moduleName) => {
       if (user.role === "superAdmin") {
         return next();
       }
-          // console.log("the user.companyId  : ", companyId, user)
+      // console.log("the user.companyId  : ", companyId, user)
 
       const company = await IndexModel.Company.findOne({
         companyId,
@@ -406,10 +430,7 @@ export const checkPermissionsValidation = (moduleName) => {
         return next();
       }
       // console.log("Checking permissions for module:", moduleName, user.permissions);
-      if (
-        user.role === "admin" ||
-        (user.role === "staff" && user.permissions?.[moduleName] === true)
-      ) {
+      if (user.permissions?.[moduleName] === true) {
         return next();
       } else {
         return res.status(403).json({

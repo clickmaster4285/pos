@@ -34,9 +34,7 @@ useEffect(() => {
   script.src = "https://accounts.google.com/gsi/client";
   script.async = true;
   script.defer = true;
-  script.onload = () => {
-    console.log("Google OAuth script loaded");
-  };
+
   document.body.appendChild(script);
   return () => {
     if (document.body.contains(script)) document.body.removeChild(script);

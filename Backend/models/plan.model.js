@@ -37,7 +37,6 @@ const PlanSchema = new Schema(
     },
     price: {
       type: Number,
-      required: [true, "Price is required"],
     },
     currencyCode: {
       type: String,

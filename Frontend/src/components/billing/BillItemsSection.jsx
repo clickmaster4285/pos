@@ -1,37 +1,34 @@
+// Modified: BillItemsSection.jsx (added check for existing order, danger effect on attempt to add second order)
 import React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Search, Trash2 } from 'lucide-react';
-import PropTypes from 'prop-types';
+import { Badge } from '@/components/ui/badge';
+import { Search, Trash2, ShoppingCart } from 'lucide-react';
 
-function BillItemsSection({
+const highlightText = (text, query) => {
+  if (!query) return text;
+  const parts = text.split(new RegExp(`(${query})`, 'gi'));
+  return parts.map((part, i) => 
+    part.toLowerCase() === query.toLowerCase() 
+      ? <span key={i} className="bg-yellow-300 font-bold">{part}</span>
+      : part
+  );
+};
+
+export default function BillItemsSection({
   currencySymbol,
   items,
   removeItem,
+  updateQty,
   searchRef,
   searchProduct,
   setSearchProduct,
   showSearchResults,
   setShowSearchResults,
   ordersLoading,
-  isValidatingOrders,
   productsLoading,
-  isValidatingProducts,
   filteredOrders,
   filteredProducts,
   addOrderToBill,
@@ -42,274 +39,173 @@ function BillItemsSection({
   setBuyerTouched,
   setBuyer,
   refetchOrders,
-  updateQty,
 }) {
-  return (
-    <Card className="bg-card border-border lg:col-span-2">
-      <CardHeader className="flex items-center justify-between">
-        <div>
-          <CardTitle>Items</CardTitle>
-          <CardDescription>
-            Search orders or products and import them.
-          </CardDescription>
-        </div>
-        <CreateNewOrderInBill
-          onCreated={async (created) => {
-            if (created?.items?.length) {
-              if (!buyerTouched) {
-                const inferred = extractBuyerFromOrder(created);
-                if (inferred.name || inferred.phone) {
-                  setBuyer({
-                    name: created?.buyer?.name || inferred.name || '',
-                    email: created?.buyer?.email || '',
-                    phone: created?.buyer?.phone || inferred.phone || '',
-                  });
-                  setBuyerTouched(true);
-                }
-              }
-              addOrderToBill(created);
-              return;
-            }
-            try {
-              const refreshed = await refetchOrders().unwrap();
-              const list = Array.isArray(refreshed?.data)
-                ? refreshed.data
-                : Array.isArray(refreshed)
-                ? refreshed
-                : [];
-              const id = String(created?._id || created?.id || '');
-              const full = list.find((o) => String(o?._id) === id);
+  // const hasExistingOrder = items.some(item => !!item.orderId);
 
-              if (full) {
-                if (!buyerTouched) {
-                  const inferred = extractBuyerFromOrder(full);
-                  if (inferred.name || inferred.phone) {
-                    setBuyer({
-                      name: full?.buyer?.name || inferred.name || '',
-                      email: full?.buyer?.email || '',
-                      phone: full?.buyer?.phone || inferred.phone || '',
-                    });
-                    setBuyerTouched(true);
-                  }
-                }
-                addOrderToBill(full);
-              }
-            } catch (e) {
-              console.error('Refetch after create failed', e);
-            }
-          }}
-        />
+const handleAddOrder = (e, order) => {
+  const existingOrderId = items.find(item => item.orderId)?.orderId;
+
+  if (existingOrderId && existingOrderId !== order._id) {
+    // Visual flash red
+    e.currentTarget.style.backgroundColor = '#fee2e2';
+    e.currentTarget.style.border = '2px solid #ef4444';
+    setTimeout(() => {
+      e.currentTarget.style.backgroundColor = '';
+      e.currentTarget.style.border = '';
+    }, 800);
+    return;
+  }
+
+  addOrderToBill(order);
+};
+
+  return (
+    <Card className="lg:col-span-2 h-full flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>Bill Items</CardTitle>
+          <CardDescription>Type to search orders & products</CardDescription>
+        </div>
+        <CreateNewOrderInBill onCreated={(o) => {
+          addOrderToBill(o);
+          refetchOrders();
+        }} />
       </CardHeader>
 
-      <CardContent>
-        {/* Search input + dropdown */}
-        <div className="relative mb-4">
+      <CardContent className="flex-1 flex flex-col gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             ref={searchRef}
-            placeholder="Search orders and products by Order No., Bill No. or Product name / SKU"
+            placeholder="Search Order No, Customer, Product, SKU..."
             value={searchProduct}
             onChange={(e) => {
               setSearchProduct(e.target.value);
               setShowSearchResults(true);
             }}
-            className="pl-10"
             onFocus={() => setShowSearchResults(true)}
+            className="pl-10"
           />
 
-          {showSearchResults && (
-            <div className="absolute z-10 mt-2 w-full bg-background border border-border rounded-md shadow-lg max-h-72 overflow-y-auto">
-              {/* Orders section */}
-              <div className="px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground border-b bg-muted/30">
-                Orders
-              </div>
-              {ordersLoading || isValidatingOrders ? (
-                <div className="p-3 text-xs text-muted-foreground">
-                  Loading orders…
-                </div>
-              ) : filteredOrders.length === 0 ? (
-                <div className="p-3 text-xs text-muted-foreground">
-                  No matching orders
+          {showSearchResults && (filteredOrders.length > 0 || filteredProducts.length > 0 || searchProduct) && (
+            <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-xl max-h-96 overflow-y-auto z-50">
+              {ordersLoading || productsLoading ? (
+                <div className="p-8 text-center">
+                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                filteredOrders.map((order) => (
-                  <div
-                    key={order._id}
-                    className="px-4 py-2 border-b last:border-b-0 hover:bg-muted cursor-pointer"
-                    onMouseDown={() => addOrderToBill(order)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {order.orderNo || '(Order)'}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {order.customerName
-                            ? `Customer: ${order.customerName} · `
-                            : ''}
-                          Items: {order.items?.length || 0} · Total:{' '}
-                          {currencySymbol}
-                          {Number(order.subTotal || 0).toFixed(2)} ·{' '}
-                          {String(
-                            order.paymentStatus || 'unpaid'
-                          ).toUpperCase()}
-                        </p>
-                      </div>
-                      <span className="text-[11px] rounded px-2 py-0.5 bg-muted text-muted-foreground shrink-0">
-                        {(order.orderStatus || 'pending').toUpperCase()}
-                      </span>
+                <>
+                  {filteredOrders.length > 0 && (
+                    <div className="border-b">
+                      <div className="px-4 py-2 bg-muted text-xs font-bold uppercase">Orders</div>
+                      {filteredOrders.map(order => (
+                        <div key={order._id} className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                          onMouseDown={(e) => handleAddOrder(e, order)}>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-semibold">#{order.orderNo}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {highlightText(order.customerName || 'Walk-in', searchProduct)} · {order.items?.length} items
+                              </div>
+                            </div>
+                            <Badge variant="secondary">{currencySymbol}{Number(order.subTotal || 0).toFixed(2)}</Badge>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))
-              )}
+                  )}
 
-              {/* Products section */}
-              <div className="px-3 py-2 text-[11px] font-semibold uppercase text-muted-foreground border-y bg-muted/30">
-                Products
-              </div>
-              {productsLoading || isValidatingProducts ? (
-                <div className="p-3 text-xs text-muted-foreground">
-                  Loading products…
-                </div>
-              ) : filteredProducts.length === 0 ? (
-                <div className="p-3 text-xs text-muted-foreground">
-                  No matching products
-                </div>
-              ) : (
-                filteredProducts.map((product) => (
-                  <div
-                    key={product._id}
-                    className="px-4 py-2 border-b last:border-b-0 hover:bg-muted cursor-pointer"
-                    onMouseDown={() => addProductToBill(product)}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {product.productName || product.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {product.SKU || product.sku
-                            ? `SKU: ${product.SKU || product.sku} · `
-                            : ''}
-                          Price: {currencySymbol}
-                          {Number(
-                            product.sellingPrice ?? product.price ?? 0
-                          ).toFixed(2)}{' '}
-                          · Stock:{' '}
-                          {Number(product.quantity ?? product.stock ?? 0)}
-                        </p>
-                      </div>
+                  {filteredProducts.length > 0 && (
+                    <div>
+                      <div className="px-4 py-2 bg-muted text-xs font-bold uppercase">Products</div>
+                      {filteredProducts.map(p => (
+                        <div key={p._id} className="px-4 py-3 hover:bg-green-50 cursor-pointer border-b last:border-b-0"
+                          onMouseDown={() => addProductToBill(p)}>
+                          <div className="flex justify-between">
+                            <div>
+                              <div className="font-medium">{highlightText(p.productName, searchProduct)}</div>
+                              <div className="text-xs text-muted-foreground">Stock: {p.quantity}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold">{currencySymbol}{Number(p.sellingPrice || p.price).toFixed(2)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))
+                  )}
+
+                  {searchProduct && filteredOrders.length === 0 && filteredProducts.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <Search className="mx-auto h-10 w-10 mb-3 opacity-30" />
+                      <p>No results found</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
 
-        {/* Items table */}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>From</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead>Currency</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 ? (
+        <div className="flex-1 overflow-auto border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center">
-                  No items added
-                </TableCell>
+                <TableHead>Item</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ) : (
-              items.map((item, index) => (
-                <TableRow key={`${item.productId || 'i'}-${index}`}>
-                  <TableCell>{item.itemName}</TableCell>
-
-                  <TableCell>
-                    <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                      {item.orderId
-                        ? item.orderNo
-                          ? `Order ${item.orderNo}`
-                          : `Order ${String(item.orderId).slice(-6)}`
-                        : 'Manual'}
-                    </span>
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    {item.orderId ? (
-                      // Order-based line: qty fixed from order
-                      Number(item.qty || 0)
-                    ) : (
-                      // Product/manual line: user can edit qty
-                      <Input
-                        type="number"
-                        min={1}
-                        className="w-20 text-right"
-                        value={Number(item.qty || 1)}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value || 1);
-                          updateQty(index, raw);
-                        }}
-                      />
-                    )}
-                  </TableCell>
-
-                  <TableCell>{currencySymbol}</TableCell>
-                  <TableCell className="text-right">
-                    {currencySymbol}
-                    {Number(item.price).toFixed(2)}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeItem(index)}
-                      aria-label={`Remove ${item.itemName}`}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center">
+                    <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                      <ShoppingCart className="w-16 h-16 opacity-30" />
+                      <div>
+                        <p className="text-lg font-medium">No items yet</p>
+                        <p className="text-sm">Start typing above to add items</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                items.map((item, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{item.itemName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {item.orderNo ? `Order #${item.orderNo}` : 'Manual'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {item.orderId ? item.qty : (
+                        <Input
+                          type="number"
+                          min="1"
+                          className="w-20 text-right"
+                          value={item.qty}
+                          onChange={(e) => updateQty(i, Number(e.target.value) || 1)}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">{currencySymbol}{Number(item.price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-semibold">{currencySymbol}{Number(item.total).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Button size="icon" variant="ghost" onClick={() => removeItem(i)}>
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
 }
-
-BillItemsSection.propTypes = {
-  currencySymbol: PropTypes.string,
-  items: PropTypes.array.isRequired,
-  removeItem: PropTypes.func.isRequired,
-  searchRef: PropTypes.object,
-  searchProduct: PropTypes.string.isRequired,
-  setSearchProduct: PropTypes.func.isRequired,
-  showSearchResults: PropTypes.bool.isRequired,
-  setShowSearchResults: PropTypes.func.isRequired,
-  ordersLoading: PropTypes.bool,
-  isValidatingOrders: PropTypes.bool,
-  productsLoading: PropTypes.bool,
-  isValidatingProducts: PropTypes.bool,
-  filteredOrders: PropTypes.array.isRequired,
-  filteredProducts: PropTypes.array.isRequired,
-  addOrderToBill: PropTypes.func.isRequired,
-  addProductToBill: PropTypes.func.isRequired,
-  CreateNewOrderInBill: PropTypes.elementType.isRequired,
-  extractBuyerFromOrder: PropTypes.func.isRequired,
-  buyerTouched: PropTypes.bool.isRequired,
-  setBuyerTouched: PropTypes.func.isRequired,
-  setBuyer: PropTypes.func.isRequired,
-  refetchOrders: PropTypes.func.isRequired,
-  updateQty: PropTypes.func.isRequired,
-};
-
-export default BillItemsSection;

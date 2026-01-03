@@ -24,7 +24,6 @@ export const ingredientApi = createApi({
   endpoints: (builder) => ({
     createIngredient: builder.mutation({
   query: (body) => {
-    console.log("Creating ingredient with data:", body);
     return {
       url: '/create-ingredient',
       method: 'POST',

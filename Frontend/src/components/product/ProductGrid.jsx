@@ -300,7 +300,7 @@ export function ProductGrid({
                       Vegetarian
                     </p>
                     <p className="text-foreground">
-                      {meta.isVegetarian ? 'Yes' : 'No'}
+                      {meta.isVegetarian === "true" ? "Yes": "No"}
                     </p>
                   </div>
                 )}

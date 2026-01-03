@@ -10,6 +10,7 @@ import {
 } from '@/features/staffApi';
 
 import { useGetAllActivityQuery } from '@/features/activeLogApi';
+import { useGetCompanyQuery } from '@/features/CompanyApi';
 
 import { ActivityLog } from '@/components/permissions/ActiveLog';
 import {
@@ -53,7 +54,7 @@ const prettyEntity = (e) => {
 export function HandlePermissions() {
   const { data: staff = [], isLoading } = useGetAllStaffQuery();
   const [updateStaff] = useUpdateStaffMutation();
-
+  const { data: availableCompanyPermission, isLoading: ComLoading } = useGetCompanyQuery();
   const { user: authUser } = useContext(AuthContext) || {};
 
   // UI state
@@ -149,31 +150,12 @@ export function HandlePermissions() {
   const logsToShow = apiLogs.length ? apiLogs : activityLog;
 
   // Build permission labels dynamically (fallback if none)
-  const permissionLabels = useMemo(() => {
-    const keySet = new Set();
-    (staff || []).forEach((u) => {
-      Object.keys(u?.permissions || {}).forEach((k) => keySet.add(k));
-    });
-    const keys = Array.from(keySet);
-    if (keys.length === 0) {
-      const fallback = [
-        'approveRequests',
-        'assignTasks',
-        'manageAppointments',
-        'manageProduct',
-        'managePlans',
-        'manageTeams',
-        'manageVendors',
-        'staffCreate',
-        'staffDelete',
-        'staffUpdate',
-        'viewReports',
-        'viewallstaff',
-      ];
-      return Object.fromEntries(fallback.map((k) => [k, humanize(k)]));
-    }
-    return Object.fromEntries(keys.map((k) => [k, humanize(k)]));
-  }, [staff]);
+// Only change: permissionLabels now only includes true permissions
+const permissionLabels = useMemo(() => {
+  const perms = availableCompanyPermission?.permissions || {};
+  const trueKeys = Object.keys(perms).filter((k) => perms[k] === true);
+  return Object.fromEntries(trueKeys.map((k) => [k, humanize(k)]));
+}, [availableCompanyPermission]);
 
   // Filtered list
   const filteredUsers = useMemo(() => {

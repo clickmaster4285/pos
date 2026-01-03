@@ -8,7 +8,7 @@ import { upload } from "../config/multer.js";
 import path from "path";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 import mongoose from 'mongoose';
-
+import {getPermissionsByIndustry} from "../utils/UserPermissionsCatelogs.js"
 const createCompany = async (req, res) => {
   try {
     const { company, admin, googleUser } = req.body;
@@ -19,7 +19,7 @@ const createCompany = async (req, res) => {
         error: "Company name, contact email, and plan are required",
       });
     }
-
+const dynamicPermissions = getPermissionsByIndustry(company.industryName);
     if (!admin || !admin.name || !admin.email) {
       return res.status(400).json({
         success: false,
@@ -102,6 +102,9 @@ const createCompany = async (req, res) => {
       if (admin.name && admin.name !== existingGoogleUser.name) {
         existingGoogleUser.name = admin.name;
       }
+
+      existingGoogleUser.permissions= dynamicPermissions
+
       if (admin.password) existingGoogleUser.password = admin.password;
       existingGoogleUser.history.push({
         action: `${admin.name}, ${admin.password} updated during company creation`,
@@ -134,59 +137,7 @@ const createCompany = async (req, res) => {
           performedBy: availablePlan.price === 0 ? "free plan" : "",
           updatedAt: new Date(),
         },
-        permissions: {
-          approveRequests: true,
-          assignTasks: true,
-          manageAppointments: true,
-          createProduct: true,
-          updateProduct: true,
-          viewProduct: true,
-          deleteProduct: true,
-          managePlans: true,
-          manageTeams: true,
-          createVendors: true,
-          updateVendors: true,
-          deleteVendors: true,
-          viewVendors: true,
-          staffCreate: true,
-          staffDelete: true,
-          staffUpdate: true,
-          viewReports: true,
-          viewallstaff: true,
-          editBilling: true,
-          deleteBilling: true,
-          addBilling: true,
-          viewBilling: true,
-          createPayment: true,
-          viewAllStaffSalaries: true,
-          updateSalary: true,
-          deletePayment: true,
-          staffSummary: true,
-          viewActiveLog: true,
-          viewCompanySummary: true,
-          companyprofileupdate: true,
-          manageTables: true,
-          createOrder: true,
-          viewOrder: true,
-          updateOrderStatus: true,
-          createIngredient: true,
-          updateIngredient: true,
-          viewIngredient: true,
-          deleteIngredient: true,
-          createCategory: true,
-          updateCategory: true,
-          viewCategory: true,
-          deleteCategory: true,
-          updateCompanySettings: true,
-          createCourier: true,
-          updateCourier: true,
-          viewCourier: true,
-          deleteCourier: true,
-          createShipment: true,
-          updateShipment: true,
-          viewShipment: true,
-          deleteShipment: true,
-        },
+        permissions: dynamicPermissions,
         history: [
           {
             action: "Admin created",
@@ -576,6 +527,8 @@ const getCompany = async (req, res) => {
       deleted: false,
     });
 
+    const companyAdmin = await IndexModel.User.findOne({userId:company.owner })
+
     if (!company) {
       return res.status(404).json({
         success: false,
@@ -586,6 +539,7 @@ const getCompany = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: company,
+      permissions: companyAdmin.permissions,
     });
   } catch (error) {
     return res.status(500).json({
