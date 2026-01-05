@@ -163,10 +163,12 @@ const dynamicPermissions = getPermissionsByIndustry(company.industryName);
         availablePlan.price === 0
           ? {
               _id: new mongoose.Types.ObjectId(),
+              ...availablePlan.toObject(),
               planId: availablePlan._id,
               companyPlanId: await generatePlanId(companyId, adminUserId),
               status: "in progress",
-              ...availablePlan.toObject(),
+              createdAt:new Date(),
+              updatedAt:new Date(),
               isActive: true,
             }
           : undefined, // you can omit this or use `null` if preferred
