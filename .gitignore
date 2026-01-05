@@ -1,0 +1,38 @@
+# Frontend specific
+frontend/node_modules
+frontend/.next
+frontend/out
+frontend/build
+frontend/.turbo
+frontend/next-env.d.ts
+frontend/.vercel
+
+# Backend specific  
+backend/node_modules
+backend/logs
+backend/.nyc_output
+backend/build
+backend/uploads/*
+backend/uploads
+backend/dist
+backend/.cache
+
+# Common
+# .env
+# .env.local
+.env.production
+.env.development
+.env.test
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.pem
+coverage/
+*.tsbuildinfo
+.cache/
+.parcel-cache
+
+# Root
+node_modules
+package-lock
