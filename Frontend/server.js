@@ -14,7 +14,7 @@ const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-const HOST = process.env.NEXT_PUBLIC_FRONTEND_HOST || 'localhost';
+const HOST = process.env.NEXT_PUBLIC_FRONTEND_HOST || '192.168.88.18';
 const HTTPS_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 9000);
 const HTTP_PORT = Number(process.env.NEXT_PUBLIC_FRONTEND_Port || 9050);
 console.log('HTTP_PORT', HTTPS_PORT, HTTP_PORT);
