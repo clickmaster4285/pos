@@ -3,6 +3,7 @@ import mongoose, { Schema } from "mongoose";
 import cc from "currency-codes";
 
 const ALLOWED_FEATURES = [
+  'Branch',
   "Staff",
   "Permissions",
   "Vendors",
@@ -50,6 +51,10 @@ const PlanSchema = new Schema(
     },
     validateDays: Number,
     limitations: {
+      maxBranch: {
+        type: Number,
+        default: 1,
+      },
       maxStaff: {
         type: Number,
         default: 10,
