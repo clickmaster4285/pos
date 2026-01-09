@@ -47,7 +47,7 @@ function getUserIdFromJwtPayload(payload) {
 export function initSocket(server, app, sessionMiddleware) {
   const io = new Server(server, {
     cors: {
-      origin: (process.env.FRONTEND_URL || "http://localhost:3000")
+      origin: (process.env.FRONTEND_URL)
         .split(",")
         .map((s) => s.trim()),
       credentials: true,

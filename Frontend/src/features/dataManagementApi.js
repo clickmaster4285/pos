@@ -1,9 +1,7 @@
 // src/features/dataManagementApi.js
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-).replace(/\/$/, "");
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 // Enhanced token retrieval
 const getToken = (getState) => {

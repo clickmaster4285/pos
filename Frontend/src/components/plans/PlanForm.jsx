@@ -39,6 +39,7 @@ import { ChevronsUpDown } from 'lucide-react';
 
 
 const ALLOWED_FEATURES = [
+  'Branch',
   'Staff',
   'Permissions',
   'Vendors',

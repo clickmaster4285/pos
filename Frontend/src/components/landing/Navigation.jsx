@@ -13,7 +13,7 @@ export const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3455").replace(/\/$/, "");
+  const API_URL = process.env.NEXT_PUBLIC_API_URL
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,11 +27,10 @@ export const Navigation = () => {
   if (error) return <p>Something went wrong</p>;
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-      isScrolled 
-        ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-lg" 
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled
+        ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-lg"
         : "bg-transparent"
-    }`}>
+      }`}>
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         {/* Logo and Title */}
         <div className="flex items-center gap-3">

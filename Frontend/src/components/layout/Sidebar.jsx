@@ -291,6 +291,12 @@ export default function Sidebar() {
         icon: iconMap['Settings'],
         compulsory: true,
       },
+      {
+        href: '/admin/branch',
+        label: 'Branch Management',
+        icon: iconMap['Settings'],
+        compulsory: true,
+      },
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
             {
