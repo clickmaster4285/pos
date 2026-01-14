@@ -1,20 +1,23 @@
 {
    "//": "To install package: npm install pakage-name -w folder-name",
-"name": "pos-monorepo",
-"private": true,
-"workspaces": [
-   "backend",
-   "frontend"
-],
-"scripts": {
-   "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" -n \"B,F\" -c \"yellow,cyan\"",
-   "build": "npm run build --workspace=frontend",
-   "start": "npm run start --workspace=backend",
-   "install:all": "npm install",
-   "clean": "rd /s /q node_modules 2>nul && npm run clean --workspaces",
-   "audit:fix": "npm audit fix --workspace=backend"
-},
-"devDependencies": {
-   "concurrently": "^9.2.0"
-}
+   "name": "pos-monorepo",
+   "private": true,
+   "workspaces": [
+      "backend",
+      "frontend"
+   ],
+   "scripts": {
+      "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" -n \"B,F\" -c \"yellow,cyan\"",
+      "build": "npm run build --workspace=frontend",
+      "start": "npm run start --workspace=backend",
+      "install:all": "npm install",
+      "clean": "rd /s /q node_modules 2>nul && npm run clean --workspaces",
+      "audit:fix": "npm audit fix --workspace=backend"
+   },
+   "devDependencies": {
+      "concurrently": "^9.2.0"
+   },
+   "dependencies": {
+      "express-validator": "^7.3.1"
+   }
 }
