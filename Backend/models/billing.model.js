@@ -117,7 +117,7 @@ const BillingSchema = new Schema(
 );
 
 // Indexes
-BillingSchema.index({ billNumber: 1 }, { unique: true });
+// BillingSchema.index({ billNumber: 1 }, { unique: true });
 
 // Buyer details validation for non-cash payments
 BillingSchema.pre('validate', function (next) {

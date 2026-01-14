@@ -53,9 +53,5 @@ const TableSchema = new Schema(
   { timestamps: true }
 );
 
-// Unique per company
-TableSchema.index({ companyId: 1, name: 1 }, { unique: true });
-
-// 🚫 remove old pre-save hooks that referenced this.reservation (single object)
 
 export default mongoose.model('Table', TableSchema);

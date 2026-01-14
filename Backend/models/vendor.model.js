@@ -60,8 +60,4 @@ const VendorSchema = new Schema(
   }
 );
 
-// Indexes for better query performance
-// VendorSchema.index({ name: 1, companyId: 1 });
-// VendorSchema.index({ createdBy: 1, isActive: 1 });
-
 export default mongoose.model("Vendor", VendorSchema);

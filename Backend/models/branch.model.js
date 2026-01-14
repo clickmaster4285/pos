@@ -24,7 +24,6 @@ const BranchSchema = new Schema({
    companyId: {
       type: String,
       required: true,
-      index: true
    },
    branchId: {
       type: String,

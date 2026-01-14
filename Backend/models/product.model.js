@@ -68,6 +68,6 @@
   );
 
   // Index for better query performance
-  ProductSchema.index({ companyId: 1, productName: 1 }, { unique: true });
+  ProductSchema.index({ productName: 1 }, { unique: true });
 
   export default mongoose.model("Product", ProductSchema);
