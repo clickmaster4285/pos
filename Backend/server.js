@@ -177,8 +177,7 @@ process.stdout.write = function (chunk, encoding, callback) {
 
 server.listen(PORT, HOST, () => {
   const scheme =
-    // fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? 'https' : 'http';
-    'http';
+    fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH) ? 'https' : 'http';
   console.log(
     `🚀 Server running at ${scheme}://${HOST}:${PORT} in ${NODE_ENV} mode`
   );
