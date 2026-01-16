@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Branch from '../models/branch.model.js';
 import { validationResult } from 'express-validator';
 import { response } from 'express';
+// const isSuperAdmin = req.user.role === "superAdmin";
 
 const createBranch = async (req, res) => {
    try {
@@ -115,13 +116,13 @@ const getCompanyBranches = async (req, res) => {
             message: 'Not authorized to access these branches'
          });
       }
-      
+
       // Build query
       const query = {
          companyId,
          isDeleted: false
       };
-      
+
       // Apply filters
       if (status) query.status = status;
       if (city) query["address.city"] = city;
@@ -186,6 +187,8 @@ const getBranchById = async (req, res) => {
    try {
       const { id } = req.params;
       const { includeDeleted = false } = req.query;
+      // console.log("THE BRANCH ID IS ", id)
+      // console.log("the user is ", req?.user)
 
       // Build query
       const query = includeDeleted === 'true' ?

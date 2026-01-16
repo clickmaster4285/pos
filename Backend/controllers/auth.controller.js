@@ -156,6 +156,14 @@ const login = async (req, res, next) => {
       statusCode: 200,
     });
 
+    // console.log("🔑 LOGIN DATA:", {
+    //   userId: user.userId,
+    //   companyId: user.companyId,
+    //   role: user.role,
+    //   token: accessToken,
+    //   refreshToken,
+    // });
+
     res.status(200).json({
       success: true,
       status: 200,
@@ -171,9 +179,9 @@ const login = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature:
-            activePlans && user.role !== "superAdmin"
-              ? activePlans.limitations.features
-              : [],
+          activePlans && user.role !== "superAdmin"
+          ? activePlans.limitations.features
+          : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),

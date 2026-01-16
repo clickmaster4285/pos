@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import BranchForm from "@/components/branch/BranchForm";
+import BranchForm from "@/app/admin/branch/BranchForm";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EditBranchPage = () => {

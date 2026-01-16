@@ -31,7 +31,7 @@ import {
 const BranchDetailPage = () => {
    const params = useParams();
    const branchId = params.id;
-
+console.log("Branch ID:", branchId);
    const {
       data: branchData,
       isLoading: isLoadingBranch,

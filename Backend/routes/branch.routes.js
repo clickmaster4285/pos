@@ -15,7 +15,7 @@ const authorize = (roles) => {
          if (user.role === 'superAdmin' || user.role === 'super_admin') {
             return next();
          }
-
+      //  console.log("the user is ", user)
          // Check if user's role is in the allowed roles array
          if (!roles.includes(user.role)) {
             return res.status(403).json({
