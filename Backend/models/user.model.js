@@ -8,8 +8,7 @@ const EmailChangeSchema = new mongoose.Schema(
     expiresAt: Date,
     attempts: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
+  }, { _id: false }
 );
 
 const PasswordChangeSchema = new mongoose.Schema(
@@ -19,59 +18,27 @@ const PasswordChangeSchema = new mongoose.Schema(
     expiresAt: Date,
     attempts: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
+  }, { _id: false }
 );
 
 const SecuritySchema = new mongoose.Schema(
   {
     emailChange: { type: EmailChangeSchema, default: undefined },
     passwordChange: { type: PasswordChangeSchema, default: undefined },
-  },
-  { _id: false }
+  }, { _id: false }
 );
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  userId: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  toolName: {
-    type: String,
-  },
-  toolLogo: {
-    type: String,
-  },
-  companyId: {
-    type: String,
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-  },
-  password: {
-    type: String,
-    required: true,
-    // select: false,
-  },
-  role: {
-    type: String,
-    enum: ["superAdmin", "admin", "staff", "user"],
-    default: "user",
-  },
-  subRole: {
-    type: String,
-  },
-  department: {
-    type: String,
-  },
+  name: { type: String, required: true, },
+  userId: { type: String, required: true, unique: true, },
+  toolName: { type: String, },
+  toolLogo: { type: String, },
+  companyId: { type: String, },
+  email: { type: String, required: true, unique: true, lowercase: true, },
+  password: { type: String, required: true, },
+  role: { type: String, enum: ["superAdmin", "admin", "staff", "user"], default: "user", },
+  subRole: { type: String, },
+  department: { type: String, },
   permissions: {
     updateCompanySettings: { type: Boolean, default: false },
     approveRequests: { type: Boolean, default: false },

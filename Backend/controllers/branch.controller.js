@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Branch from '../models/branch.model.js';
 import { validationResult } from 'express-validator';
+import { response } from 'express';
 
 const createBranch = async (req, res) => {
    try {
@@ -107,21 +108,20 @@ const getCompanyBranches = async (req, res) => {
          search,
          lightweight = false
       } = req.query;
-
       // Validate company access
-      if (req.user.companyId !== companyId && !req.user.isSuperAdmin) {
+      if (req.user.companyId !== companyId && !req.user.isSuperAdmin === "superAdmin") {
          return res.status(403).json({
             success: false,
             message: 'Not authorized to access these branches'
          });
       }
-
+      
       // Build query
       const query = {
          companyId,
          isDeleted: false
       };
-
+      
       // Apply filters
       if (status) query.status = status;
       if (city) query["address.city"] = city;

@@ -1,13 +1,4 @@
 // src/middleware/autoRefreshMiddleware.js
-
-/**
- * Smart Auto-Refresh Middleware
- * - Only refreshes getAll / LIST queries when relevant data changes
- * - No unnecessary refetching (unlike refreshing everything)
- * - Automatically detects which API triggered the mutation
- * - Super easy to extend — just add one line per new API
- */
-
 const refreshMap = {
   // When these APIs mutate → refresh these getAll queries
   orderApi: ['orderApi', 'productApi', 'ingredientApi', 'tableApi', 'billsApi'],

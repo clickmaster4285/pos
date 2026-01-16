@@ -24,3 +24,4 @@ export { orderApi } from '@/features/orderApi';
 export { tableApi } from '@/features/tableApi';
 export { dataManagementApi } from '@/features/dataManagementApi';
 export { companyExcelApi } from '@/features/companyExcelApi';
+export { branchesApi } from '@/features/branchesApi';

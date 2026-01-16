@@ -51,7 +51,7 @@ router.post(
 
 router.get(
    '/company/:companyId',
-   authorize(['admin', 'manager', 'super_admin', 'staff']),
+   authorize(['admin', 'manager', 'superAdmin', 'staff']),
    BranchValidator.validateQuery,
    BranchController.getCompanyBranches
 );

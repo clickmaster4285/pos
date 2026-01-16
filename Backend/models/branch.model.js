@@ -152,24 +152,6 @@ BranchSchema.virtual('fullAddress').get(function () {
    return `${addr.street || ''}, ${addr.city}, ${addr.state || ''} ${addr.zipCode || ''}, ${addr.country}`.trim();
 });
 
-BranchSchema.virtual('isOpenNow').get(function () {
-   if (!this.operatingHours || this.status !== 'active') return false;
-
-   const now = new Date();
-   const day = now.toLocaleString('en-US', { weekday: 'long' }).toLowerCase();
-   const currentTime = now.getHours() * 60 + now.getMinutes();
-
-   const todayHours = this.operatingHours.find(h => h.day === day);
-   if (!todayHours || !todayHours.isOpen) return false;
-
-   const [openHour, openMin] = todayHours.open.split(':').map(Number);
-   const [closeHour, closeMin] = todayHours.close.split(':').map(Number);
-   const openTime = openHour * 60 + openMin;
-   const closeTime = closeHour * 60 + closeMin;
-
-   return currentTime >= openTime && currentTime <= closeTime;
-});
-
 BranchSchema.virtual('primaryManager').get(function () {
    return this.managers.find(m => m.role === 'manager') || this.managers[0];
 });
@@ -196,16 +178,7 @@ BranchSchema.pre(['find', 'findOne', 'findOneAndUpdate'], function () {
    }
 });
 
-// Limit audit log size
-BranchSchema.pre('save', function (next) {
-   if (this.auditLog && this.auditLog.length > 50) {
-      this.auditLog = this.auditLog.slice(-50);
-   }
-   next();
-});
-
 // STATIC METHODS (Optimized queries)
-
 BranchSchema.statics.findByCompany = function (companyId, options = {}) {
    const query = { companyId, isDeleted: false };
 
@@ -260,7 +233,6 @@ BranchSchema.statics.findNearby = function (lat, lng, radiusInKm = 5) {
 };
 
 // INSTANCE METHODS (Essential operations)
-
 BranchSchema.methods.addManager = function (userId, role = 'manager', addedBy) {
    // Check if already a manager
    if (!this.managers.some(m => m.userId === userId && m.role === role)) {
@@ -281,44 +253,6 @@ BranchSchema.methods.removeManager = function (userId, removedBy, reason = '') {
       this.managers.splice(index, 1);
       this.logAudit('manager_removed', removedBy, { userId, reason });
    }
-   return this;
-};
-
-BranchSchema.methods.updateStats = function (orderData) {
-   const now = new Date();
-   const isNewDay = !this.stats.lastUpdated ||
-      now.toDateString() !== this.stats.lastUpdated.toDateString();
-
-   if (isNewDay) {
-      // Reset daily stats or update as needed
-      this.stats.lastUpdated = now;
-   }
-
-   // Update lifetime stats
-   this.stats.totalOrders += orderData.orders || 0;
-   this.stats.totalRevenue += orderData.revenue || 0;
-
-   // Calculate average
-   if (this.stats.totalOrders > 0) {
-      this.stats.avgOrderValue = this.stats.totalRevenue / this.stats.totalOrders;
-   }
-
-   return this;
-};
-
-BranchSchema.methods.logAudit = function (action, userId, details = {}) {
-   this.auditLog.push({
-      action,
-      userId,
-      timestamp: new Date(),
-      details
-   });
-
-   // Keep only last 50 entries
-   if (this.auditLog.length > 50) {
-      this.auditLog.shift();
-   }
-
    return this;
 };
 
