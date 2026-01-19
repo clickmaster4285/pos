@@ -2,6 +2,7 @@ import express from 'express';
 import BranchController from '../controllers/branch.controller.js';
 import BranchValidator from '../middleware/branchValidator.js';
 import { authenticateToken, checkPermissionsValidation } from '../middleware/authMiddleware.js';
+import passport from '../middleware/passportAuth.middleware.js';
 
 const router = express.Router();
 
@@ -12,11 +13,10 @@ const authorize = (roles) => {
          const user = req.user;
 
          // Super admin has all access
-         if (user.role === 'superAdmin' || user.role === 'super_admin') {
+         if (user.role === 'superAdmin') {
             return next();
          }
-      //  console.log("the user is ", user)
-         // Check if user's role is in the allowed roles array
+         console.log("the user is ", user.role)
          if (!roles.includes(user.role)) {
             return res.status(403).json({
                success: false,
@@ -44,74 +44,79 @@ router.use(authenticateToken);
 // Branch CRUD operations
 router.post(
    '/',
-   authorize(['admin', 'super_admin']),
+   authorize(['admin', 'superAdmin']),
+   checkPermissionsValidation('createBranch'),
    BranchValidator.validateCreate,
    BranchController.createBranch
 );
 
 router.get(
    '/company/:companyId',
-   authorize(['admin', 'manager', 'superAdmin', 'staff']),
+     passport.authenticate('jwt', { session: false }),
+   // authorize(['admin', 'manager', 'superAdmin', 'staff']),
+   checkPermissionsValidation('ViewAllBranches'),
    BranchValidator.validateQuery,
    BranchController.getCompanyBranches
 );
 
 router.get(
    '/manager/:userId',
-   authorize(['admin', 'manager', 'super_admin']),
+   authorize(['admin', 'manager', 'superAdmin']),
    BranchController.getBranchesByManager
 );
 
 router.get(
    '/:id',
-   authorize(['admin', 'manager', 'super_admin', 'staff']),
+   authorize(['admin', 'manager', 'superAdmin', 'staff']),
    BranchController.getBranchById
 );
 
 router.put(
    '/:id',
-   authorize(['admin', 'manager', 'super_admin']),
+   authorize(['admin', 'manager', 'superAdmin']),
+   checkPermissionsValidation('editBranch'),
    BranchValidator.validateUpdate,
    BranchController.updateBranch
 );
 
 router.delete(
    '/:id',
-   authorize(['admin', 'super_admin']),
+   authorize(['admin', 'superAdmin']),
+   checkPermissionsValidation('DeleteBranches'),
    BranchController.deleteBranch
 );
 
 // Manager management
 router.post(
    '/:id/managers',
-   authorize(['admin', 'super_admin']),
+   authorize(['admin', 'superAdmin']),
    BranchValidator.validateAddManager,
    BranchController.addManager
 );
 
 router.delete(
    '/:id/managers/:userId',
-   authorize(['admin', 'super_admin']),
+   authorize(['admin', 'superAdmin']),
    BranchController.removeManager
 );
 
 // Statistics and dashboard
 router.post(
    '/:id/stats',
-   authorize(['admin', 'manager', 'super_admin', 'system']),
+   authorize(['admin', 'manager', 'superAdmin', 'system']),
    BranchController.updateBranchStats
 );
 
 router.get(
    '/:id/dashboard',
-   authorize(['admin', 'manager', 'super_admin']),
+   authorize(['admin', 'manager', 'superAdmin']),
    BranchController.getBranchDashboard
 );
 
 // Restoration
 router.post(
    '/:id/restore',
-   authorize(['admin', 'super_admin']),
+   authorize(['admin', 'superAdmin']),
    BranchController.restoreBranch
 );
 

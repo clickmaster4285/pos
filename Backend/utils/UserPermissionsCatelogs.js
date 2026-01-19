@@ -1,96 +1,72 @@
-export const getPermissionsByIndustry = (industryName) => {
-  if (!industryName) return {};
+import mongoose from 'mongoose';
 
-  const industry = industryName.trim().toLowerCase();
+const permissionsCatalog = {
+  compulsory: [
+    'createBranch', 'editBranch', 'viewAllBranches', 'deleteBranches',
+    'createProduct', 'updateProduct', 'viewProduct', 'deleteProduct',
+    'approveRequests', 'assignTasks', 'managePlans', 'manageTeams',
+    'staffCreate', 'staffDelete', 'staffUpdate', 'viewallstaff',
+    'viewReports', 'editBilling', 'deleteBilling', 'addBilling',
+    'viewBilling', 'createPayment', 'viewAllStaffSalaries', 'updateSalary',
+    'deletePayment', 'staffSummary', 'viewActiveLog', 'viewCompanySummary',
+    'companyprofileupdate', 'updateCompanySettings', 'createShipment',
+    'updateShipment', 'viewShipment', 'deleteShipment', 'createCourier',
+    'updateCourier', 'viewCourier', 'deleteCourier', 'createOrder',
+    'viewOrder', 'updateOrderStatus', 'createVendors', 'updateVendors',
+    'deleteVendors', 'viewVendors', 'createCategory', 'updateCategory',
+    'viewCategory', 'deleteCategory', 'manageAppointments'
+  ],
 
-  // Always include compulsory permissions
-  const finalPermissions = {
-    ...permissionsCatalog.CompulsoryPermissions.reduce((obj, perm) => {
-      obj[perm] = true;
-      return obj;
-    }, {}),
+  restaurant: ['manageTables', 'createIngredient', 'updateIngredient', 'viewIngredient', 'deleteIngredient'],
+  fashion: [],
+  pharmacy: [],
+  electronics: [],
+  generalshop: []
+};
+
+export const getDefaultPermissions = async (role, companyId) => {
+  const rolePermissions = {
+    superAdmin: {},
+    admin: await getIndustryPermissions(companyId),
+    staff: {
+      viewProduct: true,
+      viewOrder: true,
+      updateOrderStatus: true,
+      viewShipment: true,
+      viewVendors: true,
+      viewCategory: true
+    },
+    user: {
+      viewProduct: true,
+      createOrder: true,
+      viewOrder: true
+    }
   };
 
-  // Add industry-specific permissions if exists
-  if (permissionsCatalog[industry]) {
-    permissionsCatalog[industry].forEach((perm) => {
-      finalPermissions[perm] = true;
-    });
-  }
-
-  return finalPermissions;
+  return rolePermissions[role] || {};
 };
 
-// UserPermissionsCatelogs.js
-const permissionsCatalog = {
-  CompulsoryPermissions: [
-    "createProduct",
-    "updateProduct",
-    "viewProduct",
-    "deleteProduct",
-    "approveRequests",
-    "assignTasks",
-    "managePlans",
-    "manageTeams",
-    "staffCreate",
-    "staffDelete",
-    "staffUpdate",
-    "viewallstaff",
-    "viewReports",
-    "editBilling",
-    "deleteBilling",
-    "addBilling",
-    "viewBilling",
-    "createPayment",
-    "viewAllStaffSalaries",
-    "updateSalary",
-    "deletePayment",
-    "staffSummary",
-    "viewActiveLog",
-    "viewCompanySummary",
-    "companyprofileupdate",
-    "updateCompanySettings",
-    "createShipment",
-    "updateShipment",
-    "viewShipment",
-    "deleteShipment",
-    "createCourier",
-    "updateCourier",
-    "viewCourier",
-    "deleteCourier",
-    "createOrder",
-    "viewOrder",
-    "updateOrderStatus",
-    "createVendors",
-    "updateVendors",
-    "deleteVendors",
-    "viewVendors",
-    "createCategory",
-    "updateCategory",
-    "viewCategory",
-    "deleteCategory",
-    "manageAppointments",
-  ],
+export const getIndustryPermissions = async (companyId) => {
+  if (!companyId) return permissionsCatalog.compulsory.reduce((acc, perm) => ({ ...acc, [perm]: true }), {});
 
-  restaurant: [
-    "manageTables",
-    "createIngredient",
-    "updateIngredient",
-    "viewIngredient",
-    "deleteIngredient",
-  ],
+  const Company = mongoose.model('Company');
+  const company = await Company.findOne({ companyId }).lean();
+  const industry = company?.industry?.toLowerCase() || 'generalshop';
 
-  fashion: [
-    
-  ],
+  const industrySpecific = permissionsCatalog[industry] || [];
+  const allPermissions = [...permissionsCatalog.compulsory, ...industrySpecific];
 
-  pharmacy: [
-  ],
-
-  electronics: [
-  ],
-
-  generalshop: [
-  ],
+  return allPermissions.reduce((acc, perm) => ({ ...acc, [perm]: true }), {});
 };
 
+export const getAllPermissions = () => {
+  const all = new Set(permissionsCatalog.compulsory);
+  Object.values(permissionsCatalog).forEach(category => {
+    if (Array.isArray(category)) category.forEach(perm => all.add(perm));
+  });
+  return Array.from(all).sort();
+};
+
+export const validatePermission = (permissionName, user) => {
+  return user?.hasPermission?.(permissionName) || false;
+};

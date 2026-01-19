@@ -1,228 +1,109 @@
-import mongoose from "mongoose";
-import bcrypt from "bcrypt";
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
-const EmailChangeSchema = new mongoose.Schema(
-  {
-    newEmail: { type: String, lowercase: true, trim: true },
-    codeHash: String,
-    expiresAt: Date,
-    attempts: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now },
-  }, { _id: false }
-);
+const EmailChangeSchema = new mongoose.Schema({
+  newEmail: { type: String, lowercase: true, trim: true },
+  codeHash: String,
+  expiresAt: Date,
+  attempts: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: false });
 
-const PasswordChangeSchema = new mongoose.Schema(
-  {
-    codeHash: String, // hashed OTP
-    newPassHash: String, // hashed new password (temporary)
-    expiresAt: Date,
-    attempts: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now },
-  }, { _id: false }
-);
+const PasswordChangeSchema = new mongoose.Schema({
+  codeHash: String,
+  newPassHash: String,
+  expiresAt: Date,
+  attempts: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: false });
 
-const SecuritySchema = new mongoose.Schema(
-  {
-    emailChange: { type: EmailChangeSchema, default: undefined },
-    passwordChange: { type: PasswordChangeSchema, default: undefined },
-  }, { _id: false }
-);
+const SecuritySchema = new mongoose.Schema({
+  emailChange: EmailChangeSchema,
+  passwordChange: PasswordChangeSchema
+}, { _id: false });
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true, },
-  userId: { type: String, required: true, unique: true, },
-  toolName: { type: String, },
-  toolLogo: { type: String, },
-  companyId: { type: String, },
-  email: { type: String, required: true, unique: true, lowercase: true, },
-  password: { type: String, required: true, },
-  role: { type: String, enum: ["superAdmin", "admin", "staff", "user"], default: "user", },
-  subRole: { type: String, },
-  department: { type: String, },
-  permissions: {
-    updateCompanySettings: { type: Boolean, default: false },
-    approveRequests: { type: Boolean, default: false },
-    assignTasks: { type: Boolean, default: false },
-    manageAppointments: { type: Boolean, default: false },
-    createProduct: { type: Boolean, default: false },
-    updateProduct: { type: Boolean, default: false },
-    viewProduct: { type: Boolean, default: false },
-    deleteProduct: { type: Boolean, default: false },
-    managePlans: { type: Boolean, default: false },
-    manageTeams: { type: Boolean, default: false },
-    createVendors: { type: Boolean, default: false },
-    updateVendors: { type: Boolean, default: false },
-    deleteVendors: { type: Boolean, default: false },
-    viewVendors: { type: Boolean, default: false },
-    staffCreate: { type: Boolean, default: false },
-    staffDelete: { type: Boolean, default: false },
-    staffUpdate: { type: Boolean, default: false },
-    viewReports: { type: Boolean, default: false },
-    viewallstaff: { type: Boolean, default: false },
-    editBilling: { type: Boolean, default: false },
-    deleteBilling: { type: Boolean, default: false },
-    addBilling: { type: Boolean, default: false },
-    viewBilling: { type: Boolean, default: false },
-    createPayment: { type: Boolean, default: false },
-    viewAllStaffSalaries: { type: Boolean, default: false },
-    updateSalary: { type: Boolean, default: false },
-    deletePayment: { type: Boolean, default: false },
-    staffSummary: { type: Boolean, default: false },
-    viewActiveLog: { type: Boolean, default: false },
-    viewCompanySummary: { type: Boolean, default: false },
-    companyprofileupdate: { type: Boolean, default: false },
-    manageTables: { type: Boolean, default: false },
-    createOrder: { type: Boolean, default: false },
-    viewOrder: { type: Boolean, default: false },
-    updateOrderStatus: { type: Boolean, default: false },
-    createIngredient: { type: Boolean, default: false },
-    updateIngredient: { type: Boolean, default: false },
-    viewIngredient: { type: Boolean, default: false },
-    deleteIngredient: { type: Boolean, default: false },
-    createCategory: { type: Boolean, default: false },
-    updateCategory: { type: Boolean, default: false },
-    viewCategory: { type: Boolean, default: false },
-    deleteCategory: { type: Boolean, default: false },
-    createCourier: { type: Boolean, default: false },
-    updateCourier: { type: Boolean, default: false },
-    viewCourier: { type: Boolean, default: false },
-    deleteCourier: { type: Boolean, default: false },
-    createShipment: { type: Boolean, default: false },
-    updateShipment: { type: Boolean, default: false },
-    viewShipment: { type: Boolean, default: false },
-    deleteShipment: { type: Boolean, default: false },
-  },
-  phone: {
-    type: String,
-  },
-  address: {
-    type: String,
-  },
-  // models/user.model.js  (add these fields)
+  name: { type: String, required: true },
+  userId: { type: String, required: true, unique: true },
+  companyId: { type: String },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['superAdmin', 'admin', 'staff', 'user'], default: 'user' },
+  subRole: String,
+  department: String,
+  permissions: { type: mongoose.Schema.Types.Mixed, default: {} },
+  phone: String,
+  address: String,
   baseSalaryMonthly: { type: Number, default: 0, min: 0 },
-  lastPaymentDate: { type: Date },
-
-  verified: {
-    type: Boolean,
-    default: false,
-  },
-  verificationOTP: {
-    type: String,
-  },
-  verificationExpiry: {
-    type: Number,
-  },
+  lastPaymentDate: Date,
+  verified: { type: Boolean, default: false },
+  verificationOTP: String,
+  verificationExpiry: Number,
   status: {
-    isaccepted: {
-      type: String,
-      enum: ["true", "false", "pending"],
-      default: "pending",
-    },
-    performedBy: {
-      type: String,
-    },
-    updatedAt: {
-      type: Date,
-    },
+    isaccepted: { type: String, enum: ['true', 'false', 'pending'], default: 'pending' },
+    performedBy: String,
+    updatedAt: Date
   },
-  stripeConfig: {
-    publishableKey: String,
-    secretKey: String,
-    webhookSigningSecret: String,
-  },
-  history: [
-    {
-      action: {
-        type: String,
-        required: true,
-      },
-      performedBy: {
-        type: String,
-        required: true,
-      },
-      createdAt: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
-  deleted: {
-    type: Boolean,
-    default: false,
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  loginAttempts: {
-    type: Number,
-    default: 0,
-  },
-  lockUntil: {
-    type: Number,
-  },
-  lastLogin: {
-    type: Date,
-  },
-  mfaEnabled: {
-    type: Boolean,
-    default: false,
-  },
-  mfaSecret: {
-    type: String,
-    select: false,
-  },
-  googleId: { type: String, unique: true, sparse: true },
-  picture: { type: String },
+  history: [{
+    action: { type: String, required: true },
+    performedBy: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  deleted: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
+  loginAttempts: { type: Number, default: 0 },
+  lockUntil: Number,
+  lastLogin: Date,
+  mfaEnabled: { type: Boolean, default: false },
+  mfaSecret: { type: String, select: false },
   twoFactorAuth: {
     isEnabled: { type: Boolean, default: false },
     secret: { type: String, select: false },
-    backupCodes: [
-      {
-        code: { type: String, select: false },
-        used: { type: Boolean, default: false },
-        usedAt: { type: Date },
-      },
-    ],
+    backupCodes: [{
+      code: { type: String, select: false },
+      used: { type: Boolean, default: false },
+      usedAt: Date
+    }]
   },
-  addressBookId: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Address",
-    },
-  ],
   security: { type: SecuritySchema, default: {} },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
 });
 
-userSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
-    this.password = await bcrypt.hash(this.password, 10);
-  }
+userSchema.pre('save', async function (next) {
   this.updatedAt = Date.now();
+
+  if (this.isModified('password') && !this.password.startsWith('$2')) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
+
+  if (this.isNew && Object.keys(this.permissions).length === 0) {
+    this.permissions = await this.initializePermissions();
+  }
+
   next();
 });
 
-userSchema.pre("save", async function (next) {
-  this.updatedAt = Date.now();
+userSchema.methods.initializePermissions = async function () {
+  const { getDefaultPermissions } = await import('../utils/permissions.js');
+  return getDefaultPermissions(this.role, this.companyId);
+};
 
-  if (!this.isModified("password")) return next();
+userSchema.methods.hasPermission = function (permissionName) {
+  if (this.role === 'superAdmin') return true;
 
-  // Prevent double-hash if already hashed
-  if (typeof this.password === "string" && this.password.startsWith("$2")) {
-    return next();
-  }
+  const normalizedPermission = permissionName.toLowerCase();
+  const permissionKey = Object.keys(this.permissions || {}).find(
+    key => key.toLowerCase() === normalizedPermission
+  );
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
-});
+  return permissionKey ? this.permissions[permissionKey] === true : false;
+};
 
-export default mongoose.model("User", userSchema);
+userSchema.statics.getPermissionKeys =async function () {
+  const { getAllPermissions } = await import('../utils/permissions.js');
+  return getAllPermissions();
+};
+
+export default mongoose.model('User', userSchema);

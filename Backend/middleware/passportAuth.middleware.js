@@ -1,3 +1,4 @@
+// middlewar/passportAuth.middleware.js
 import dotenv from 'dotenv';
 import passport from 'passport';
 import IndexModel from '../models/indexModel.js';

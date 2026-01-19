@@ -24,7 +24,7 @@ const createPlan = async (req, res, next) => {
     const plan = await IndexModel.Plan.create({
       name,
       description,
-      price: price||0,
+      price: price || 0,
       limitations,
       validateDays,
       currencyCode,
@@ -149,8 +149,6 @@ const getAllPlansforUser = async (req, res) => {
       .json({ message: "Error fetching plans", error: error.message });
   }
 };
-
-
 
 export default {
   createPlan,

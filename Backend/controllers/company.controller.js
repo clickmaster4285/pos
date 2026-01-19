@@ -8,7 +8,8 @@ import { upload } from "../config/multer.js";
 import path from "path";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
 import mongoose from 'mongoose';
-import {getPermissionsByIndustry} from "../utils/UserPermissionsCatelogs.js"
+import { getDefaultPermissions } from "../utils/UserPermissionsCatelogs.js"
+
 const createCompany = async (req, res) => {
   try {
     const { company, admin, googleUser } = req.body;
@@ -19,7 +20,7 @@ const createCompany = async (req, res) => {
         error: "Company name, contact email, and plan are required",
       });
     }
-const dynamicPermissions = getPermissionsByIndustry(company.industryName);
+    const dynamicPermissions = await getDefaultPermissions('admin', null, company.industryName);
     if (!admin || !admin.name || !admin.email) {
       return res.status(400).json({
         success: false,
@@ -103,7 +104,7 @@ const dynamicPermissions = getPermissionsByIndustry(company.industryName);
         existingGoogleUser.name = admin.name;
       }
 
-      existingGoogleUser.permissions= dynamicPermissions
+      existingGoogleUser.permissions = dynamicPermissions
 
       if (admin.password) existingGoogleUser.password = admin.password;
       existingGoogleUser.history.push({
@@ -162,15 +163,15 @@ const dynamicPermissions = getPermissionsByIndustry(company.industryName);
       plan:
         availablePlan.price === 0
           ? {
-              _id: new mongoose.Types.ObjectId(),
-              ...availablePlan.toObject(),
-              planId: availablePlan._id,
-              companyPlanId: await generatePlanId(companyId, adminUserId),
-              status: "in progress",
-              createdAt:new Date(),
-              updatedAt:new Date(),
-              isActive: true,
-            }
+            _id: new mongoose.Types.ObjectId(),
+            ...availablePlan.toObject(),
+            planId: availablePlan._id,
+            companyPlanId: await generatePlanId(companyId, adminUserId),
+            status: "in progress",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isActive: true,
+          }
           : undefined, // you can omit this or use `null` if preferred
       history: [
         {
@@ -296,13 +297,12 @@ const dynamicPermissions = getPermissionsByIndustry(company.industryName);
       const field = Object.keys(error.keyValue)[0];
       return res.status(400).json({
         success: false,
-        error: `${
-          field === "email"
+        error: `${field === "email"
             ? "Admin email"
             : field === "companyId"
-            ? "Company ID"
-            : "Company name"
-        } already exists`,
+              ? "Company ID"
+              : "Company name"
+          } already exists`,
       });
     }
 
@@ -388,9 +388,8 @@ const verifyCompany_Admin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Company admin ${
-        action === "approve" ? "approved" : "rejected"
-      } successfully`,
+      message: `Company admin ${action === "approve" ? "approved" : "rejected"
+        } successfully`,
       data: {
         userId: updatedUser.userId,
         name: updatedUser.name,
@@ -529,7 +528,7 @@ const getCompany = async (req, res) => {
       deleted: false,
     });
 
-    const companyAdmin = await IndexModel.User.findOne({userId:company.owner })
+    const companyAdmin = await IndexModel.User.findOne({ userId: company.owner })
 
     if (!company) {
       return res.status(404).json({
@@ -637,9 +636,8 @@ const active_inactiveCompany = async (req, res) => {
     );
 
     return res.status(200).json({
-      message: `Company ${
-        newStatus ? "activated" : "deactivated"
-      } successfully, and all users updated.`,
+      message: `Company ${newStatus ? "activated" : "deactivated"
+        } successfully, and all users updated.`,
       company,
     });
   } catch (error) {
@@ -902,6 +900,7 @@ const tryFreePlan = async (req, res) => {
       .json({ message: "Error processing plan", error: error.message });
   }
 };
+
 export default {
   createCompany,
   getCompany,

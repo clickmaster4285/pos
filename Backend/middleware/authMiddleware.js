@@ -1,3 +1,4 @@
+// middleware/authmiddleware.js
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import IndexModel from "../models/indexModel.js";
@@ -272,7 +273,6 @@ export const checkplan = (moduleName) => {
       if (user.role === "superAdmin") {
         return next();
       }
-      // console.log("the user.companyId  : ", companyId, user)
 
       const company = await IndexModel.Company.findOne({
         companyId,
@@ -297,7 +297,7 @@ export const checkplan = (moduleName) => {
 
       switch (moduleName) {
         case "staffCreate": {
-          if (user.permissions.staffCreate === false) {
+          if (!user.hasPermission?.('staffCreate')) {
             return res.status(403).json({
               success: false,
               message: "Unauthorized: you cannot add staff",
@@ -316,7 +316,7 @@ export const checkplan = (moduleName) => {
           break;
         }
         case "Vendor": {
-          if (user.permissions.createVendors === false) {
+          if (!user.hasPermission?.('createVendors')) {
             return res.status(403).json({
               success: false,
               message: "Unauthorized: you cannot manage vendors",
@@ -335,7 +335,7 @@ export const checkplan = (moduleName) => {
           break;
         }
         case "Product": {
-          if (user.permissions.manageProduct === false) {
+          if (!user.hasPermission?.('manageProduct')) {
             return res.status(403).json({
               success: false,
               message: "Unauthorized: you cannot manage product",
@@ -436,6 +436,28 @@ export const checkPermissionsValidation = (moduleName) => {
         return res.status(403).json({
           success: false,
           message: `Unauthorized: you cannot access ${moduleName}`,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+export const checkPermission = (permissionName) => {
+  return async (req, res, next) => {
+    try {
+      const user = req.user;
+      if (user.role === "superAdmin") {
+        return next();
+      }
+
+      if (user?.hasPermission?.(permissionName)) {
+        return next();
+      } else {
+        return res.status(403).json({
+          success: false,
+          message: `Unauthorized: you cannot access ${permissionName}`,
         });
       }
     } catch (error) {

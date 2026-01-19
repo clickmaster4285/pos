@@ -5,37 +5,20 @@ import { generateOTP } from '../utils/generate_verifyOTP.js';
 import sendEmail from '../utils/sendEmail.js';
 import ZKDeviceService from "../utils/zkDeviceService.js";
 import bcrypt from 'bcrypt';
+import { getDefaultPermissions } from '../utils/UserPermissionsCatelogs.js';
 
 const createStaff = async (req, res) => {
   try {
     const logginUser = req.user;
-    const {
-      name,
-      email,
-      password,
-      subRole,
-      department,
-      permissions = {},
-      phone,
-      address,
-      baseSalaryMonthly,
-      lastPaymentDate,
-      deviceIds = [],
-    } = req.body;
+    const { name, email, password, subRole, department, permissions = {}, phone, address, baseSalaryMonthly, lastPaymentDate, deviceIds = [], } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email, and password are required',
-      });
+      return res.status(400).json({ success: false, message: 'Name, email, and password required' });
     }
 
-    const existingUser = await IndexModel.User.findOne({ email });
+    const existingUser = await IndexModel.User.findOne({ email, deleted: false });
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already exists or was deleted. Please use a new email.',
-      });
+      return res.status(400).json({ success: false, message: 'Email already exists' });
     }
 
     const userId = await generateUniqueUserId(name);
@@ -70,16 +53,22 @@ const createStaff = async (req, res) => {
       });
     }
 
+    let staffPermissions = permissions;
+    if (!permissions || Object.keys(permissions).length === 0) {
+      staffPermissions = await getDefaultPermissions('staff', companyId);
+    }
+
     const newEmployee = new IndexModel.User({
       name,
       userId,
-      companyId: logginUser.companyId,
+      companyId,
+      // companyId: logginUser.companyId,
       email,
       password,
       role: 'staff',
       subRole,
       department,
-      permissions,
+      permissions: staffPermissions,
       phone,
       address,
       baseSalaryMonthly,
@@ -550,9 +539,7 @@ const active_inactiveUser = async (req, res) => {
 //--------------helper--------------------
 const send = (res, code, payload) => res.status(code).json(payload);
 
-/* =========================================================
-   EMAIL CHANGE – INITIATE
-========================================================= */
+/*    EMAIL CHANGE – INITIATE */
 export const initiateEmailChange = async (req, res) => {
   try {
     const { currentEmail, newEmail, userId } = req.body || {};
@@ -616,10 +603,7 @@ export const initiateEmailChange = async (req, res) => {
   }
 };
 
-
-/* =========================================================
-   EMAIL CHANGE – VERIFY
-========================================================= */
+/*    EMAIL CHANGE – VERIFY */
 export const verifyEmailChange = async (req, res) => {
   try {
     const { code, userId } = req.body || {};
@@ -678,10 +662,7 @@ export const verifyEmailChange = async (req, res) => {
   }
 };
 
-
-/* =========================================================
-   PASSWORD CHANGE – INITIATE
-========================================================= */
+/*    PASSWORD CHANGE – INITIATE */
 export const initiatePasswordChange = async (req, res) => {
   try {
     const { currentPassword, newPassword, userId } = req.body || {};
@@ -762,10 +743,7 @@ export const initiatePasswordChange = async (req, res) => {
   }
 };
 
-
-/* =========================================================
-   PASSWORD CHANGE – VERIFY
-========================================================= */
+/*    PASSWORD CHANGE – VERIFY */
 export const verifyPasswordChange = async (req, res) => {
   try {
     const { code, userId } = req.body || {};

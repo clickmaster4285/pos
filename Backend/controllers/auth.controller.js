@@ -14,6 +14,7 @@ import {
 import { OAuth2Client } from "google-auth-library";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 import { userActivityLogger } from "../utils/logger.js";
+import { getDefaultPermissions } from "../utils/UserPermissionsCatelogs.js";
 
 const googleClient = new OAuth2Client({
   clientId: process.env.GOOGLE_CLIENT_ID,
@@ -198,7 +199,7 @@ const login = async (req, res, next) => {
 
 const googleSignIn = async (req, res, next) => {
   try {
-    const { idToken: code } = req.body; // ✅ your frontend sends { idToken: response.code }
+    const { idToken: code } = req.body;
     if (!code)
       return next(new ErrorResponse("Authorization code required", 400));
 
@@ -240,6 +241,8 @@ const googleSignIn = async (req, res, next) => {
     if (!user) {
       const userId = await generateUniqueUserId(name || "Google User");
       const companyId = await generateUniqueCompanyId(name);
+      const permissions = await getDefaultPermissions('admin', companyId);
+
       user = new User({
         name: name,
         email,
@@ -251,6 +254,7 @@ const googleSignIn = async (req, res, next) => {
         picture,
         password: Math.random().toString(36).slice(-10) + "!@#",
         status: { isaccepted: true, performedBy: "google-oauth" },
+        permissions
       });
       await user.save();
     }

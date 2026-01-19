@@ -6,7 +6,7 @@ import fs from "fs";
 import bcrypt from "bcrypt";
 import { generateUniqueCompanyId } from "../utils/generateUniqueCompanyId.js";
 import { generatePlanId } from "../utils/generatePlanIdPurchased.js";
-import {getPermissionsByIndustry} from "../utils/UserPermissionsCatelogs.js"
+import { getDefaultPermissions } from "../utils/UserPermissionsCatelogs.js"
 
 const createSuperAdmin = async () => {
   try {
@@ -202,6 +202,7 @@ export const createCompanybySuperAdmin = async (req, res) => {
       });
     }
     const { company, admin } = req.body;
+
     // Validate required fields
     if (!company || !company.name || !company.contactEmail || !company.plan) {
       return res.status(400).json({
@@ -209,7 +210,9 @@ export const createCompanybySuperAdmin = async (req, res) => {
         error: "Company name, contact email, and plan are required",
       });
     }
-    const dynamicPermissions = getPermissionsByIndustry(company.industryName);
+
+    // Get dynamic permissions based on industry
+    const dynamicPermissions = await getDefaultPermissions('admin', null, company.industryName);
 
     if (!admin || !admin.name || !admin.email || !admin.password) {
       return res.status(400).json({
@@ -217,7 +220,6 @@ export const createCompanybySuperAdmin = async (req, res) => {
         error: "Admin name, email, and password are required",
       });
     }
-    // console.log("the logs is : io am her")
 
     // console.log("the availablePlan", company.plan)
     const availablePlan = await IndexModel.Plan.findById(company.plan);
@@ -355,8 +357,6 @@ export const createCompanybySuperAdmin = async (req, res) => {
   }
 };
 
-
-
 export const superAdminDashboard = async (req, res) => {
   try {
     const { role } = req.user;
@@ -366,9 +366,7 @@ export const superAdminDashboard = async (req, res) => {
       });
     }
 
-    // ===============================
     // 1️⃣ Basic dashboard data
-    // ===============================
     const companies = await IndexModel.Company.find({ deleted: false }).lean();
     const admins = await IndexModel.User.find({
       role: "admin",
@@ -422,16 +420,12 @@ export const superAdminDashboard = async (req, res) => {
 
     const companyGrowth = companies.map(({ name, createdAt }) => ({ name, createdAt }));
 
-    // ===============================
     // 2️⃣ MongoDB storage stats
-    // ===============================
     const dbStats = await IndexModel.Company.db.db.stats();
     const mongoStorageUsedMB = dbStats.storageSize / (1024 * 1024); // MB
     const mongoDataSizeMB = dbStats.dataSize / (1024 * 1024); // MB
 
-    // ===============================
     // 3️⃣ Uploads folder size
-    // ===============================
     const getFolderSize = (folderPath) => {
       let totalSize = 0;
       const files = fs.readdirSync(folderPath);
@@ -458,9 +452,7 @@ export const superAdminDashboard = async (req, res) => {
 
     
 
-    // ===============================
     // 4️⃣ Combine all dashboard data
-    // ===============================
     const dashboardData = {
       totalCompanies: companies.length,
       totalAdmins: admins.length,
@@ -490,7 +482,5 @@ export const superAdminDashboard = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
 
 export default createSuperAdmin;

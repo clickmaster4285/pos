@@ -37,7 +37,6 @@ const BranchSchema = new Schema({
       index: true
    },
 
-   // 2. BASIC INFORMATION
    name: {
       type: String,
       required: true,
@@ -46,7 +45,6 @@ const BranchSchema = new Schema({
       index: true
    },
 
-   // 3. LOCATION & CONTACT
    address: {
       type: AddressSchema,
       required: true
@@ -55,14 +53,11 @@ const BranchSchema = new Schema({
       type: ContactSchema,
       required: true
    },
-
-   // 4. OPERATIONAL
    openingDate: { type: Date, default: Date.now },
 
-   // 5. MANAGEMENT
    managers: [{
       userId: {
-         type: String, // Store userId as String for faster queries
+         type: String,
          required: true,
          index: true
       },
@@ -74,14 +69,11 @@ const BranchSchema = new Schema({
       assignedAt: { type: Date, default: Date.now }
    }],
 
-   // 6. CONFIGURATION (Store as JSON for flexibility)
    settings: {
-      // POS Settings
       taxRate: { type: Number, default: 16, min: 0, max: 100 },
       currency: { type: String, default: 'PKR' },
    },
 
-   // 7. STATUS & METADATA
    status: {
       type: String,
       enum: ['active', 'inactive', 'closed', 'maintenance'],
@@ -94,10 +86,8 @@ const BranchSchema = new Schema({
       default: 'restaurant'
    },
 
-   // 8. STATISTICS (Updated periodically, not real-time
       monthlyTarget: { type: Number, default: 0 },
 
-   // 10. SOFT DELETE & TIMESTAMPS
    isDeleted: {
       type: Boolean,   
       default: false,
@@ -111,9 +101,7 @@ const BranchSchema = new Schema({
 
 }, {
    timestamps: true,
-   // Disable version key to save space
-   versionKey: false,
-   // Optimize JSON output
+   versionKey: false, 
    toJSON: {
       virtuals: true,
       transform: function (doc, ret) {
