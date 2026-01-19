@@ -53,8 +53,8 @@ router.post(
 router.get(
    '/company/:companyId',
      passport.authenticate('jwt', { session: false }),
-   // authorize(['admin', 'manager', 'superAdmin', 'staff']),
-   checkPermissionsValidation('ViewAllBranches'),
+   authorize(['admin', 'manager', 'superAdmin', 'staff']),
+   checkPermissionsValidation('viewAllBranches'),
    BranchValidator.validateQuery,
    BranchController.getCompanyBranches
 );
@@ -82,7 +82,7 @@ router.put(
 router.delete(
    '/:id',
    authorize(['admin', 'superAdmin']),
-   checkPermissionsValidation('DeleteBranches'),
+   checkPermissionsValidation('deleteBranches'),
    BranchController.deleteBranch
 );
 
