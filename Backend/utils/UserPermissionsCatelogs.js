@@ -25,6 +25,7 @@ const permissionsCatalog = {
 };
 
 export const getDefaultPermissions = async (role, companyId) => {
+  console.log("the comapny id is ", companyId)
   const rolePermissions = {
     superAdmin: {},
     admin: await getIndustryPermissions(companyId),

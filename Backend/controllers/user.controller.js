@@ -9,7 +9,7 @@ import { getDefaultPermissions } from '../utils/UserPermissionsCatelogs.js';
 
 const createStaff = async (req, res) => {
   try {
-    const logginUser = req.user;
+    const { logginUser , userId: performerId,  companyId } = req.user;
     const { name, email, password, subRole, department, permissions = {}, phone, address, baseSalaryMonthly, lastPaymentDate, deviceIds = [], } = req.body;
 
     if (!name || !email || !password) {
@@ -78,13 +78,13 @@ const createStaff = async (req, res) => {
       verified: true,
       status: {
         isaccepted: 'true',
-        performedBy: logginUser.userId,
+        performedBy: performerId,
         updatedAt: Date.now(),
       },
       history: [
         {
           action: 'Employee created',
-          performedBy: logginUser.userId,
+          performedBy: performerId,
         },
       ],
     });
@@ -93,13 +93,13 @@ const createStaff = async (req, res) => {
       await newEmployee.save();
 
       const company = await IndexModel.Company.findOneAndUpdate(
-        { companyId: logginUser.companyId },
+        { companyId },
         {
           $addToSet: { 'gain.staff': newEmployee.userId },
           $push: {
             history: {
               action: `Employee ${newEmployee.userId} added to staff`,
-              performedBy: logginUser.userId,
+              performedBy: performerId,
             },
           },
           updatedAt: Date.now(),
@@ -167,8 +167,6 @@ const createStaff = async (req, res) => {
 };
 
 const getAllStaff = async (req, res) => {
-  // console.log("the req.user in the staff is:", req.user);
-
   try {
     const { companyId } = req.user;
 
@@ -180,7 +178,7 @@ const getAllStaff = async (req, res) => {
     }).lean();
 
     if (!staff || staff.length === 0) {
-      console.warn(`No staff found on this company ${companyId}`);
+      console.info(`No staff found on this company ${companyId}`);
     }
 
     res.status(200).json({

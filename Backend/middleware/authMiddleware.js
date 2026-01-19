@@ -429,7 +429,7 @@ export const checkPermissionsValidation = (moduleName) => {
       if (user.role === "superAdmin") {
         return next();
       }
-      console.log("Checking permissions for module:", moduleName, user.permissions);
+      // console.log("Checking permissions for module:", moduleName, user.permissions);
       if (user.permissions?.[moduleName] === true) {
         return next();
       } else {
