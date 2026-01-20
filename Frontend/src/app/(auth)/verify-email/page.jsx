@@ -378,7 +378,7 @@ export default function VerifyEmailPage() {
                 ) : (
                   <>
                     Verify Email
-                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                   </>
                 )}
               </motion.button>
