@@ -168,7 +168,7 @@ export default function RenderField({
             <Textarea
               {...commonProps}
               value={typeof value === 'string' ? value : ''}
-              className="min-h-[180px] rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
+              className="min-h-45 rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
             />
             <div className="absolute bottom-3 right-3 px-2 py-1 bg-muted/80 rounded text-xs text-muted-foreground">
               {typeof value === 'string' ? value.length : 0} characters

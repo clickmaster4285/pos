@@ -38,6 +38,7 @@ import {
 import { Label } from '@/components/ui/label';
 
 export function PlanCard({ plan, onEdit, onDelete }) {
+  console.log("the plan is", plan)
   return (
     <Card className="relative hover:shadow-lg transition-shadow h-full flex flex-col">
       <CardHeader>

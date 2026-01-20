@@ -60,10 +60,10 @@ const featureLabels = {
 const fmtMoney = (n) =>
   typeof n === 'number'
     ? new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0,
-      }).format(n)
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(n)
     : '—';
 
 const daysLabel = (d) => (d ? `${d} ${d === 1 ? 'day' : 'days'}` : '—');
@@ -103,7 +103,7 @@ function Toolbar({
         <div className="flex items-center gap-2 shrink-0">
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -117,7 +117,7 @@ function Toolbar({
           </Select>
 
           <Select value={featureFilter} onValueChange={setFeatureFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-45">
               <SelectValue placeholder="Filter by feature" />
             </SelectTrigger>
             <SelectContent>

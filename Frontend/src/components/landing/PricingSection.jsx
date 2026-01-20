@@ -22,9 +22,6 @@ export const PricingSection = () => {
   const { data: plans = [], isLoading } = useGetAllPlansQuery();
   const [isAnnual, setIsAnnual] = useState(false);
 
-  // --------------------------------------------------------------
-  //  Jump to Industry step (step=2) and optionally pre-select plan
-  // --------------------------------------------------------------
   const goToIndustryStep = (planId) => {
     const query = new URLSearchParams();
     query.set("step", "2");
@@ -38,9 +35,7 @@ export const PricingSection = () => {
     }
   };
 
-  // --------------------------------------------------------------
-  //  Render a single plan card
-  // --------------------------------------------------------------
+
   const PlanCard = ({ plan }) => {
     const isPopular = plan.popular;
 
