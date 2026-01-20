@@ -49,6 +49,7 @@ router.patch(
 router.get(
   '/get-all-users',
   passport.authenticate('jwt', { session: false }),
+  authenticateToken,
   Indexcontroller.User.getAllAdminUsers
 );
 

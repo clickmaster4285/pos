@@ -20,7 +20,7 @@ export function ToastContainer() {
   });
 
   return (
-<div className="fixed top-4 right-4 z-[99999] flex flex-col space-y-4 w-96 pointer-events-none">
+<div className="fixed top-4 right-4 z-99999 flex flex-col space-y-4 w-96 pointer-events-none">
   {transitions((style, toast) => (
     <animated.div style={style} className="pointer-events-auto">
       <ToastNotification

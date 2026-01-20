@@ -10,12 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { useDispatch } from "react-redux"; // Add this
+import { addToast } from "@/features/toastSlice"; // Add this
 import { useCreateBranchMutation, useUpdateBranchMutation, useGetBranchByIdQuery } from "@/features/branchesApi";
+import { useGetAllStaffQuery } from "@/features/staffApi";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import BranchInformationForm from "./BranchInformationForm";
+import ManagerManagement from "./ManagerManagement";
 
 // Zod Schema for validation
 const branchSchema = z.object({
@@ -39,11 +43,34 @@ const branchSchema = z.object({
    }).default({}),
    monthlyTarget: z.coerce.number().min(0).default(0),
    status: z.enum(["active", "inactive"]).default("active"),
+   managers: z.array(z.object({
+      userId: z.string(),
+      name: z.string(),
+      role: z.enum(["manager", "assistant", "supervisor"]),
+      department: z.string().optional(),
+      email: z.string().email().optional(),
+      assignedAt: z.string().datetime().optional(),
+      assignedBy: z.string().optional(),
+   })).optional().default([]),
 });
 
 const BranchForm = ({ branchId = null, mode = "create" }) => {
    const router = useRouter();
    const { user } = useSelector((state) => state.auth);
+   const dispatch = useDispatch(); // Initialize dispatch
+
+   // Helper function to show toast
+   const showToast = (type, title, description, duration = 5000) => {
+      dispatch(addToast({
+         type,
+         title,
+         description,
+         duration,
+         bgColor: type === 'success' ? 'bg-green-50' : 'bg-red-50',
+         textColor: type === 'success' ? 'text-green-800' : 'text-red-800',
+         icon: type === 'success' ? 'check-circle' : 'alert-circle',
+      }));
+   };
 
    // API Mutations
    const [createBranch, { isLoading: isCreating }] = useCreateBranchMutation();
@@ -54,6 +81,16 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
       branchId,
       { skip: !branchId || mode === "create" }
    );
+
+   // Fetch all staff for manager selection
+   const {
+      data: staffData,
+      isLoading: isLoadingStaff,
+      error: staffError,
+      refetch: refetchStaff
+   } = useGetAllStaffQuery(undefined, {
+      skip: !user?.companyId,
+   });
 
    const {
       register,
@@ -85,8 +122,34 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
          },
          monthlyTarget: 0,
          status: "active",
+         managers: [],
       },
    });
+
+   // Local state for managers
+   const [managers, setManagers] = useState([]);
+
+   // Filter staff to only include staff from the same company
+   const filteredStaff = staffData && Array.isArray(staffData)
+      ? staffData.filter(staffMember =>
+         staffMember.companyId === user?.companyId &&
+         staffMember.role === "staff" &&
+         staffMember.status?.isaccepted === "true" &&
+         staffMember.isActive !== false
+      )
+      : [];
+
+   // Handle staff fetch errors
+   useEffect(() => {
+      if (staffError) {
+         console.error("Failed to fetch staff:", staffError);
+         if (staffError.status === 401) {
+            showToast('error', 'Authentication Error', 'Please login again to access staff data');
+         } else {
+            showToast('error', 'Error', 'Failed to load staff members. Please try again.');
+         }
+      }
+   }, [staffError]);
 
    // Populate form when editing
    useEffect(() => {
@@ -114,6 +177,11 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             monthlyTarget: branch.monthlyTarget || 0,
             status: branch.status || "active",
          });
+
+         // Set managers from branch data
+         if (branch.managers && Array.isArray(branch.managers)) {
+            setManagers(branch.managers);
+         }
       }
    }, [branchData, mode, reset]);
 
@@ -142,31 +210,47 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             monthlyTarget: Number(data.monthlyTarget) || 0,
             status: data.status,
             companyId: user?.companyId,
+            managers: managers,
          };
 
          console.log("Submitting payload:", payload);
 
          if (mode === "create") {
             await createBranch(payload).unwrap();
-            toast.success("Branch created successfully");
-            router.push("/admin/branch");
+            showToast('success', 'Success', 'Branch created successfully');
+            router.push(-1);
          } else {
             await updateBranch({
                id: branchId,
                ...payload
             }).unwrap();
-            toast.success("Branch updated successfully");
-            router.push("/admin/branch");
+            showToast('success', 'Success', 'Branch updated successfully');
+            router.push(-1);
          }
       } catch (error) {
          console.error("Form submission error:", error);
 
-         // Show error message
-         const errorMessage = error?.data?.message ||
+         // Extract error message from backend response
+         let errorMessage = error?.data?.message ||
             error?.data?.errors?.[0]?.msg ||
             `Failed to ${mode} branch`;
 
-         toast.error(errorMessage);
+         // Check for specific plan-related errors
+         if (error?.data?.message?.includes("Branch feature not available")) {
+            errorMessage = "Your current plan doesn't include branch creation. Please upgrade your plan to create branches.";
+         } else if (error?.data?.message?.includes("Plan limit reached")) {
+            errorMessage = "You've reached the maximum number of branches allowed in your plan. Please upgrade to create more branches.";
+         } else if (error?.data?.message?.includes("No active plan found")) {
+            errorMessage = "No active subscription plan found. Please contact support or subscribe to a plan.";
+         } else if (error.status === 403 && !errorMessage.includes("authorized")) {
+            errorMessage = "Permission denied. You may not have the required plan features.";
+         } else if (error.status === 500) {
+            errorMessage = "Server error occurred. Please try again later or contact support.";
+         }
+
+         // Show error message using Redux toast
+         showToast('error', 'Error', errorMessage);
+         console.error("Detailed error:", errorMessage);
       }
    };
 
@@ -204,93 +288,14 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
                </Link>
             </div>
 
-            {/* Branch Information */}
-            <Card>
-               <CardHeader>
-                  <CardTitle>Branch Information</CardTitle>
-               </CardHeader>
-
-               <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div>
-                        <Label htmlFor="name">Branch Name *</Label>
-                        <Input
-                           id="name"
-                           placeholder="Downtown Branch"
-                           {...register("name")}
-                        />
-                        {errors.name && (
-                           <p className="text-sm text-red-500 mt-1">{errors.name.message}</p>
-                        )}
-                     </div>
-
-                     <div>
-                        <Label htmlFor="branchId">Branch ID *</Label>
-                        <Input
-                           id="branchId"
-                           placeholder="BR-001"
-                           {...register("branchId")}
-                           disabled={mode === "edit"}
-                        />
-                        {errors.branchId && (
-                           <p className="text-sm text-red-500 mt-1">{errors.branchId.message}</p>
-                        )}
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div>
-                        <Label htmlFor="address.street">Street Address</Label>
-                        <Input
-                           id="address.street"
-                           placeholder="123 Market Street"
-                           {...register("address.street")}
-                        />
-                     </div>
-
-                     <div>
-                        <Label htmlFor="address.city">City *</Label>
-                        <Input
-                           id="address.city"
-                           placeholder="Karachi"
-                           {...register("address.city")}
-                        />
-                        {errors.address?.city && (
-                           <p className="text-sm text-red-500 mt-1">{errors.address.city.message}</p>
-                        )}
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <div>
-                        <Label htmlFor="address.state">State</Label>
-                        <Input
-                           id="address.state"
-                           placeholder="Sindh"
-                           {...register("address.state")}
-                        />
-                     </div>
-
-                     <div>
-                        <Label htmlFor="address.zipCode">Zip Code</Label>
-                        <Input
-                           id="address.zipCode"
-                           placeholder="75500"
-                           {...register("address.zipCode")}
-                        />
-                     </div>
-
-                     <div>
-                        <Label htmlFor="address.country">Country</Label>
-                        <Input
-                           id="address.country"
-                           defaultValue="Pakistan"
-                           {...register("address.country")}
-                        />
-                     </div>
-                  </div>
-               </CardContent>
-            </Card>
+            {/* Branch Information Form Component */}
+            <BranchInformationForm
+               register={register}
+               errors={errors}
+               watch={watch}
+               setValue={setValue}
+               mode={mode}
+            />
 
             {/* Contact Information */}
             <Card>
@@ -327,6 +332,19 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
                   </div>
                </CardContent>
             </Card>
+
+            {/* Manager Management Component */}
+            <ManagerManagement
+               staffData={staffData}
+               filteredStaff={filteredStaff}
+               isLoadingStaff={isLoadingStaff}
+               staffError={staffError}
+               refetchStaff={refetchStaff}
+               managers={managers}
+               setManagers={setManagers}
+               user={user}
+               showToast={showToast} // Pass showToast to ManagerManagement
+            />
 
             {/* Business Settings */}
             <Card>

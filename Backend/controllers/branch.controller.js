@@ -38,17 +38,23 @@ const checkAccessPermission = (user, branch, requiredPermission = 'view') => {
 const checkBranchLimit = async (companyId) => {
    try {
       const company = await Company.findOne({ companyId })
-         .populate('plan.planId');
+      // .populate('plan.planId');
 
       if (!company || !company.plan || company.plan.length === 0) {
          return { allowed: false, message: 'No active plan found' };
       }
 
       const currentPlan = company.plan[0];
-      const planDetails = currentPlan.planId;
+      console.log("currentPlan: ", currentPlan)
+
+      // const planDetails = currentPlan.planId;
+      // console.log("planDetails: ", planDetails)
 
       // Check if branch feature is included in plan
-      if (!planDetails.features || !planDetails.features.includes('Branch')) {
+      if
+         //  (!planDetails.features || !planDetails.features.includes('Branch'))
+         (!currentPlan.limitations || !currentPlan.limitations.features ||
+         !currentPlan.limitations.features.includes('Branch')) {
          return {
             allowed: false,
             message: 'Branch feature not available in your plan'
@@ -61,7 +67,8 @@ const checkBranchLimit = async (companyId) => {
          isDeleted: false
       });
 
-      const maxBranches = planDetails.maxBranch || 1;
+      // const maxBranches = planDetails.maxBranch || 1;
+      const maxBranches = currentPlan.limitations.maxBranch || 1;
 
       if (branchCount >= maxBranches) {
          return {
@@ -187,7 +194,9 @@ const createBranch = async (req, res) => {
       if (!planCheck.allowed) {
          return res.status(403).json({
             success: false,
-            message: planCheck.message
+            message: planCheck.message,
+            errorType: 'plan_limit'
+            // Remove the planDetails object as it's not available here
          });
       }
 
