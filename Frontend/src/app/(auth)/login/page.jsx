@@ -66,12 +66,10 @@ export default function SignInPage() {
         callback: async (response) => {
           try {
             const result = await googleLogin(response.code).unwrap();
-            console.log("Google login result:", result);
             if (result.onboarding) {
               const gu = encodeURIComponent(JSON.stringify(result.user));
               router.push(`/sign-up?step=1&googleUser=${gu}`);
             } else {
-              console.log("Logging in existing user with Google ID:", result);
               await login({ email: result.data.user.email, googleId: result.data.user.googleId }).unwrap();
             }
           } catch (err) {

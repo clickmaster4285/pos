@@ -38,7 +38,6 @@ import {
 import { Label } from '@/components/ui/label';
 
 export function PlanCard({ plan, onEdit, onDelete }) {
-  console.log("the plan is", plan)
   return (
     <Card className="relative hover:shadow-lg transition-shadow h-full flex flex-col">
       <CardHeader>
@@ -115,11 +114,11 @@ export function PlanCard({ plan, onEdit, onDelete }) {
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-secondary-foreground" />
-            <span>{plan.maxUsers} staff</span>
+            <span>{plan.maxStaff} staff</span>
           </div>
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-secondary-foreground" />
-            <span>{plan.maxVehicles} product</span>
+            <span>{plan.maxProductItems} product</span>
           </div>
           <div className="flex items-center gap-2">
             <Store className="w-4 h-4 text-secondary-foreground" />

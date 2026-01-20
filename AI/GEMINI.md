@@ -52,3 +52,7 @@ The frontend is a modern, responsive user interface for all backend features, bu
         *   **Staff:** Employees with limited permissions.
 
 *   **Structure:** The frontend follows the Next.js App Router paradigm, where routing is defined by the directory structure in `frontend/src/app`. This clearly separates pages by user role. A `middleware.js` file handles the logic for protecting routes.
+
+## Agent Operating Instructions
+
+*   Whenever a new piece of information is discovered that might be relevant for future tasks or understanding the project, it should be documented as a key point in this `AI/GEMINI.md` file.

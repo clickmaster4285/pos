@@ -52,7 +52,7 @@ export default function Navbar() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.log(`Export failed: ${err?.data?.message || err.message}`);
+      console.error(`Export failed: ${err?.data?.message || err.message}`);
     } finally {
       setIsExporting(false);
     }

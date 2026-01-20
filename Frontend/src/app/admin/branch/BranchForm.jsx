@@ -213,8 +213,6 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             managers: managers,
          };
 
-         console.log("Submitting payload:", payload);
-
          if (mode === "create") {
             await createBranch(payload).unwrap();
             showToast('success', 'Success', 'Branch created successfully');

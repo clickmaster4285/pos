@@ -44,6 +44,7 @@ const createPlan = async (req, res, next) => {
 const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
+    console.log("the id: ", id)
     if (!req.user || req.user.role !== "superAdmin") {
       res.status(403);
       throw new Error("Not authorized, admin access required");

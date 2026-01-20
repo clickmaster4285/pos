@@ -63,7 +63,6 @@ export function CompanyList({
     e.stopPropagation();               // prevent row click
     setIsExporting(true);
     try {
-      console.log("teh companyId are: ", companyId)
       const response = await exportExcel(companyId).unwrap();
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);

@@ -29,7 +29,6 @@ export const staffApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[staffApi]', method, url);
       } catch {}
       return fetch(input, init);
     },

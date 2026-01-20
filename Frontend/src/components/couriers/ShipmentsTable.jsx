@@ -81,10 +81,6 @@ export function ShipmentsTable({ currencySymbol }) {
 
       refetch();
     } catch (e) {
-      console.log(`({
-        title: 'Update failed',
-        description: e?.data?.message || 'Unable to update status',
-      })`);
     }
   };
 
@@ -111,10 +107,9 @@ export function ShipmentsTable({ currencySymbol }) {
   const handleRestore = async (shipment) => {
     try {
       await restore(shipment._id).unwrap();
-      console.log(`({ title: 'Restored', description: shipment.awb })`);
       refetch();
     } catch (e) {
-      console.log(`({
+      console.info(`({
         title: 'Restore failed',
         description: e?.data?.message || 'Unable to restore',
       })`);

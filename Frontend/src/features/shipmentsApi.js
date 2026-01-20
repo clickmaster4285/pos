@@ -94,7 +94,6 @@ export const shipmentsApi = createApi({
     // PATCH /api/shipments/:id/cancel
     cancelShipment: builder.mutation({
       query: (id) => {
-        console.log('id is', id);
         return {
           url: `/cancel-shippment/${id}`,
           method: 'PATCH',

@@ -65,7 +65,6 @@ export default function VerifyEmailPage() {
 
   const resendOtp = async () => {
     // Implement OTP resend logic here
-    console.log('Resending OTP to:', email);
   };
 
   if (isVerified) {

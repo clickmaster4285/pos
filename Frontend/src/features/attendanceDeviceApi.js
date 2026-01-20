@@ -41,7 +41,6 @@ export const attendanceDeviceApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[attendanceDeviceApi]', method, url);
       } catch {}
       return fetch(input, init);
     },

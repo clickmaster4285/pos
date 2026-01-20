@@ -32,7 +32,6 @@ class SecureAuth {
       try {
         const refreshed = await refreshFn();
         if (refreshed) {
-          console.log("[SecureAuth] Token refreshed successfully");
         } else {
           console.warn("[SecureAuth] Token refresh returned false");
           this.handleAutoLogout("Token refresh failed");

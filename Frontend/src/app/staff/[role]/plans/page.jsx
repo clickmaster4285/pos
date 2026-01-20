@@ -544,12 +544,8 @@ export default function PlansModule() {
   }, [filtered]);
 
   const onAssign = (plan) => {
-    // hook into your staff assignment flow
-    console.log('Assign →', plan?.name);
   };
   const onPurchase = (plan) => {
-    // hook into your checkout flow
-    console.log('Purchase →', plan?.name);
   };
 
   return (

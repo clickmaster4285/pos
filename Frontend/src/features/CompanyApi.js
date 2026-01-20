@@ -42,7 +42,6 @@ export const companyApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[companyApi]', method, url);
       } catch {}
       return fetch(input, init);
     },
@@ -183,7 +182,6 @@ export const companyApi = createApi({
     getCompany: builder.query({
       query: () => `/get-company`,
       transformResponse: (res, meta) => {
-        // console.log("tehres?.success aer:  ",res)
         if (res?.success && res?.data)
           return { ...res, status: meta?.response?.status || 200 };
         if (res && res._id)

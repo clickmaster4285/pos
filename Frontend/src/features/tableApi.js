@@ -72,7 +72,6 @@ export const tableApi = createApi({
     // DELETE /api/table/remove-table/:id
     removeTable: builder.mutation({
       query: (id) => {
-        console.log("id", id)
         return {
           url: `/remove-table/${id}`,
           method: 'DELETE',

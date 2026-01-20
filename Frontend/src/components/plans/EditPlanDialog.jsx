@@ -19,16 +19,17 @@ export function EditPlanDialog({
   onCancel,
   plan,
 }) {
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-gradient-to-br from-white to-gray-50/80 backdrop-blur-sm border-0 shadow-2xl rounded-3xl">
+      <DialogContent className="max-w-4xl bg-linear-to-br from-white to-gray-50/80 backdrop-blur-sm border-0 shadow-2xl rounded-3xl">
         <div className="relative">
           {/* Modern accent elements */}
-          <div className="absolute -top-4 -left-4 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-sm opacity-20"></div>
-          <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-to-r from-emerald-400 to-cyan-500 rounded-full blur-sm opacity-15"></div>
+          <div className="absolute -top-4 -left-4 w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-full blur-sm opacity-20"></div>
+          <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-linear-to-r from-emerald-400 to-cyan-500 rounded-full blur-sm opacity-15"></div>
           
           <DialogHeader className="relative z-10 pb-6 border-b border-gray-100/60">
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            <DialogTitle className="text-2xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
               Edit Plan
             </DialogTitle>
             <DialogDescription className="text-base text-gray-500 mt-2">
@@ -55,7 +56,7 @@ export function EditPlanDialog({
             </Button>
             <Button
               onClick={onSubmit}
-              className="h-11 px-8 font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl rounded-xl transition-all duration-200 transform hover:scale-[1.02]"
+              className="h-11 px-8 font-bold bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl rounded-xl transition-all duration-200 transform hover:scale-[1.02]"
             >
               Update Plan
             </Button>

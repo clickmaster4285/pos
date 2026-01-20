@@ -42,7 +42,6 @@ export const settingsApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[settingsApi]', method, url);
       } catch {}
       return fetch(input, init);
     },
@@ -52,7 +51,6 @@ export const settingsApi = createApi({
     getCompanySettings: builder.query({
       query: () => `/get-company`,
       transformResponse: (res, meta) => {
-        // console.log('Raw response from getCompanySettings:', res);
         if (res?.success && res?.data?.invoiceSettings) {
           return {
             invoiceSettings: res.data.invoiceSettings,

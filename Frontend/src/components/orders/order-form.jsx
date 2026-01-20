@@ -378,7 +378,7 @@ export default function OrderForm({ onSubmit, loading, isEndUser }) {
       await onSubmit?.(payload);
       await refetchTables(); // ⬅️ refresh tables list
     } catch (err) {
-      console.log(err.message);
+      console.error(err.message);
     }
   };
 
