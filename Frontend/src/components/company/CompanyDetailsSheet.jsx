@@ -133,7 +133,7 @@ export function CompanyDetailsSheet({
     );
   }
 
-  
+
   const isActive = !!company.isActive;
   const owner = company.ownerDetails || {};
   const plan = Array.isArray(company.plan) ? company.plan[0] : null;
@@ -145,7 +145,7 @@ export function CompanyDetailsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="md:max-w-xl lg:max-w-2xl p-0 overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-br from-emerald-50 via-blue-50 to-teal-100 dark:from-emerald-950/20 dark:via-blue-950/20 dark:to-teal-950/20 p-6 border-b">
+        <div className="bg-linear-to-br from-emerald-50 via-blue-50 to-teal-100 dark:from-emerald-950/20 dark:via-blue-950/20 dark:to-teal-950/20 p-6 border-b">
           <SheetHeader className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -191,10 +191,10 @@ export function CompanyDetailsSheet({
         {/* Body */}
         <div className="p-6 space-y-6">
           {/* Company Information */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <Card className="border-0 shadow-sm bg-linear-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
             <CardContent className="p-5 space-y-4">
               <SectionHeader icon={Building} title="Company Information" />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <DetailRow icon={MapPin} label="Address" value={company.address} />
                 <DetailRow icon={Mail} label="Email" value={company.contactEmail} />
@@ -205,10 +205,10 @@ export function CompanyDetailsSheet({
           </Card>
 
           {/* Admin Details */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <Card className="border-0 shadow-sm bg-linear-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
             <CardContent className="p-5 space-y-4">
               <SectionHeader icon={Shield} title="Administrator Details" />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <DetailRow icon={User} label="Full Name" value={owner.name} />
                 <DetailRow icon={Mail} label="Email" value={owner.email} />
@@ -223,7 +223,7 @@ export function CompanyDetailsSheet({
                 <div className="mt-4">
                   <h4 className="text-xs font-semibold text-muted-foreground mb-2">Permissions</h4>
                   <div className="flex flex-wrap gap-1">
-                    {Object.entries(owner.permissions).map(([key, value]) => 
+                    {Object.entries(owner.permissions).map(([key, value]) =>
                       value && (
                         <Badge key={key} variant="outline" className="text-xs bg-green-50 dark:bg-green-950/20">
                           {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -237,26 +237,26 @@ export function CompanyDetailsSheet({
           </Card>
 
           {/* Subscription & Billing */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <Card className="border-0 shadow-sm bg-linear-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
             <CardContent className="p-5 space-y-4">
               <SectionHeader icon={CreditCard} title="Subscription & Billing" />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {plan && (
                   <>
                     <DetailRow icon={Tag} label="Plan Name" value={plan.name} />
-                    <DetailRow 
-                      icon={DollarSign} 
-                      label="Plan Price" 
-                      value={formatCurrency(plan.price, invoiceSettings?.currency?.code)} 
+                    <DetailRow
+                      icon={DollarSign}
+                      label="Plan Price"
+                      value={formatCurrency(plan.price, invoiceSettings?.currency?.code)}
                     />
                   </>
                 )}
                 {subscription && (
-                  <DetailRow 
-                    icon={CheckCircle} 
-                    label="Subscription Status" 
-                    value={subscription.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : '—'} 
+                  <DetailRow
+                    icon={CheckCircle}
+                    label="Subscription Status"
+                    value={subscription.status ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1) : '—'}
                   />
                 )}
                 <DetailRow icon={Calendar} label="Staff Count" value={staffCount.toString()} />
@@ -265,22 +265,22 @@ export function CompanyDetailsSheet({
           </Card>
 
           {/* Invoice Settings */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <Card className="border-0 shadow-sm bg-linear-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
             <CardContent className="p-5 space-y-4">
               <SectionHeader icon={FileText} title="Invoice Settings" />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <DetailRow 
-                  icon={Globe} 
-                  label="Currency" 
-                  value={invoiceSettings.currency ? `${invoiceSettings.currency.code} (${invoiceSettings.currency.symbol})` : '—'} 
+                <DetailRow
+                  icon={Globe}
+                  label="Currency"
+                  value={invoiceSettings.currency ? `${invoiceSettings.currency.code} (${invoiceSettings.currency.symbol})` : '—'}
                 />
                 <DetailRow icon={Tag} label="Invoice Prefix" value={invoiceSettings.format?.prefix} />
                 <DetailRow icon={FileText} label="Start Number" value={invoiceSettings.format?.startNumber?.toString()} />
-                <DetailRow 
-                  icon={CheckCircle} 
-                  label="Tax Registered" 
-                  value={invoiceSettings.tax?.isTaxPayerRegistered ? 'Yes' : 'No'} 
+                <DetailRow
+                  icon={CheckCircle}
+                  label="Tax Registered"
+                  value={invoiceSettings.tax?.isTaxPayerRegistered ? 'Yes' : 'No'}
                 />
                 {invoiceSettings.template && (
                   <DetailRow icon={Printer} label="Template" value={invoiceSettings.template.type} />
@@ -290,10 +290,10 @@ export function CompanyDetailsSheet({
           </Card>
 
           {/* Timeline & Activity */}
-          <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+          <Card className="border-0 shadow-sm bg-linear-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
             <CardContent className="p-5 space-y-4">
               <SectionHeader icon={Clock} title="Timeline & Activity" />
-              
+
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-2">
                   <div className="flex items-center gap-2 text-sm">
@@ -324,7 +324,7 @@ export function CompanyDetailsSheet({
                       </div>
                       <div className="text-sm font-medium">{prettyDate(owner.lastLogin)}</div>
                     </div>
-                    
+
                     <Separator />
                   </>
                 )}
@@ -376,11 +376,10 @@ export function CompanyDetailsSheet({
                 <Button
                   type="button"
                   variant={isActive ? "outline" : "default"}
-                  className={`gap-2 flex-1 min-w-[120px] ${
-                    isActive 
-                      ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20' 
+                  className={`gap-2 flex-1 min-w-[120px] ${isActive
+                      ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20'
                       : 'bg-emerald-600 hover:bg-emerald-700'
-                  }`}
+                    }`}
                   onClick={() => onToggle(company)}
                   disabled={pending}
                 >

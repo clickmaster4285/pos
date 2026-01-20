@@ -79,16 +79,16 @@ export default function Settings({ companyId }) {
           ...data.invoiceSettings.currency,
           customCode:
             data.invoiceSettings.currency.code &&
-            !currencyOptions.some(
-              (c) => c.code === data.invoiceSettings.currency.code
-            )
+              !currencyOptions.some(
+                (c) => c.code === data.invoiceSettings.currency.code
+              )
               ? data.invoiceSettings.currency.code
               : '',
           code:
             data.invoiceSettings.currency.code &&
-            !currencyOptions.some(
-              (c) => c.code === data.invoiceSettings.currency.code
-            )
+              !currencyOptions.some(
+                (c) => c.code === data.invoiceSettings.currency.code
+              )
               ? 'CUSTOM'
               : data.invoiceSettings.currency.code,
         },
@@ -280,7 +280,7 @@ export default function Settings({ companyId }) {
                 fieldConfigs={fieldConfigs}
               />
 
-              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border border-amber-200 shadow-sm">
+              <Card className="bg-linear-to-br from-orange-50 to-amber-50 border border-amber-200 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2 text-amber-800">
                     <span>💡</span> Tips

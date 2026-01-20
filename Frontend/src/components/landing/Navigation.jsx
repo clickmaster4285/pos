@@ -28,8 +28,8 @@ export const Navigation = () => {
 
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled
-        ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-lg"
-        : "bg-transparent"
+      ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-lg"
+      : "bg-transparent"
       }`}>
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         {/* Logo and Title */}
@@ -43,7 +43,7 @@ export const Navigation = () => {
           ) : (
             <ShoppingCart className="h-10 w-10 text-blue-600 dark:text-blue-400 transition-transform hover:scale-110 duration-300" />
           )}
-          <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+          <span className="text-2xl font-bold bg-linear-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
             {data?.toolName || "SmartPOS"}
           </span>
         </div>
@@ -72,7 +72,7 @@ export const Navigation = () => {
             </Button>
             <Button
               size="sm"
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 text-white"
+              className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 text-white"
               onClick={() => router.push("/sign-up")}
             >
               Register
@@ -115,7 +115,7 @@ export const Navigation = () => {
                 Sign In
               </Button>
               <Button
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+                className="w-full bg-linear-to-r from-blue-600 to-blue-700 text-white"
                 onClick={() => {
                   router.push("/sign-up");
                   setIsMenuOpen(false);

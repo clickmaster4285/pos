@@ -58,9 +58,9 @@ const stats = [
 
 export const FeaturesSection = () => {
   return (
-    <section id="features" className="py-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-background">
+    <section id="features" className="py-20 bg-linear-to-b from-gray-50 to-white dark:from-gray-950 dark:to-background">
       <div className="container mx-auto px-4">
-        <motion.div 
+        <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -70,7 +70,7 @@ export const FeaturesSection = () => {
           <Badge variant="outline" className="mb-4 text-primary border-primary/30">
             Powerful Features
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Everything You Need to Succeed
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -107,7 +107,7 @@ export const FeaturesSection = () => {
         </div>
 
         {/* Stats Section */}
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -117,7 +117,7 @@ export const FeaturesSection = () => {
           {stats.map((stat, index) => (
             <motion.div
               key={stat.label}
-              className="text-center p-8 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/50 backdrop-blur-sm"
+              className="text-center p-8 rounded-2xl bg-linear-to-br from-primary/5 to-accent/5 border border-border/50 backdrop-blur-sm"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
@@ -126,7 +126,7 @@ export const FeaturesSection = () => {
                   <stat.icon className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <div className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+              <div className="text-4xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
                 {stat.value}
               </div>
               <div className="text-muted-foreground font-medium">{stat.label}</div>

@@ -131,23 +131,23 @@ export default function RegisterPage() {
 
 
       const result = await createCompany(payload).unwrap();
-      
-     if (googleUser) {
+
+      if (googleUser) {
         // if (result.data.selectedPlan.planPrice === 0) {  // selectedPlan.planPrice, selectedPlan.planId: _id
-          await login({
-            email: payload.admin.email,
-            password: payload.admin.password,
-          }).unwrap();
+        await login({
+          email: payload.admin.email,
+          password: payload.admin.password,
+        }).unwrap();
         // } else {
-          setPaymentModelOpen(true);
+        setPaymentModelOpen(true);
         // }
       } else {
         router.push(
           `/verify-email?email=${encodeURIComponent(formData.adminEmail)}&planPrice=${result.data.selectedPlan.planPrice}&planId=${result.data.selectedPlan.planId}`
         );
       }
-// router.push("/admin/dashboard");
-      } catch (err) {
+      // router.push("/admin/dashboard");
+    } catch (err) {
       console.error("Create company error:", err);
       setError(err?.data?.error || err?.data?.message || "Failed to create account.");
     } finally {
@@ -157,7 +157,7 @@ export default function RegisterPage() {
 
   if (isPlansLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -229,7 +229,7 @@ export default function RegisterPage() {
               <Link href="/login">
                 <motion.span
                   whileHover={{ scale: 1.05 }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold cursor-pointer"
+                  className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold cursor-pointer"
                 >
                   Sign in
                 </motion.span>

@@ -174,11 +174,11 @@ function DynamicAttrsSection({ industry, data, label = 'Order Details' }) {
   const keysInOrder =
     fields.length > 0
       ? [
-          ...fields.map((f) => f.name),
-          ...Object.keys(filteredData || {}).filter(
-            (k) => !fields.some((f) => f.name === k)
-          ),
-        ]
+        ...fields.map((f) => f.name),
+        ...Object.keys(filteredData || {}).filter(
+          (k) => !fields.some((f) => f.name === k)
+        ),
+      ]
       : Object.keys(filteredData || {});
 
   const ordered = filteredData || {};
@@ -202,13 +202,13 @@ function DynamicAttrsSection({ industry, data, label = 'Order Details' }) {
 function ItemsBlock({ items, onCardClick }) {
   const list = Array.isArray(items)
     ? items.map((it) => ({
-        id: it._id || it.id,
-        name: it.name || '—',
-        qty: it.qty ?? 1,
-        price: it.price ?? 0,
-        total: it.total ?? (it.price ?? 0) * (it.qty ?? 1),
-        dynamicAttributes: it.dynamicAttributes || {},
-      }))
+      id: it._id || it.id,
+      name: it.name || '—',
+      qty: it.qty ?? 1,
+      price: it.price ?? 0,
+      total: it.total ?? (it.price ?? 0) * (it.qty ?? 1),
+      dynamicAttributes: it.dynamicAttributes || {},
+    }))
     : [];
 
   const count = list.length;
@@ -495,8 +495,8 @@ export function OrdersGrid({
             typeof o.subTotal === 'number'
               ? currency(o.subTotal)
               : typeof o.totalAmount === 'number'
-              ? currency(o.totalAmount)
-              : o.subTotal || o.totalAmount || '—';
+                ? currency(o.totalAmount)
+                : o.subTotal || o.totalAmount || '—';
 
           const items = Array.isArray(o.items) ? o.items : [];
           const deliveredIds = items
@@ -543,7 +543,7 @@ export function OrdersGrid({
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className="h-12 w-12 rounded-xl bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-white grid place-items-center shrink-0 shadow-sm"
+                    className="h-12 w-12 rounded-xl bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-white grid place-items-center shrink-0 shadow-sm"
                     onClick={() => onCardClick?.(o)}
                   >
                     <Package className="h-6 w-6" />

@@ -75,7 +75,7 @@ export function CategoryList({
               onClick={() => onOpenSheet(c)}
             >
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card rounded-lg shrink-0">
+                <div className="p-2 bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card rounded-lg shrink-0">
                   <Tag className="h-4 w-4" />
                 </div>
                 <p className="text-sm font-medium leading-tight truncate">
@@ -197,8 +197,8 @@ export function CategoryList({
                             {isPending
                               ? 'Updating…'
                               : c.isActive
-                              ? 'Deactivate'
-                              : 'Activate'}
+                                ? 'Deactivate'
+                                : 'Activate'}
                           </Button>
                         </div>
                       </HoverCardContent>

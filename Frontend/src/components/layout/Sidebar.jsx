@@ -299,13 +299,13 @@ export default function Sidebar() {
       },
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
-            {
-              href: '/admin/ingredient',
-              label: 'Ingredient',
-              icon: iconMap['Ingredient'],
-              compulsory: true,
-            },
-          ]
+          {
+            href: '/admin/ingredient',
+            label: 'Ingredient',
+            icon: iconMap['Ingredient'],
+            compulsory: true,
+          },
+        ]
         : []),
     ];
 
@@ -336,13 +336,13 @@ export default function Sidebar() {
       },
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
-            {
-              href: '/admin/tables',
-              label: 'Tables',
-              icon: iconMap['Tables'],
-              compulsory: true,
-            },
-          ]
+          {
+            href: '/admin/tables',
+            label: 'Tables',
+            icon: iconMap['Tables'],
+            compulsory: true,
+          },
+        ]
         : []),
 
       // {
@@ -499,20 +499,18 @@ export default function Sidebar() {
       <li key={label}>
         <Link
           href={href}
-          className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
-            active
-              ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+          className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${active
+              ? 'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
               : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
-          }`}
+            }`}
           aria-current={active ? 'page' : undefined}
           onMouseEnter={() => setHoveredItem(label)}
           onMouseLeave={() => setHoveredItem(null)}
         >
           <div className="relative">
             <Icon
-              className={`transition-transform duration-200 ${
-                hoveredItem === label ? 'scale-110' : 'scale-100'
-              } mr-3 h-5 w-5`}
+              className={`transition-transform duration-200 ${hoveredItem === label ? 'scale-110' : 'scale-100'
+                } mr-3 h-5 w-5`}
             />
           </div>
           <span className="transition-all duration-200 truncate">{label}</span>
@@ -547,7 +545,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col z-50">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-linear-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col z-50">
       {/* Header */}
       <div className="px-6 py-5 border-b border-sidebar-border/30 shrink-0">
         <div className="flex items-center justify-between">

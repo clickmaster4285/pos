@@ -87,7 +87,7 @@ export function VendorList({
               onClick={() => onOpenSheet(v)}
             >
               <div className="flex items-center gap-2">
-                <div className="p-2  bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-background  rounded-lg shrink-0">
+                <div className="p-2  bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-background  rounded-lg shrink-0">
                   <Building2 className="h-4 w-4 " />
                 </div>
                 <p className="text-sm font-medium leading-tight truncate">
@@ -212,8 +212,8 @@ export function VendorList({
                             {isPending
                               ? 'Updating…'
                               : v.isActive
-                              ? 'Deactivate'
-                              : 'Activate'}
+                                ? 'Deactivate'
+                                : 'Activate'}
                           </Button>
                         </div>
                       </HoverCardContent>

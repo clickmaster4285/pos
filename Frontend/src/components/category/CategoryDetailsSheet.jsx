@@ -70,7 +70,7 @@ export function CategoryDetailsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="md:max-w-lg p-0">
         {/* Header with gradient background */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 p-6">
+        <div className="bg-linear-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 p-6">
           <SheetHeader className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -93,16 +93,14 @@ export function CategoryDetailsSheet({
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
-                className={`px-2 py-1 text-xs font-medium ${
-                  isActive
+                className={`px-2 py-1 text-xs font-medium ${isActive
                     ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300'
                     : ''
-                }`}
+                  }`}
               >
                 <div
-                  className={`w-2 h-2 rounded-full mr-1.5 ${
-                    isActive ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
+                  className={`w-2 h-2 rounded-full mr-1.5 ${isActive ? 'bg-green-500' : 'bg-gray-400'
+                    }`}
                 />
                 {isActive ? 'Active' : 'Inactive'}
               </Badge>

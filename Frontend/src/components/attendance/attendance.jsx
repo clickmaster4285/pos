@@ -147,7 +147,7 @@ const Attendance = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           <p className="text-slate-600 font-medium">
@@ -160,7 +160,7 @@ const Attendance = () => {
 
   // if (error) {
   //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+  //     <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
   //       <div className="text-center bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
   //         <p className="text-red-600 font-medium mb-4">
   //           Failed to fetch attendance records
@@ -198,16 +198,16 @@ const Attendance = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                 
+
                   onClick={() => setShowFilters(!showFilters)}
-                  
+
                 >
                   {showFilters ? 'Hide Filters' : 'Show Filters'}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={resetFilters}
-                 
+
                 >
                   <X className="h-4 w-4 mr-2" />
                   Reset
@@ -276,9 +276,8 @@ const Attendance = () => {
                             from: e.target.value,
                           })
                         }
-                        className={`pl-10 bg-white border-slate-300 ${
-                          dateError ? 'border-red-300' : ''
-                        }`}
+                        className={`pl-10 bg-white border-slate-300 ${dateError ? 'border-red-300' : ''
+                          }`}
                       />
                     </div>
                     <span className="self-center text-slate-500">to</span>
@@ -293,9 +292,8 @@ const Attendance = () => {
                             to: e.target.value,
                           })
                         }
-                        className={`pl-10 bg-white border-slate-300 ${
-                          dateError ? 'border-red-300' : ''
-                        }`}
+                        className={`pl-10 bg-white border-slate-300 ${dateError ? 'border-red-300' : ''
+                          }`}
                       />
                     </div>
                   </div>

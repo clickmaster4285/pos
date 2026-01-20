@@ -110,6 +110,10 @@ export function PlanCard({ plan, onEdit, onDelete }) {
         <div className="grid grid-cols-2 md:grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-secondary-foreground" />
+            <span>{plan.maxBranch} branches</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-secondary-foreground" />
             <span>{plan.maxUsers} staff</span>
           </div>
           <div className="flex items-center gap-2">

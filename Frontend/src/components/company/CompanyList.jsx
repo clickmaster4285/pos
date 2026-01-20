@@ -65,7 +65,7 @@ export function CompanyList({
     try {
       console.log("teh companyId are: ", companyId)
       const response = await exportExcel(companyId).unwrap();
-            const blob = new Blob([response], { type: 'application/zip' });
+      const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -136,7 +136,7 @@ export function CompanyList({
                 <div className="col-span-4 cursor-pointer" onClick={() => onDetail?.(c)}>
                   {/* … existing company column … */}
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
+                    <div className="h-10 w-10 rounded-lg bg-linear-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
                       <Building2 className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
@@ -291,8 +291,8 @@ export function CompanyList({
                                   {isPending
                                     ? 'Updating…'
                                     : c.isActive
-                                    ? 'Deactivate'
-                                    : 'Activate'}
+                                      ? 'Deactivate'
+                                      : 'Activate'}
                                 </Button>
                               </div>
                             </HoverCardContent>

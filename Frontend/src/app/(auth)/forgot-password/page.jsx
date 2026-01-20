@@ -28,35 +28,35 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-blue-200/40 to-purple-200/40 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-amber-200/30 to-pink-200/30 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-green-200/20 to-cyan-200/20 rounded-full blur-3xl animate-pulse delay-500" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-linear-to-r from-blue-200/40 to-purple-200/40 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-linear-to-r from-amber-200/30 to-pink-200/30 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-linear-to-r from-green-200/20 to-cyan-200/20 rounded-full blur-3xl animate-pulse delay-500" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
         {/* Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="text-center mb-8"
         >
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.05, rotate: 5 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-2xl shadow-blue-500/30 mb-6"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-linear-to-br from-blue-500 to-purple-600 shadow-2xl shadow-blue-500/30 mb-6"
           >
             <Mail className="w-8 h-8 text-white" />
             <Sparkles className="w-4 h-4 text-yellow-300 absolute -top-1 -right-1" />
           </motion.div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">
             Reset Password
           </h1>
           <p className="text-gray-600 text-lg">
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
         </motion.div>
 
         {/* Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full h-12 font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden"
+                  className="w-full h-12 font-semibold bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
                   ) : (
                     <>
                       Send Reset Link
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-shine" />
+                      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-shine" />
                     </>
                   )}
                 </motion.button>
@@ -150,11 +150,11 @@ export default function ForgotPasswordPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-center space-y-6"
               >
-                <motion.div 
+                <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200 }}
-                  className="w-20 h-20 mx-auto bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25"
+                  className="w-20 h-20 mx-auto bg-linear-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg shadow-green-500/25"
                 >
                   <CheckCircle2 className="w-10 h-10 text-white" />
                 </motion.div>
@@ -163,15 +163,15 @@ export default function ForgotPasswordPage() {
                   <p className="text-gray-600">
                     We've sent a password reset link to
                   </p>
-                  <p className="font-semibold text-gray-900 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent break-all">
+                  <p className="font-semibold text-gray-900 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent break-all">
                     {email}
                   </p>
                 </div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-100 text-sm text-left space-y-3"
+                  className="p-4 rounded-xl bg-linear-to-br from-blue-50 to-purple-50 border border-blue-100 text-sm text-left space-y-3"
                 >
                   <p className="font-semibold text-gray-900">What's next?</p>
                   <ol className="space-y-2 text-gray-600">
@@ -194,7 +194,7 @@ export default function ForgotPasswordPage() {
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white font-semibold"
+                      className="w-full h-12 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white font-semibold"
                     >
                       Back to Login
                     </motion.button>

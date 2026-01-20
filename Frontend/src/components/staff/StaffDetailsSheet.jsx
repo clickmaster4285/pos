@@ -39,14 +39,14 @@ export default function StaffDetailsSheet({
 
   const activePermissions = staff?.permissions
     ? Object.entries(staff.permissions)
-        .filter(([_, value]) => value)
-        .map(([key]) => key)
+      .filter(([_, value]) => value)
+      .map(([key]) => key)
     : [];
 
   const inactivePermissions = staff?.permissions
     ? Object.entries(staff.permissions)
-        .filter(([_, value]) => !value)
-        .map(([key]) => key)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key)
     : [];
 
   const getLastUpdatedFromHistory = (s) => {
@@ -81,7 +81,7 @@ export default function StaffDetailsSheet({
       >
         <SheetHeader className="pb-4">
           <div className="flex items-start gap-4">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-primary font-bold text-xl border-2 border-primary/20">
+            <div className="h-16 w-16 rounded-full bg-linear-to-br from-primary/20 to-primary/10 flex items-center justify-center text-primary font-bold text-xl border-2 border-primary/20">
               {initials}
             </div>
             <div className="flex-1 min-w-0">

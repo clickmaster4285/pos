@@ -149,17 +149,17 @@
   --drop-zone-active: oklch(0.8 0.1 200);
   --drop-zone-border: oklch(0.7 0.15 200);
 
-  --gradient-primary: linear-gradient(
+  --linear-primary: linear-gradient(
     to right,
     var(--primary),
     var(--primary-hover)
   );
-  --gradient-success: linear-gradient(
+  --linear-success: linear-gradient(
     to right,
     var(--success),
     var(--success-light)
   );
-  --gradient-accent: linear-gradient(
+  --linear-accent: linear-gradient(
     to right,
     var(--accent),
     var(--accent-hover)
@@ -250,17 +250,17 @@
   --drop-zone-active: oklch(0.4 0.1 200);
   --drop-zone-border: oklch(0.5 0.15 200);
 
-  --gradient-primary: linear-gradient(
+  --linear-primary: linear-gradient(
     to right,
     var(--primary),
     var(--primary-hover)
   );
-  --gradient-success: linear-gradient(
+  --linear-success: linear-gradient(
     to right,
     var(--success),
     var(--success-light)
   );
-  --gradient-accent: linear-gradient(
+  --linear-accent: linear-gradient(
     to right,
     var(--accent),
     var(--accent-hover)

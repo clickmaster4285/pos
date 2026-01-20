@@ -53,7 +53,7 @@ export const PricingSection = () => {
         className="relative"
       >
         {isPopular && (
-          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
+          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-yellow-400 to-orange-500 text-white">
             <Star className="w-3 h-3 mr-1" />
             Most Popular
           </Badge>
@@ -123,7 +123,7 @@ export const PricingSection = () => {
   }
 
   return (
-    <section id="pricing" className="py-20 bg-gradient-to-b from-muted/20 to-background">
+    <section id="pricing" className="py-20 bg-linear-to-b from-muted/20 to-background">
       <div className="container mx-auto px-4">
         {/* Header */}
         <motion.div
@@ -136,7 +136,7 @@ export const PricingSection = () => {
           <Badge variant="outline" className="mb-4 text-primary border-primary/30">
             Pricing Plans
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Choose Your Perfect Plan
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

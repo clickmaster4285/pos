@@ -104,9 +104,9 @@ export const IndustriesSection = () => {
 
   return (
     <>
-      <section id="industries" className="py-20 bg-gradient-to-b from-background to-muted/20">
+      <section id="industries" className="py-20 bg-linear-to-b from-background to-muted/20">
         <div className="container mx-auto px-4">
-          <motion.div 
+          <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -116,7 +116,7 @@ export const IndustriesSection = () => {
             <Badge variant="outline" className="mb-4 text-primary border-primary/30">
               Industry Solutions
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               Built for Your Industry
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -135,7 +135,7 @@ export const IndustriesSection = () => {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <Card 
+                  <Card
                     className="h-full cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 bg-background/50 backdrop-blur-sm overflow-hidden group"
                     onClick={() => setSelectedIndustry(industry)}
                   >
@@ -190,7 +190,7 @@ export const IndustriesSection = () => {
                   </div>
                 </div>
               </DialogHeader>
-              
+
               <div className="space-y-6">
                 <div>
                   <h4 className="text-lg font-semibold mb-3 text-primary">Key Features</h4>
@@ -203,7 +203,7 @@ export const IndustriesSection = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
                   <h4 className="text-lg font-semibold mb-2 text-primary">Business Benefits</h4>
                   <p className="text-muted-foreground">{selectedIndustry.benefits}</p>

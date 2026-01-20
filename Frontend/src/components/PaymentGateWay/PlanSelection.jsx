@@ -57,11 +57,10 @@ export default function PlanSelection({
         {plans?.map((plan, index) => (
           <Card
             key={plan._id}
-            className={`relative cursor-pointer transition-all duration-200 hover:z-5 hover:outline-primary/50 outline min-w-62 ${
-              selectedPlan === plan._id
+            className={`relative cursor-pointer transition-all duration-200 hover:z-5 hover:outline-primary/50 outline min-w-62 ${selectedPlan === plan._id
                 ? 'ring-2 ring-primary/50 border-primary/50 shadow-lg'
                 : 'hover:shadow-md hover:border-gray-300'
-            } ${isChangingPlan ? 'opacity-50 pointer-events-none' : ''}`}
+              } ${isChangingPlan ? 'opacity-50 pointer-events-none' : ''}`}
             onClick={() => !isChangingPlan && onPlanSelect(plan._id)}
           >
             {index === 0 && (
@@ -109,11 +108,10 @@ export default function PlanSelection({
 
               {/* Bottom aligned button */}
               <Button
-                className={`w-full mt-6 ${
-                  selectedPlan === plan._id
-                    ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90  text-card  '
-                    : 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card  '
-                } ${isChangingPlan ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full mt-6 ${selectedPlan === plan._id
+                    ? 'bg-linear-to-r from-primary/90 to-secondary-foreground/90  text-card  '
+                    : 'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card  '
+                  } ${isChangingPlan ? 'opacity-50 cursor-not-allowed' : ''}`}
                 variant={selectedPlan === plan._id ? 'default' : 'outline'}
                 disabled={isChangingPlan}
               >

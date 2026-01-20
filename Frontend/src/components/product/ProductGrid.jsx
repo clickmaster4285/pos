@@ -107,7 +107,7 @@ export function ProductGrid({
                   showArrows={true}
                 />
               ) : (
-                <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted/30">
+                <div className="h-full w-full flex items-center justify-center bg-linear-to-br from-muted/50 to-muted/30">
                   <div className="text-center">
                     <ImageIcon className="h-12 w-12 text-muted-foreground/50 mx-auto mb-2" />
                     <p className="text-xs text-muted-foreground/70">No image</p>
@@ -176,8 +176,8 @@ export function ProductGrid({
                             {isPending
                               ? 'Updating…'
                               : product.isActive
-                              ? 'Deactivate'
-                              : 'Activate'}
+                                ? 'Deactivate'
+                                : 'Activate'}
                           </Button>
                         </div>
                       </HoverCardContent>
@@ -300,7 +300,7 @@ export function ProductGrid({
                       Vegetarian
                     </p>
                     <p className="text-foreground">
-                      {meta.isVegetarian === "true" ? "Yes": "No"}
+                      {meta.isVegetarian === "true" ? "Yes" : "No"}
                     </p>
                   </div>
                 )}
