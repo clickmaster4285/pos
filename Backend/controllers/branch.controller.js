@@ -111,11 +111,13 @@ const buildBranchQuery = (user, filters = {}) => {
       query.companyId = user.companyId;
    } else if (user.role === 'staff') {
       // Staff/Manager sees only branches they manage
-      const managedBranchIds = user.managedBranches || [];
       query.$or = [
-         { _id: { $in: managedBranchIds } },
          { managers: { $elemMatch: { userId: user.userId } } }
       ];
+      // Also apply company filter for staff
+      if (user.companyId) {
+         query.companyId = user.companyId;
+      }
    }
 
    // Apply additional filters

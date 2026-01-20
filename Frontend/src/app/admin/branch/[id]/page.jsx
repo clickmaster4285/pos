@@ -1,16 +1,13 @@
-// src/app/admin/branch/[id]/page.jsx
 "use client";
 
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-   useGetBranchByIdQuery,
-   useGetBranchDashboardQuery
+   useGetBranchByIdQuery
 } from "@/features/branchesApi";
 import Link from "next/link";
 import {
@@ -24,31 +21,24 @@ import {
    Globe,
    DollarSign,
    Target,
-   Edit,
-   Trash2
+   Edit
 } from "lucide-react";
 
 const BranchDetailPage = () => {
    const params = useParams();
    const branchId = params.id;
-console.log("Branch ID:", branchId);
+
    const {
       data: branchData,
       isLoading: isLoadingBranch,
       isError: isBranchError
    } = useGetBranchByIdQuery(branchId);
 
-   const {
-      data: dashboardData,
-      isLoading: isLoadingDashboard
-   } = useGetBranchDashboardQuery(branchId);
-
    const branch = branchData?.data;
-   const dashboard = dashboardData?.data;
 
-   if (isLoadingBranch || isLoadingDashboard) {
+   if (isLoadingBranch) {
       return (
-         <div className="w-full space-y-6">
+         <div className="container mx-auto p-6 space-y-6">
             <Skeleton className="h-10 w-64" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <Skeleton className="h-64" />
@@ -60,11 +50,13 @@ console.log("Branch ID:", branchId);
 
    if (isBranchError || !branch) {
       return (
-         <Alert variant="destructive" className="my-6">
-            <AlertDescription>
-               Failed to load branch details. Branch may not exist or you don't have permission.
-            </AlertDescription>
-         </Alert>
+         <div className="container mx-auto p-6">
+            <Alert variant="destructive">
+               <AlertDescription>
+                  Failed to load branch details. Branch may not exist or you don't have permission.
+               </AlertDescription>
+            </Alert>
+         </div>
       );
    }
 
@@ -84,7 +76,7 @@ console.log("Branch ID:", branchId);
    };
 
    return (
-      <div className="w-full space-y-6">
+      <div className="container mx-auto p-6 space-y-6">
          {/* HEADER */}
          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -97,7 +89,7 @@ console.log("Branch ID:", branchId);
                   <h2 className="text-3xl font-bold tracking-tight">{branch.name}</h2>
                   <div className="flex items-center gap-2 mt-1">
                      <code className="bg-muted px-2 py-1 rounded text-sm">
-                        {branch.branchCode}
+                        {branch.branchCode || branch.branchId}
                      </code>
                      {getStatusBadge(branch.status)}
                   </div>
@@ -123,7 +115,7 @@ console.log("Branch ID:", branchId);
                </CardHeader>
                <CardContent>
                   <div className="text-3xl font-bold">
-                     {dashboard?.targets?.monthlyTarget?.toLocaleString() || 0}
+                     {branch.monthlyTarget?.toLocaleString() || 0}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                      {branch.settings?.currency || 'PKR'}
@@ -138,7 +130,7 @@ console.log("Branch ID:", branchId);
                </CardHeader>
                <CardContent>
                   <div className="text-3xl font-bold">
-                     {dashboard?.management?.totalManagers || 0}
+                     {branch.managers?.length || 0}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                      Branch managers
@@ -182,8 +174,8 @@ console.log("Branch ID:", branchId);
                      <div className="flex items-center gap-3">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <div>
-                           <p className="text-sm text-muted-foreground">Opened</p>
-                           <p>{new Date(branch.openingDate).toLocaleDateString()}</p>
+                           <p className="text-sm text-muted-foreground">Created</p>
+                           <p>{branch.createdAt ? new Date(branch.createdAt).toLocaleDateString() : 'N/A'}</p>
                         </div>
                      </div>
 
@@ -209,7 +201,7 @@ console.log("Branch ID:", branchId);
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
                            <p className="text-sm text-muted-foreground">Address</p>
-                           <p>{branch.fullAddress || `${branch.address?.street}, ${branch.address?.city}`}</p>
+                           <p>{branch.fullAddress || `${branch.address?.street || ''}, ${branch.address?.city || ''}`}</p>
                         </div>
                      </div>
 
@@ -239,9 +231,6 @@ console.log("Branch ID:", branchId);
                <CardHeader>
                   <div className="flex items-center justify-between">
                      <CardTitle>Managers</CardTitle>
-                     <Button variant="outline" size="sm">
-                        Add Manager
-                     </Button>
                   </div>
                </CardHeader>
                <CardContent>
@@ -254,13 +243,10 @@ console.log("Branch ID:", branchId);
                                  <div>
                                     <p className="font-medium">{manager.userId}</p>
                                     <p className="text-sm text-muted-foreground capitalize">
-                                       {manager.role} • Assigned {new Date(manager.assignedAt).toLocaleDateString()}
+                                       {manager.role} • Assigned {manager.assignedAt ? new Date(manager.assignedAt).toLocaleDateString() : 'N/A'}
                                     </p>
                                  </div>
                               </div>
-                              <Button variant="ghost" size="sm" className="text-red-600">
-                                 <Trash2 className="h-4 w-4" />
-                              </Button>
                            </div>
                         ))}
                      </div>

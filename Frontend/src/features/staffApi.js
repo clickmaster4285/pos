@@ -1,7 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '') // ← empty lets us use relative paths (works with Next rewrites)
-  .replace(/\/$/, '');
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getToken = (getState) =>
   getState()?.auth?.token ||

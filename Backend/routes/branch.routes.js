@@ -34,7 +34,7 @@ const authorize = (roles) => {
 // Protected routes (require authentication)
 router.use(authenticateToken);
 
-// Branch CRUD operations - UPDATED ROUTES
+// Branch CRUD operations
 router.post(
    '/',
    authorize(['admin', 'superAdmin']),
@@ -43,13 +43,13 @@ router.post(
    BranchController.createBranch
 );
 
-// Unified branches endpoint - REPLACES getCompanyBranches and getBranchesByManager
+// Unified branches endpoint - GET all branches with filters
 router.get(
    '/',
    authorize(['admin', 'manager', 'superAdmin', 'staff']),
    checkPermissionsValidation('viewAllBranches'),
    BranchValidator.validateQuery,
-   BranchController.getBranches  // Changed from getCompanyBranches
+   BranchController.getBranches
 );
 
 // Get single branch by ID
@@ -59,13 +59,13 @@ router.get(
    BranchController.getBranchById
 );
 
-// Update branch - INCLUDES manager management
+// Update branch - includes manager management
 router.put(
    '/:id',
    authorize(['admin', 'manager', 'superAdmin']),
    checkPermissionsValidation('editBranch'),
    BranchValidator.validateUpdate,
-   BranchController.updateBranch  // Now includes manager updates
+   BranchController.updateBranch
 );
 
 // Delete branch
@@ -76,7 +76,7 @@ router.delete(
    BranchController.deleteBranch
 );
 
-// Restoration
+// Restore deleted branch
 router.post(
    '/:id/restore',
    authorize(['admin', 'superAdmin']),

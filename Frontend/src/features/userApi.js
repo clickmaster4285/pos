@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -29,7 +29,7 @@ export const userApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : "GET");
         const url = isReq ? input.url : String(input);
-      } catch {}
+      } catch { }
       return fetch(input, init);
     },
   }),
@@ -44,9 +44,9 @@ export const userApi = createApi({
       providesTags: (result) =>
         result
           ? [
-              ...result.map((u) => ({ type: "User", id: u._id })),
-              { type: "User", id: "LIST" },
-            ]
+            ...result.map((u) => ({ type: "User", id: u._id })),
+            { type: "User", id: "LIST" },
+          ]
           : [{ type: "User", id: "LIST" }],
     }),
     getAllCustomerUsers: builder.query({
@@ -59,9 +59,9 @@ export const userApi = createApi({
       providesTags: (result) =>
         result
           ? [
-              ...result.map((u) => ({ type: "User", id: u._id })),
-              { type: "User", id: "LIST" },
-            ]
+            ...result.map((u) => ({ type: "User", id: u._id })),
+            { type: "User", id: "LIST" },
+          ]
           : [{ type: "User", id: "LIST" }],
     }),
     toggleUserStatus: builder.mutation({
@@ -100,9 +100,9 @@ export const userApi = createApi({
       invalidatesTags: (result) =>
         result?.data?.id
           ? [
-              { type: "User", id: result.data.id },
-              { type: "User", id: "LIST" },
-            ]
+            { type: "User", id: result.data.id },
+            { type: "User", id: "LIST" },
+          ]
           : [{ type: "User", id: "LIST" }],
     }),
     initiatePasswordChange: builder.mutation({
