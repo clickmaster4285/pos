@@ -113,22 +113,20 @@ export function ShipmentDetailsSheet({
           <div className="flex px-6">
             <button
               onClick={() => setActiveTab('details')}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'details'
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === 'details'
                   ? 'border-primary text-primary font-semibold'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <FileText className="h-4 w-4" />
               Shipping Details
             </button>
             <button
               onClick={() => setActiveTab('tracking')}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'tracking'
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${activeTab === 'tracking'
                   ? 'border-primary text-primary font-semibold'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Ship className="h-4 w-4" />
               Tracking
@@ -211,7 +209,7 @@ export function ShipmentDetailsSheet({
 
                   {shipment.toPhone && (
                     <div className="flex items-center gap-3 p-2 bg-background rounded-md">
-                      <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="space-y-0.5">
                         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Phone
@@ -225,7 +223,7 @@ export function ShipmentDetailsSheet({
 
                   {shipment.toAddress && (
                     <div className="flex items-start gap-3 p-2 bg-background rounded-md">
-                      <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div className="space-y-0.5 flex-1">
                         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           Delivery Address
@@ -334,7 +332,7 @@ export function ShipmentDetailsSheet({
                 </h3>
 
                 {Array.isArray(shipment.checkpoints) &&
-                shipment.checkpoints.length > 0 ? (
+                  shipment.checkpoints.length > 0 ? (
                   <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                     {shipment.checkpoints
                       .slice()
@@ -345,11 +343,10 @@ export function ShipmentDetailsSheet({
                           className="flex gap-4 group hover:bg-muted/50 p-3 rounded-lg transition-colors"
                         >
                           {/* Timeline indicator */}
-                          <div className="flex flex-col items-center flex-shrink-0">
+                          <div className="flex flex-col items-center shrink-0">
                             <div
-                              className={`w-3 h-3 rounded-full border-2 border-background shadow-sm group-hover:scale-110 transition-transform ${
-                                i === 0 ? 'bg-green-500' : 'bg-primary'
-                              }`}
+                              className={`w-3 h-3 rounded-full border-2 border-background shadow-sm group-hover:scale-110 transition-transform ${i === 0 ? 'bg-green-500' : 'bg-primary'
+                                }`}
                             />
                             {i < array.length - 1 && (
                               <div className="w-0.5 h-full bg-border mt-1 flex-1" />

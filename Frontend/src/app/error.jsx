@@ -40,7 +40,7 @@ export default function Error({ error, reset }) {
           </a>
         </div>
 
-        <details className="mt-4 text-xs text-zinc-500 dark:text-zinc-400 break-words whitespace-pre-wrap">
+        <details className="mt-4 text-xs text-zinc-500 dark:text-zinc-400 wrap-break-word whitespace-pre-wrap">
           <summary className="cursor-pointer select-none">Details</summary>
           {String(error ?? "")}
         </details>

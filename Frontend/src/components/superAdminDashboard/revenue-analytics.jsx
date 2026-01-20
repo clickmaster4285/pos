@@ -6,10 +6,10 @@ import { useState, useMemo } from "react";
 
 export function RevenueAnalytics({ data }) {
   const revenueActivity = data || [];
-  
+
   // Calculate total revenue from the data array
-  const totalRevenue = useMemo(() => 
-    revenueActivity.reduce((sum, item) => sum + (item.price || 0), 0), 
+  const totalRevenue = useMemo(() =>
+    revenueActivity.reduce((sum, item) => sum + (item.price || 0), 0),
     [revenueActivity]
   );
 
@@ -34,7 +34,7 @@ export function RevenueAnalytics({ data }) {
   const generatePeriods = (type) => {
     const periods = [];
     const now = new Date();
-    
+
     if (type === "week") {
       for (let i = 11; i >= 0; i--) {
         const start = new Date(now);
@@ -60,7 +60,7 @@ export function RevenueAnalytics({ data }) {
         periods.push({ key: year.toString(), label: year.toString() });
       }
     }
-    
+
     return periods;
   };
 
@@ -79,9 +79,9 @@ export function RevenueAnalytics({ data }) {
         if (existing) {
           existing.revenue += item.price || 0;
         } else {
-          acc.push({ 
-            name: item.planName || "Unknown Plan", 
-            revenue: item.price || 0 
+          acc.push({
+            name: item.planName || "Unknown Plan",
+            revenue: item.price || 0
           });
         }
         return acc;
@@ -99,7 +99,7 @@ export function RevenueAnalytics({ data }) {
         map[key].revenue += item.price || 0;
       }
     });
-    
+
     // Sort by period order
     return periods
       .map(period => ({
@@ -112,7 +112,7 @@ export function RevenueAnalytics({ data }) {
   // Top plans in current period
   const topPlans = useMemo(() => {
     const periodRevenue = periodData.reduce((sum, item) => sum + item.revenue, 0);
-    
+
     return periodData
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
@@ -145,7 +145,7 @@ export function RevenueAnalytics({ data }) {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="min-w-[120px] text-center text-sm font-medium">
+            <span className="min-w-30 text-center text-sm font-medium">
               {periods[currentIndex]?.label || "N/A"}
             </span>
             <Button

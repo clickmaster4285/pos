@@ -491,7 +491,7 @@ const SuperAdminUpdatePage = () => {
                           </Label>
 
                           <div className="flex flex-col lg:flex-row items-center gap-8 p-8 rounded-3xl border border-border bg-card">
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               <div className="relative group">
                                 <div className="h-32 w-32 rounded-3xl border-2 border-dashed border-primary/20 overflow-hidden bg-muted/30 shadow-lg">
                                   {logoPreview ? (

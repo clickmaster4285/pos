@@ -86,7 +86,7 @@ function StatusBadge({ status, isActive }) {
 function DetailRow({ icon: Icon, label, value, className = "" }) {
   return (
     <div className={`flex items-start gap-3 ${className}`}>
-      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg mt-0.5 flex-shrink-0">
+      <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg mt-0.5 shrink-0">
         <Icon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
       </div>
       <div className="min-w-0 flex-1">
@@ -376,9 +376,9 @@ export function CompanyDetailsSheet({
                 <Button
                   type="button"
                   variant={isActive ? "outline" : "default"}
-                  className={`gap-2 flex-1 min-w-[120px] ${isActive
-                      ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20'
-                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  className={`gap-2 flex-1 min-w-30 ${isActive
+                    ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
                     }`}
                   onClick={() => onToggle(company)}
                   disabled={pending}

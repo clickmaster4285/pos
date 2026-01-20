@@ -88,7 +88,7 @@ export const PricingSection = () => {
               ...plan.limitations.features,
             ].map((feat, i) => (
               <div key={i} className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                <Check className="h-4 w-4 text-primary shrink-0" />
                 <span>{feat}</span>
               </div>
             ))}

@@ -153,8 +153,8 @@ export function ProductDetailsSheet({
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
                 className={`px-3 py-1.5 text-[11px] font-medium whitespace-nowrap flex items-center ${isActive
-                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400'
+                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400'
                   }`}
               >
                 <span
@@ -350,14 +350,14 @@ export function ProductDetailsSheet({
                           {isBoolean ? (
                             <span
                               className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${value
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-slate-50 text-slate-600 border border-slate-200'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200'
                                 }`}
                             >
                               {displayValue}
                             </span>
                           ) : (
-                            <div className="mt-1 text-sm text-foreground break-words">
+                            <div className="mt-1 text-sm text-foreground wrap-break-word">
                               {displayValue}
                             </div>
                           )}
@@ -447,7 +447,7 @@ export function ProductDetailsSheet({
               {onToggle && (
                 <Button
                   variant={isActive ? 'outline' : 'default'}
-                  className="gap-2 flex-1 min-w-[120px]"
+                  className="gap-2 flex-1 min-w-30"
                   onClick={() => onToggle(product)}
                   disabled={pending}
                 >

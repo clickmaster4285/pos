@@ -115,8 +115,8 @@ export function VendorDetailsSheet({
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
                 className={`px-2 py-1 text-xs font-medium ${isActive
-                    ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300'
-                    : ''
+                  ? 'bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300'
+                  : ''
                   }`}
               >
                 <div
@@ -229,7 +229,7 @@ export function VendorDetailsSheet({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs text-muted-foreground">Address</div>
-                  <div className="text-sm font-medium whitespace-pre-wrap break-words">
+                  <div className="text-sm font-medium whitespace-pre-wrap wrap-break-word">
                     {vendor.address || '—'}
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export function VendorDetailsSheet({
                 <Button
                   type="button"
                   variant={isActive ? 'secondary' : 'default'}
-                  className="gap-2 flex-1 min-w-[120px]"
+                  className="gap-2 flex-1 min-w-30"
                   onClick={() => onToggle(vendor)}
                   disabled={pending}
                 >

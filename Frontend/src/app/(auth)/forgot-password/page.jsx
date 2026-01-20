@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
                   <p className="text-gray-600">
                     We've sent a password reset link to
                   </p>
-                  <p className="font-semibold text-gray-900 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent break-all">
+                  <p className="font-semibold text-gray-900 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text break-all">
                     {email}
                   </p>
                 </div>

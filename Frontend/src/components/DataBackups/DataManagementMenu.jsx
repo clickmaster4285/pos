@@ -264,7 +264,7 @@ export default function DataManagementMenu({ isMobile = false }) {
                 </button>
 
                 <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-xl border border-warning/20">
-                  <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                  <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
                   <p className="text-xs text-warning-foreground">
                     This will replace all current data. Make sure you have a backup.
                   </p>
@@ -352,7 +352,7 @@ export default function DataManagementMenu({ isMobile = false }) {
       </div>
 
       <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-xl border border-warning/20 mt-4">
-        <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+        <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
         <p className="text-xs text-warning-foreground">
           Import will replace all current data. Make sure you have a backup.
         </p>

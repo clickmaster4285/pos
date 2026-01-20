@@ -52,7 +52,7 @@ const Field = ({ label, value, icon: Icon }) => (
       {Icon && <Icon className="h-4 w-4" />}
       {label}
     </div>
-    <div className="text-sm font-medium text-right max-w-[60%] break-words">
+    <div className="text-sm font-medium text-right max-w-[60%] wrap-break-word">
       {value ?? <span className="text-muted-foreground">—</span>}
     </div>
   </div>

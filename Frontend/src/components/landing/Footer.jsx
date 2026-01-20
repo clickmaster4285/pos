@@ -80,7 +80,7 @@ export const Footer = () => {
                 { icon: MapPin, text: '123 Business Ave, Suite 100, New York, NY 10001' }
               ].map((item, index) => (
                 <div key={index} className="flex items-center gap-3 text-muted-foreground">
-                  <item.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                  <item.icon className="h-5 w-5 text-primary shrink-0" />
                   <span className="text-sm">{item.text}</span>
                 </div>
               ))}

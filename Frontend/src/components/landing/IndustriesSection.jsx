@@ -157,7 +157,7 @@ export const IndustriesSection = () => {
                       <div className="space-y-3">
                         {industry.features.map((feature, idx) => (
                           <div key={idx} className="flex items-center gap-3 text-sm">
-                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                            <Check className="h-4 w-4 text-primary shrink-0" />
                             <span className="text-muted-foreground">{feature}</span>
                           </div>
                         ))}
@@ -197,7 +197,7 @@ export const IndustriesSection = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {selectedIndustry.detailedFeatures.map((feature, idx) => (
                       <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                        <Check className="h-4 w-4 text-primary shrink-0" />
                         <span className="text-sm">{feature}</span>
                       </div>
                     ))}

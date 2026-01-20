@@ -500,8 +500,8 @@ export default function Sidebar() {
         <Link
           href={href}
           className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${active
-              ? 'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
-              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
+            ? 'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
             }`}
           aria-current={active ? 'page' : undefined}
           onMouseEnter={() => setHoveredItem(label)}
@@ -531,13 +531,13 @@ export default function Sidebar() {
           className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200 "
         >
           <div className="flex items-center min-w-0">
-            <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
+            <Icon className="h-5 w-5 mr-3 shrink-0" />
             <span className="truncate">{title}</span>
           </div>
           {isOpen ? (
-            <ChevronUp className="h-4 w-4 opacity-80 flex-shrink-0" />
+            <ChevronUp className="h-4 w-4 opacity-80 shrink-0" />
           ) : (
-            <ChevronDown className="h-4 w-4 opacity-80 flex-shrink-0" />
+            <ChevronDown className="h-4 w-4 opacity-80 shrink-0" />
           )}
         </button>
       </li>
