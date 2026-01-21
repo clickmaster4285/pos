@@ -223,10 +223,11 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             showToast('success', 'Success', 'Branch created successfully');
             router.back();
          } else {
-            console.log("Calling updateBranch with:", { id: branchId, payload });
+            const { branchId: bId, ...updatePayload } = payload;
+            console.log("Calling updateBranch with:", { id: branchId, payload: updatePayload });
             await updateBranch({
                id: branchId, 
-               ...payload 
+               ...updatePayload 
             }).unwrap();
             showToast('success', 'Success', 'Branch updated successfully');
             router.back();
@@ -467,7 +468,7 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
                      </Button>
                   </div>
                </CardContent>
-            </Card>
+            </Card> 
          </form>
       </div>
    );
