@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { useDispatch } from "react-redux"; // Add this
-import { addToast } from "@/features/toastSlice"; // Add this
+import { useDispatch } from "react-redux";
+import { addToast } from "@/features/toastSlice";
 import { useCreateBranchMutation, useUpdateBranchMutation, useGetBranchByIdQuery } from "@/features/branchesApi";
 import { useGetAllStaffQuery } from "@/features/staffApi";
 import { useRouter } from "next/navigation";
@@ -186,6 +186,9 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
    }, [branchData, mode, reset]);
 
    const onSubmit = async (data) => {
+      console.log("=== FORM onSubmit FUNCTION CALLED ===");
+      console.log("Button was clicked, onSubmit triggered at:", new Date().toISOString());
+      console.log("Form data:", data);
       try {
          // Prepare the payload according to your backend expectations
          const payload = {
@@ -213,17 +216,20 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             managers: managers,
          };
 
+         console.log("Submitting payload:", payload);
+
          if (mode === "create") {
             await createBranch(payload).unwrap();
             showToast('success', 'Success', 'Branch created successfully');
-            router.push(-1);
+            router.back();
          } else {
+            console.log("Calling updateBranch with:", { id: branchId, payload });
             await updateBranch({
-               id: branchId,
-               ...payload
+               id: branchId, 
+               ...payload 
             }).unwrap();
             showToast('success', 'Success', 'Branch updated successfully');
-            router.push(-1);
+            router.back();
          }
       } catch (error) {
          console.error("Form submission error:", error);

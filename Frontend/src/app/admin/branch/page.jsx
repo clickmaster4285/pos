@@ -376,14 +376,14 @@ const BranchPage = () => {
                                        </DropdownMenuTrigger>
 
                                        <DropdownMenuContent align="end" className="w-48">
-                                          <Link href={`/admin/branch/${branch.branchId || branch._id}`}>
+                                          <Link href={`/admin/branch/${branch._id}`}>
                                              <DropdownMenuItem>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 View Details
                                              </DropdownMenuItem>
                                           </Link>
 
-                                          <Link href={`/admin/branch/${branch.branchId || branch._id}/edit`}>
+                                          <Link href={`/admin/branch/${branch._id}/edit`}>
                                              <DropdownMenuItem>
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 Edit Branch
