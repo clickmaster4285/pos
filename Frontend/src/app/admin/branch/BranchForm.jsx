@@ -186,9 +186,9 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
    }, [branchData, mode, reset]);
 
    const onSubmit = async (data) => {
-      console.log("=== FORM onSubmit FUNCTION CALLED ===");
-      console.log("Button was clicked, onSubmit triggered at:", new Date().toISOString());
-      console.log("Form data:", data);
+      // console.log("=== FORM onSubmit FUNCTION CALLED ===");
+      // console.log("Button was clicked, onSubmit triggered at:", new Date().toISOString());
+      // console.log("Form data:", data);
       try {
          // Prepare the payload according to your backend expectations
          const payload = {
@@ -216,7 +216,7 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             managers: managers,
          };
 
-         console.log("Submitting payload:", payload);
+         // console.log("Submitting payload:", payload);
 
          if (mode === "create") {
             await createBranch(payload).unwrap();
@@ -224,7 +224,7 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             router.back();
          } else {
             const { branchId: bId, ...updatePayload } = payload;
-            console.log("Calling updateBranch with:", { id: branchId, payload: updatePayload });
+            // console.log("Calling updateBranch with:", { id: branchId, payload: updatePayload });
             await updateBranch({
                id: branchId, 
                ...updatePayload 
@@ -255,7 +255,7 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
 
          // Show error message using Redux toast
          showToast('error', 'Error', errorMessage);
-         console.error("Detailed error:", errorMessage);
+         // console.error("Detailed error:", errorMessage);
       }
    };
 
