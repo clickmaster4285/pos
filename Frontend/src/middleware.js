@@ -48,9 +48,9 @@ function isAuthorizedRoute(pathname, role) {
     superadmin: "/superadmin",
     admin: "/admin",
     staff: "/staff",
-    user: "/user",
   };
   const expectedPrefix = roleRoutes[roleLower];
+  console.log(`[Middleware] Checking access for role ${role} on path ${pathname}`);
   if (!expectedPrefix) return false;
   return pathname.startsWith(expectedPrefix);
 }
@@ -72,6 +72,7 @@ export async function middleware(request) {
       : null;
   const token = accessToken || headerToken;
 
+  console.log(`[Middleware] Accessing ${pathname} with token: ${token ? "present" : "absent"}`);
   if (!token) {
     const response = NextResponse.redirect(new URL("/login", url));
     return clearAuthCookies(response);

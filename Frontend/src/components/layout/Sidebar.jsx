@@ -44,7 +44,7 @@ const iconMap = {
   Orders: ShoppingCart,
   Tables: Utensils,
   Sumeries: FileText,
-  Reports: BarChart,
+  // Reports: BarChart,
   'Live Store': Store,
   Attendance: ClipboardList,
   'Staff Salaries': CreditCard,
@@ -90,7 +90,7 @@ const hasAny = (user, keys = []) => keys.some((k) => hasPerm(user, k));
 function buildStaffLinks(user) {
   const subRoleLower = user?.subRole?.toLowerCase() || '';
   const staffBase = subRoleLower
-    ? `/staff/${encodeURIComponent(subRoleLower)}`
+    ? `/staff`
     : '/staff';
 
   const links = [
@@ -103,6 +103,12 @@ function buildStaffLinks(user) {
     {
       href: `${staffBase}/profile-setting`,
       label: 'Settings',
+      icon: iconMap['Settings'],
+      alwaysShow: true,
+    },
+    {
+      href: `${staffBase}/branch`,
+      label: 'Branches',
       icon: iconMap['Settings'],
       alwaysShow: true,
     },
@@ -178,19 +184,12 @@ function buildStaffLinks(user) {
     });
   }
 
-  if (hasAny(user, ['viewReports'])) {
-    links.push({
-      href: `${staffBase}/reports`,
-      label: 'Reports',
-      icon: iconMap['Reports'],
-    });
-  }
 
   if (
     hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
   ) {
     links.push({
-      href: `${staffBase}/staff`,
+      href: `${staffBase}`,
       label: 'Staff',
       icon: iconMap['Staff'],
     });
@@ -256,43 +255,43 @@ export default function Sidebar() {
   const roleBasedLinks = useMemo(() => {
     const compulsoryAdminLinks = [
       {
-        href: '/admin/dashboard',
+        href: `/${authUser.role}/dashboard`,
         label: 'Dashboard',
         icon: iconMap['Dashboard'],
         compulsory: true,
       },
       {
-        href: '/admin/product',
+        href: `/${authUser.role}/product`,
         label: 'Product',
         icon: iconMap['Product'],
         compulsory: true,
       },
       {
-        href: '/admin/orders',
+        href: `/${authUser.role}/orders`,
         label: 'Orders',
         icon: iconMap['Orders'],
         compulsory: true,
       },
       {
-        href: '/admin/billing',
+        href: `/${authUser.role}/billing`,
         label: 'Billing',
         icon: iconMap['Billing'],
         compulsory: true,
       },
       {
-        href: '/admin/profile-setting',
+        href: `/${authUser.role}/profile-setting`,
         label: 'Setting',
         icon: iconMap['Profile Setting'],
         compulsory: true,
       },
       {
-        href: '/admin/setting',
+        href: `/${authUser.role}/setting`,
         label: 'Company Profile',
         icon: iconMap['Settings'],
         compulsory: true,
       },
       {
-        href: '/admin/branch',
+        href: `/${authUser.role}/branch`,
         label: 'Branch Management',
         icon: iconMap['Settings'],
         compulsory: true,
@@ -300,7 +299,7 @@ export default function Sidebar() {
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
           {
-            href: '/admin/ingredient',
+            href: `/${authUser.role}/ingredient`,
             label: 'Ingredient',
             icon: iconMap['Ingredient'],
             compulsory: true,
@@ -311,25 +310,25 @@ export default function Sidebar() {
 
     const optionalAdminLinks = [
       {
-        href: '/admin/staff',
+        href: `/${authUser.role}/staff`,
         label: 'Staff',
         icon: iconMap['Staff'],
         extraFeature: 'Staff',
       },
       {
-        href: '/admin/permissions',
+        href: `/${authUser.role}/permissions`,
         label: 'Permission',
         icon: iconMap['Permission'],
         extraFeature: 'Permissions',
       },
       {
-        href: '/admin/category',
+        href: `/${authUser.role}/category`,
         label: 'Category',
         icon: iconMap['Product'],
         extraFeature: 'Category',
       },
       {
-        href: '/admin/vendors',
+        href: `/${authUser.role}/vendors`,
         label: 'Vendors',
         icon: iconMap['Vendors'],
         extraFeature: 'Vendors',
@@ -337,7 +336,7 @@ export default function Sidebar() {
       ...(industry?.toLowerCase() === 'restaurant'
         ? [
           {
-            href: '/admin/tables',
+            href: `/${authUser.role}/tables`,
             label: 'Tables',
             icon: iconMap['Tables'],
             compulsory: true,
@@ -352,25 +351,25 @@ export default function Sidebar() {
       //   extraFeature: 'WareHouse',
       // },
       {
-        href: '/admin/attendance-devices',
+        href: `/${authUser.role}/attendance-devices`,
         label: 'Attendance Devices Setting',
         icon: iconMap['Attendance'],
         extraFeature: 'Attendance Device',
       },
       {
-        href: '/admin/attendance',
+        href: `/${authUser.role}/attendance`,
         label: 'Manage Attendance',
         icon: iconMap['Attendance'],
         extraFeature: 'Manage Attendance',
       },
       {
-        href: '/admin/staff-salaries',
+        href: `/${authUser.role}/staff-salaries`,
         label: 'Staff Salaries',
         icon: iconMap['Staff Salaries'],
         extraFeature: 'Staff Salary',
       },
       {
-        href: '/admin/couriers',
+        href: `/${authUser.role}/couriers`,
         label: 'Couriers & Shipment',
         icon: iconMap['Couriers'],
         extraFeature: 'Courier & Shipment',
@@ -416,23 +415,23 @@ export default function Sidebar() {
     if (loading || !user?.role) return roleBasedLinks.guest;
 
     let links = [];
-    if (user.role === 'superAdmin') {
+    if (authUser.role === 'superAdmin') {
       links = roleBasedLinks.superAdmin;
-    } else if (roleBasedLinks[user.role]) {
-      links = roleBasedLinks[user.role].filter((link) => {
-        if (user.role === 'admin' && link.compulsory) {
+    } else if (roleBasedLinks[authUser.role]) {
+      links = roleBasedLinks[authUser.role].filter((link) => {
+        if (authUser.role === 'admin' && link.compulsory) {
           return true;
         }
 
-        if (user.role === 'staff' && link.alwaysShow) {
+        if (authUser.role === 'staff' && link.alwaysShow) {
           return true;
         }
 
-        if (user.role === 'admin' && link.extraFeature) {
+        if (authUser.role === 'admin' && link.extraFeature) {
           return user?.extraFeature?.includes(link.extraFeature);
         }
 
-        if (user.role === 'staff') {
+        if (authUser.role === 'staff') {
           return true;
         }
 
@@ -468,6 +467,7 @@ export default function Sidebar() {
     ...inventoryLabels,
     ...staffManagementLabels,
     ...companyManagementLabels,
+
   ]);
 
   // Top-level (non-grouped) links

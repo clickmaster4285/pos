@@ -164,6 +164,7 @@ function countLowStock(productList) {
 
 /* --------------------------------- Page ---------------------------------- */
 export default function AdminDashboard() {
+  console.log("i am reaching")
   // Orders
   const {
     data: ordersRaw = [],
@@ -194,6 +195,8 @@ export default function AdminDashboard() {
     () => countLowStock(productList),
     [productList]
   );
+
+  console.log("i jsakf nexxxxxt")
 
   // Series + KPIs + Pie (Orders + Bills)
   const series14 = React.useMemo(
@@ -233,7 +236,7 @@ export default function AdminDashboard() {
 
   const BillAcess = user?.permissions?.viewBilling;
   const PlanManangementAccess = user?.permissions?.managePlans;
-
+console.log("jshdlfj sjd sdjfkjf", user)
   const isAdmin = user?.role === 'admin';
   const isRecieptionist =
     user?.subRole === 'receptionist' || user?.role === 'admin';

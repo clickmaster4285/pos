@@ -375,6 +375,7 @@ const logout = async (req, res, next) => {
 
 const getme = async (req, res, next) => {
   try {
+    console.log("Fetching user data for userId:", req.user.role);
     const user = await User.findOne({ userId: req.user.userId }).select(
       "userId name email companyId role subRole department permissions isActive"
     );

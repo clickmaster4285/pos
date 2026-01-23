@@ -425,7 +425,7 @@ const BranchPage = () => {
                                           : 'Create your first branch to get started'}
                                     </p>
                                     {!search && filter === 'all' && (
-                                       <Link href="/admin/branch/create">
+                                             <Link href={`/${user.role}/branch/create`}>
                                           <Button className="mt-2">
                                              <Plus className="mr-2 h-4 w-4" />
                                              Create Branch

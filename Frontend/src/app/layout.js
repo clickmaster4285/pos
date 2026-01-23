@@ -24,10 +24,10 @@ export default function RootLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased `}>
         <StoreProvider>
           <SecureAuthProvider>
-            <SocketProvider>
+            {/* <SocketProvider> */}
               <main>{children}</main>
               <ToastContainer />
-            </SocketProvider>
+            {/* </SocketProvider> */}
           </SecureAuthProvider>
         </StoreProvider>
       </body>

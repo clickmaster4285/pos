@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useContext } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import { AuthContext } from '@/components/auth/SecureAuthProvider';
@@ -9,44 +9,46 @@ import { useGetCompanyQuery } from '@/features/CompanyApi';
 
 export default function Layout({ children }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
+
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, logout } = useContext(AuthContext);
   const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
 
-  // Determine allowed role based on route group
-  const allowedRole = pathname.startsWith('/staff') ? 'staff' : null;
-
-  // Check role and handle unauthorized access
+  let allowedRole;
+  console.log('Current pathname:', pathname);
+  console.log('user?.role?.toLowerCase() :', user?.role?.toLowerCase());
+  if (pathname.startsWith('/admin')) {
+    allowedRole = 'admin';
+  } else if (pathname.startsWith('/superadmin')) {
+    allowedRole = 'superadmin';
+  } else if (pathname.startsWith('/staff')) {
+    allowedRole = 'staff';
+  }else{
+    allowedRole = '/public/landing';  
+    
+  }
+  
+  // ✅ Role-based redirect
   useEffect(() => {
-    if (
-      !isLoading &&
-      isAuthenticated &&
-      user?.role?.toLowerCase() !== allowedRole
-    ) {
-      console.error(
-        `[Layout] Unauthorized access to ${pathname} by role ${user?.role}`
-      );
+    if (!isLoading && isAuthenticated && user?.role?.toLowerCase() !== allowedRole) {
       logout('Unauthorized access');
       router.push('/login');
     }
-  }, [isLoading, isAuthenticated, user, pathname, logout, router]);
+  }, [isLoading, isAuthenticated, user, pathname, logout, router, allowedRole]);
 
-  // Authorization logic
+  // ✅ Authorization logic
   useEffect(() => {
     if (!mycompany || !user) return;
-
+    
     const activePlan = mycompany?.data?.plan?.find(plan => plan?.isActive === true);
     let authorized = false;
-
-    const userSub = mycompany?.data?.subscription.find(
-      s =>
-        s.planId === activePlan?.planId &&
-        s.companyId === user.companyId &&
-        s.status?.toLowerCase() === 'complete'
-    );
-
+        const userSub = mycompany?.data?.subscription.find(
+          s =>
+            s.planId === activePlan?.planId &&
+            s.companyId === user.companyId &&
+            s.status?.toLowerCase() === 'complete'
+        )
     if (activePlan?.isActive === true) {
       if (userSub || activePlan.status === 'in progress') {
         authorized = true;
@@ -61,7 +63,7 @@ export default function Layout({ children }) {
   if (isLoading || companyLoading) return <div>Loading...</div>;
   if (!isAuthenticated || user?.role?.toLowerCase() !== allowedRole) return null;
 
-  // Show PaymentGateway if not authorized
+  // ✅ Show PaymentGateway if not authorized
   if (!isAuthorized) {
     return (
       <div className="h-screen w-screen flex">
@@ -80,7 +82,7 @@ export default function Layout({ children }) {
     );
   }
 
-  // Authorized — show children
+  // ✅ Authorized — show children
   return (
     <div className="h-screen w-screen flex">
       <div className="w-64 bg-gray-100 border-r fixed left-0 top-0 h-full z-20">
