@@ -112,7 +112,6 @@ const isPublicRoute = useCallback(
   // 🔹 Role-based dashboard redirection
   const getDashboardPath = useCallback((role, subRole) => {
     const r = String(role || "").toLowerCase();
-    console.log("the role is ", r)
     switch (r) {
       case "superadmin":
         return "/superadmin/dashboard";

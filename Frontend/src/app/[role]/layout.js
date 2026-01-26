@@ -16,8 +16,6 @@ export default function Layout({ children }) {
   const { data: mycompany, isLoading: companyLoading } = useGetCompanyQuery();
 
   let allowedRole;
-  console.log('Current pathname:', pathname);
-  console.log('user?.role?.toLowerCase() :', user?.role?.toLowerCase());
   if (pathname.startsWith('/admin')) {
     allowedRole = 'admin';
   } else if (pathname.startsWith('/superadmin')) {

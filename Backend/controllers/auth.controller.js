@@ -24,7 +24,10 @@ const googleClient = new OAuth2Client({
 
 const generateTokens = async (user) => {
   const accessToken = jwt.sign(
-    { userId: user.userId, role: user.role },
+    {
+      userId: user.userId,
+      role: user.role
+    },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
@@ -180,9 +183,9 @@ const login = async (req, res, next) => {
           permissions: user.permissions,
           isActive: user.isActive,
           extraFeature:
-          activePlans && user.role !== "superAdmin"
-          ? activePlans.limitations.features
-          : [],
+            activePlans && user.role !== "superAdmin"
+              ? activePlans.limitations.features
+              : [],
           toolName: toolNameLogo.toolName,
           toolLogo: toolNameLogo.toolLogo,
           industryName: await fetchIndustryName(user.companyId),
@@ -306,15 +309,14 @@ const logout = async (req, res, next) => {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
     userActivityLogger.info("Auth activity", {
-      userId: `Logout user token is: ${
-        req.cookies && req.session
+      userId: `Logout user token is: ${req.cookies && req.session
           ? `${JSON.stringify(req.cookies)} and ${JSON.stringify(req.session)}`
           : req.cookies
-          ? JSON.stringify(req.cookies)
-          : req.session
-          ? JSON.stringify(req.session)
-          : "No cookies or session"
-      }`,
+            ? JSON.stringify(req.cookies)
+            : req.session
+              ? JSON.stringify(req.session)
+              : "No cookies or session"
+        }`,
       action: "DELETE /api/auth/logout",
       ip: req.ip,
       userAgent: req.get("User-Agent"),

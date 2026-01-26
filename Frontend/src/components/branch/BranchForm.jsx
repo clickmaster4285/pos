@@ -186,9 +186,6 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
    }, [branchData, mode, reset]);
 
    const onSubmit = async (data) => {
-      // console.log("=== FORM onSubmit FUNCTION CALLED ===");
-      // console.log("Button was clicked, onSubmit triggered at:", new Date().toISOString());
-      // console.log("Form data:", data);
       try {
          // Prepare the payload according to your backend expectations
          const payload = {
@@ -216,15 +213,12 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
             managers: managers,
          };
 
-         // console.log("Submitting payload:", payload);
-
          if (mode === "create") {
             await createBranch(payload).unwrap();
             showToast('success', 'Success', 'Branch created successfully');
             router.back();
          } else {
             const { branchId: bId, ...updatePayload } = payload;
-            // console.log("Calling updateBranch with:", { id: branchId, payload: updatePayload });
             await updateBranch({
                id: branchId, 
                ...updatePayload 
