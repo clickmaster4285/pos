@@ -193,7 +193,7 @@ const BranchPage = () => {
                   Refresh
                </Button>
 
-               <Link href="/admin/branch/create">
+               <Link href={`/${user.role}/branch/create`}>
                   <Button className="flex items-center gap-2">
                      <Plus size={18} />
                      Add New Branch
@@ -376,14 +376,14 @@ const BranchPage = () => {
                                        </DropdownMenuTrigger>
 
                                        <DropdownMenuContent align="end" className="w-48">
-                                          <Link href={`/admin/branch/${branch._id}`}>
+                                          <Link href={`/${user.role}/branch/${branch._id}`}>
                                              <DropdownMenuItem>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 View Details
                                              </DropdownMenuItem>
                                           </Link>
 
-                                          <Link href={`/admin/branch/${branch._id}/edit`}>
+                                          <Link href={`/${user.role}/branch/${branch._id}/edit`}>
                                              <DropdownMenuItem>
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 Edit Branch

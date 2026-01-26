@@ -168,14 +168,6 @@ const createBranch = async (req, res) => {
          monthlyTarget
       } = req.body;
 
-      // Check permissions (only admin/superAdmin can create branches)
-      if (!['admin', 'superAdmin'].includes(req.user.role)) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to create branches'
-         });
-      }
-
       // Check if branchId already exists
       const existingBranch = await Branch.findOne({
          branchId,
@@ -431,13 +423,6 @@ const updateBranch = async (req, res) => {
 
       // Handle managers update (only for admins)
       if (req.body.managers !== undefined) {
-         if (!['admin', 'superAdmin'].includes(req.user.role)) {
-            return res.status(403).json({
-               success: false,
-               message: 'Not authorized to update managers'
-            });
-         }
-
          // Validate managers
          for (const manager of req.body.managers) {
             const isValid = await validateManager(manager.userId, branch.companyId);
@@ -503,14 +488,6 @@ const deleteBranch = async (req, res) => {
          });
       }
 
-      // Only admin/superAdmin can delete
-      if (!['admin', 'superAdmin'].includes(req.user.role)) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to delete branches'
-         });
-      }
-
       // Soft delete
       branch.isDeleted = true;
       branch.deletedAt = new Date();
@@ -547,14 +524,6 @@ const restoreBranch = async (req, res) => {
          return res.status(404).json({
             success: false,
             message: 'Deleted branch not found'
-         });
-      }
-
-      // Only admin/superAdmin can restore
-      if (!['admin', 'superAdmin'].includes(req.user.role)) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to restore branches'
          });
       }
 

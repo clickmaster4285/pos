@@ -426,6 +426,15 @@ export const checkPermissionsValidation = (moduleName) => {
   return async (req, res, next) => {
     try {
       const user = req.user;
+
+      // ✅ ADD DEBUG LOGGING
+      console.log('=== PERMISSION CHECK DEBUG ===');
+      console.log('Module:', moduleName);
+      console.log('User:', user?.userId, user?.role);
+      console.log('Permissions:', user?.permissions);
+      console.log('Permission check:', user?.permissions?.[moduleName]);
+      console.log('==============================');
+
       if (user.role === "superAdmin") {
         return next();
       }

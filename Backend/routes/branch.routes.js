@@ -2,11 +2,10 @@
 import express from 'express';
 import BranchController from '../controllers/branch.controller.js';
 import BranchValidator from '../middleware/branchValidator.js';
-import { authenticateToken, checkPermissionsValidation } from '../middleware/authMiddleware.js';
+import { authenticateToken, checkPermissionsValidation } from '../middleware/authMiddleware.js'; // ADD authenticateToken
 
 const router = express.Router();
 
-// Create authorization middleware
 const authorize = (roles) => {
    return async (req, res, next) => {
       try {
@@ -31,55 +30,43 @@ const authorize = (roles) => {
    };
 };
 
-// Protected routes (require authentication)
 router.use(authenticateToken);
 
-// Branch CRUD operations
 router.post(
    '/',
-   authorize(['admin', 'superAdmin']),
    checkPermissionsValidation('createBranch'),
    BranchValidator.validateCreate,
    BranchController.createBranch
 );
 
-// Unified branches endpoint - GET all branches with filters
 router.get(
    '/',
-   authorize(['admin', 'manager', 'superAdmin', 'staff']),
    checkPermissionsValidation('viewAllBranches'),
    BranchValidator.validateQuery,
    BranchController.getBranches
 );
 
-// Get single branch by ID
 router.get(
    '/:id',
-   authorize(['admin', 'manager', 'superAdmin', 'staff']),
    BranchController.getBranchById
 );
 
-// Update branch - includes manager management
 router.put(
    '/:id',
-   authorize(['admin', 'manager', 'superAdmin']),
+   // authorize(['admin', 'manager', 'superAdmin']),
    checkPermissionsValidation('editBranch'),
    BranchValidator.validateUpdate,
    BranchController.updateBranch
 );
 
-// Delete branch
 router.delete(
    '/:id',
-   authorize(['admin', 'superAdmin']),
    checkPermissionsValidation('deleteBranches'),
    BranchController.deleteBranch
 );
 
-// Restore deleted branch
 router.post(
    '/:id/restore',
-   authorize(['admin', 'superAdmin']),
    BranchController.restoreBranch
 );
 

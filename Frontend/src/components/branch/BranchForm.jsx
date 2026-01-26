@@ -187,6 +187,14 @@ const BranchForm = ({ branchId = null, mode = "create" }) => {
 
    const onSubmit = async (data) => {
       try {
+
+         console.log('=== FRONTEND DEBUG ===');
+         console.log('Submitting branch data:', data);
+         console.log('Current user:', user);
+         console.log('User permissions:', user?.permissions);
+         console.log('createBranch permission:', user?.permissions?.createBranch);
+         console.log('========================');
+
          // Prepare the payload according to your backend expectations
          const payload = {
             name: data.name,
