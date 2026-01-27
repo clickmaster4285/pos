@@ -335,7 +335,7 @@ export const checkplan = (moduleName) => {
           break;
         }
         case "Product": {
-          if (!user.hasPermission?.('manageProduct')) {
+          if (!user.hasPermission?.('createProduct')) {
             return res.status(403).json({
               success: false,
               message: "Unauthorized: you cannot manage product",

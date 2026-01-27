@@ -14,22 +14,14 @@ const checkAccessPermission = (user, branch, requiredPermission = 'view') => {
    // Admin has full access to their company branches
    if (user.role === 'admin') return true;
 
-   // Check manager/staff access
+   // Staff: If they're manager of this branch OR have required permission via middleware
    if (user.role === 'staff') {
       const isManager = branch.managers?.some(m =>
          m.userId === user.userId && ['manager', 'supervisor'].includes(m.role)
       );
 
-      switch (requiredPermission) {
-         case 'view':
-            return isManager || user.subRole === 'viewer';
-         case 'manage':
-            return isManager;
-         case 'delete':
-            return false; // Only admin/superAdmin can delete
-         default:
-            return isManager;
-      }
+      // Middleware already checked permissions, so allow if they're branch manager
+      return isManager;
    }
 
    return false;
@@ -117,13 +109,15 @@ const buildBranchQuery = (user, filters = {}) => {
       // Admin sees only their company branches
       query.companyId = user.companyId;
    } else if (user.role === 'staff') {
-      // Staff/Manager sees only branches they manage
-      query.$or = [
-         { managers: { $elemMatch: { userId: user.userId } } }
-      ];
-      // Also apply company filter for staff
-      if (user.companyId) {
-         query.companyId = user.companyId;
+      // Staff sees branches based on permissions
+      query.companyId = user.companyId;
+
+      // If staff doesn't have viewAllBranches permission (checked by middleware),
+      // they only see branches they manage
+      if (!user.permissions?.viewAllBranches) {
+         query.$or = [
+            { managers: { $elemMatch: { userId: user.userId } } }
+         ];
       }
    }
 
@@ -410,10 +404,6 @@ const updateBranch = async (req, res) => {
       // Fields that can be updated (different for admins vs managers)
       const updatableFields = ['name', 'address', 'contact', 'status', 'monthlyTarget'];
 
-      if (['admin', 'superAdmin'].includes(req.user.role)) {
-         updatableFields.push('type', 'settings');
-      }
-
       // Update allowed fields
       updatableFields.forEach(field => {
          if (req.body[field] !== undefined) {
@@ -488,6 +478,15 @@ const deleteBranch = async (req, res) => {
          });
       }
 
+      // Check if user belongs to same company
+      if (req.user.companyId !== branch.companyId) {
+         return res.status(403).json({
+            success: false,
+            message: 'Cannot delete branch from another company'
+         });
+      }
+
+
       // Soft delete
       branch.isDeleted = true;
       branch.deletedAt = new Date();
@@ -556,7 +555,7 @@ const restoreBranch = async (req, res) => {
 // Export all functions
 export default {
    createBranch,
-   getBranches, // Unified get branches function
+   getBranches,
    getBranchById,
    updateBranch,
    deleteBranch,
