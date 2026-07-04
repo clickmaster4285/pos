@@ -1,106 +1,41 @@
-// components/landing/IndustriesSection.jsx
 "use client";
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Utensils, Shirt, Pill, Laptop, Store, Check, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Industries } from '@/utils/industryFields';
 
-const industryIcons = {
-  "Restaurant": Utensils,
-  "Fashion": Shirt,
-  "Pharmacy": Pill,
-  "Electronics": Laptop,
-  "General Shop": Store
-};
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { SectionHeader } from "./SectionHeader";
+import { LandingContainer } from "./LandingContainer";
+import { INDUSTRY_CONFIG } from "@/constants/landingContent";
+import { Industries } from "@/utils/industryFields";
+import {
+  Utensils,
+  Shirt,
+  Pill,
+  Laptop,
+  Store,
+  Check,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
-const industryColors = {
-  "Restaurant": { color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  "Fashion": { color: "text-pink-500", bgColor: "bg-pink-500/10" },
-  "Pharmacy": { color: "text-green-500", bgColor: "bg-green-500/10" },
-  "Electronics": { color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "General Shop": { color: "text-purple-500", bgColor: "bg-purple-500/10" }
-};
-
-const industryDetails = {
-  "Restaurant": {
-    description: "Complete dining management with ingredients tracking",
-    features: ["Table Management", "Kitchen Display", "Ingredient Tracking", "Recipe Costing"],
-    detailedFeatures: [
-      "Table and order management with real-time updates",
-      "Kitchen Display System (KDS) for seamless kitchen operations",
-      "Ingredient-level inventory tracking and waste management",
-      "Recipe costing and menu engineering tools",
-      "Split bills and table transfers",
-      "Multiple payment methods and tips management"
-    ],
-    benefits: "Perfect for cafes, fine dining, fast food chains, and cloud kitchens. Reduce food waste by 30% and improve table turnover by 25%."
-  },
-  "Fashion": {
-    description: "Inventory & sales for clothing retail",
-    features: ["Size/Color Variants", "Seasonal Collections", "Style Categories", "Trend Analytics"],
-    detailedFeatures: [
-      "Multi-variant product management (size, color, style)",
-      "Seasonal collection tracking and planning",
-      "Barcode and SKU management for each variant",
-      "Style and trend analytics dashboard",
-      "Customer size preferences and purchase history"
-    ],
-    benefits: "Ideal for boutiques, fashion chains, and clothing stores. Increase sales by 40% with personalized customer insights."
-  },
-  "Pharmacy": {
-    description: "Prescription tracking & medical supplies",
-    features: ["Prescription Management", "Expiry Tracking", "Drug Interactions", "Insurance Claims"],
-    detailedFeatures: [
-      "Digital prescription management and verification",
-      "Automated expiry date tracking with alerts",
-      "Drug interaction warnings and contraindications",
-      "Insurance claim processing and verification",
-      "Controlled substance tracking and reporting"
-    ],
-    benefits: "Essential for pharmacies and medical stores. Ensure 100% regulatory compliance and reduce medication errors by 95%."
-  },
-  "Electronics": {
-    description: "Tech retail with warranty management",
-    features: ["Serial Number Tracking", "Warranty Management", "Repair Services", "Trade-in Support"],
-    detailedFeatures: [
-      "Serial number and IMEI tracking for each device",
-      "Automated warranty registration and tracking",
-      "Repair and service ticket management",
-      "Trade-in and buyback program support",
-      "Product specifications and comparison tools"
-    ],
-    benefits: "Perfect for electronics retailers and mobile shops. Increase customer satisfaction by 50%."
-  },
-  "General Shop": {
-    description: "Flexible POS for any retail business",
-    features: ["Multi-Category Support", "Barcode Scanning", "Quick Checkout", "Loyalty Programs"],
-    detailedFeatures: [
-      "Unlimited product categories and subcategories",
-      "Fast barcode scanning and product lookup",
-      "Quick checkout with keyboard shortcuts",
-      "Customer loyalty and rewards programs",
-      "Discount and promotion management"
-    ],
-    benefits: "Flexible solution for grocery stores, gift shops, convenience stores. Reduce checkout time by 60%."
-  }
+const INDUSTRY_ICONS = {
+  Restaurant: Utensils,
+  Fashion: Shirt,
+  Pharmacy: Pill,
+  Electronics: Laptop,
+  "General Shop": Store,
 };
 
 export const IndustriesSection = () => {
-  const [selectedIndustry, setSelectedIndustry] = useState(null);
-  const [industries, setIndustries] = useState([]);
+  const [active, setActive] = useState(Industries[0]);
+  const router = useRouter();
+  const config = INDUSTRY_CONFIG[active];
+  const Icon = INDUSTRY_ICONS[active];
 
-  useEffect(() => {
-    const loadedIndustries = Industries.map(industry => ({
-      ...industryDetails[industry],
-      title: industry,
-      icon: industryIcons[industry],
-      ...industryColors[industry]
-    }));
-    setIndustries(loadedIndustries);
-  }, []);
+  const goToSignUp = () => {
+    router.push(`/sign-up?step=2&industry=${encodeURIComponent(active)}`);
+  };
 
   return (
     <>
@@ -169,25 +104,36 @@ export const IndustriesSection = () => {
             </AnimatePresence>
           </div>
         </div>
-      </section>
 
-      <Dialog open={!!selectedIndustry} onOpenChange={() => setSelectedIndustry(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          {selectedIndustry && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`p-3 rounded-2xl ${selectedIndustry.bgColor}`}>
-                    <selectedIndustry.icon className={`h-8 w-8 ${selectedIndustry.color}`} />
+        {/* Featured industry panel */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35 }}
+            className="w-full"
+          >
+            <div className="grid lg:grid-cols-5 gap-6 lg:gap-8 rounded-2xl sm:rounded-3xl border border-border/60 overflow-hidden bg-card/50 backdrop-blur-sm shadow-2xl">
+              {/* Left gradient panel */}
+              <div
+                className={`lg:col-span-2 relative p-6 sm:p-8 lg:p-10 bg-gradient-to-br ${config.gradient} text-white min-h-[280px] lg:min-h-0 flex flex-col justify-between`}
+              >
+                <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative">
+                  <div className="inline-flex p-3 rounded-2xl bg-white/20 backdrop-blur-sm mb-5">
+                    <Icon className="h-8 w-8" />
                   </div>
-                  <div>
-                    <DialogTitle className="text-3xl font-bold">
-                      {selectedIndustry.title}
-                    </DialogTitle>
-                    <DialogDescription className="text-lg mt-2">
-                      {selectedIndustry.description}
-                    </DialogDescription>
-                  </div>
+                  <h3 className="text-2xl sm:text-3xl font-bold mb-2">{active}</h3>
+                  <p className="text-white/90 text-sm sm:text-base leading-relaxed">{config.tagline}</p>
+                </div>
+
+                <div className="relative mt-8 pt-6 border-t border-white/20">
+                  <div className="text-4xl sm:text-5xl font-bold">{config.stat.value}</div>
+                  <div className="text-sm text-white/80 mt-1">{config.stat.label}</div>
                 </div>
               </DialogHeader>
 
@@ -209,10 +155,29 @@ export const IndustriesSection = () => {
                   <p className="text-muted-foreground">{selectedIndustry.benefits}</p>
                 </div>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Industry count banner */}
+        <motion.div
+          className="mt-10 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-10 text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          {[
+            { value: "5", label: "Industry Verticals" },
+            { value: "50+", label: "Pre-built Modules" },
+            { value: "1", label: "Unified Dashboard" },
+          ].map((item) => (
+            <div key={item.label}>
+              <div className="text-2xl sm:text-3xl font-bold text-primary">{item.value}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">{item.label}</div>
+            </div>
+          ))}
+        </motion.div>
+      </LandingContainer>
+    </section>
   );
 };

@@ -3,6 +3,7 @@ import { jwtVerify, createRemoteJWKSet } from "jose";
 import { LRUCache } from "lru-cache";
 
 const publicPaths = new Set([
+  "/",
   "/login",
   "/sign-up",
   "/forgot-password",

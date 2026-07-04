@@ -1,13 +1,35 @@
-// In Footer.jsx - Improved contrast and readability
 "use client";
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Mail, Phone, MapPin, Twitter, Facebook, Instagram, Linkedin, ArrowUp } from 'lucide-react';
-import { motion } from 'framer-motion';
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Twitter,
+  Facebook,
+  Instagram,
+  Linkedin,
+  ArrowUp,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { LandingContainer } from "./LandingContainer";
+
+const QUICK_LINKS = [
+  { label: "How It Works", href: "#how-it-works" },
+  { label: "Industries", href: "#industries" },
+  { label: "Platform", href: "#platform" },
+  { label: "Features", href: "#features" },
+  { label: "Demo", href: "#demo" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "FAQ", href: "#faq" },
+];
+
+const SOCIAL_ICONS = [Twitter, Facebook, Instagram, Linkedin];
 
 export const Footer = () => {
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -28,16 +50,16 @@ export const Footer = () => {
             <p className="text-muted-foreground leading-relaxed">
               Revolutionizing business operations with intelligent POS solutions. Trusted by thousands of businesses worldwide.
             </p>
-            <div className="flex gap-4">
-              {[Twitter, Facebook, Instagram, Linkedin].map((Icon, index) => (
-                <motion.button
+            <div className="flex gap-2.5">
+              {SOCIAL_ICONS.map((Icon, index) => (
+                <button
                   key={index}
-                  className="p-2 rounded-lg bg-white hover:bg-blue-600 hover:text-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-blue-600 transition-all duration-300 shadow-sm"
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.9 }}
+                  type="button"
+                  className="p-2.5 rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all duration-200"
+                  aria-label="Social link"
                 >
-                  <Icon className="h-5 w-5" />
-                </motion.button>
+                  <Icon className="h-4 w-4" />
+                </button>
               ))}
             </div>
           </motion.div>
@@ -45,20 +67,22 @@ export const Footer = () => {
           {/* Quick Links */}
           <motion.div
             className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
             viewport={{ once: true }}
           >
-            <h4 className="text-lg font-semibold">Quick Links</h4>
-            <div className="space-y-2">
-              {['Features', 'Industries', 'Pricing', 'About Us', 'Contact'].map((link) => (
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+              Quick Links
+            </h4>
+            <div className="space-y-2.5">
+              {QUICK_LINKS.map(({ label, href }) => (
                 <a
-                  key={link}
-                  href={`#${link.toLowerCase().replace(' ', '-')}`}
-                  className="block text-muted-foreground hover:text-primary transition-colors duration-300 hover:translate-x-2 transform"
+                  key={label}
+                  href={href}
+                  className="block text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {link}
+                  {label}
                 </a>
               ))}
             </div>
@@ -67,17 +91,19 @@ export const Footer = () => {
           {/* Contact Info */}
           <motion.div
             className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <h4 className="text-lg font-semibold">Contact Us</h4>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+              Contact Us
+            </h4>
             <div className="space-y-3">
               {[
-                { icon: Phone, text: '+1 (555) 123-4567' },
-                { icon: Mail, text: 'hello@smartpos.com' },
-                { icon: MapPin, text: '123 Business Ave, Suite 100, New York, NY 10001' }
+                { icon: Phone, text: "+1 (555) 123-4567" },
+                { icon: Mail, text: "hello@smartpos.com" },
+                { icon: MapPin, text: "123 Business Ave, Suite 100, New York, NY 10001" },
               ].map((item, index) => (
                 <div key={index} className="flex items-center gap-3 text-muted-foreground">
                   <item.icon className="h-5 w-5 text-primary shrink-0" />
@@ -95,9 +121,11 @@ export const Footer = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             viewport={{ once: true }}
           >
-            <h4 className="text-lg font-semibold">Stay Updated</h4>
-            <p className="text-muted-foreground text-sm">
-              Subscribe to get updates on new features and industry insights.
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+              Stay Updated
+            </h4>
+            <p className="text-sm text-muted-foreground">
+              Subscribe for updates on new features and industry insights.
             </p>
             <div className="space-y-3">
               <Input
@@ -120,8 +148,8 @@ export const Footer = () => {
           transition={{ duration: 0.5, delay: 0.4 }}
           viewport={{ once: true }}
         >
-          <p className="text-muted-foreground text-sm">
-            © 2024 SmartPOS. All rights reserved.
+          <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
+            © {new Date().getFullYear()} SmartPOS. All rights reserved.
           </p>
 
           <div className="flex gap-6 text-sm text-muted-foreground">
@@ -136,16 +164,16 @@ export const Footer = () => {
             ))}
           </div>
 
-          <motion.button
+          <button
+            type="button"
             onClick={scrollToTop}
-            className="p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.9 }}
+            className="p-2.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md"
+            aria-label="Scroll to top"
           >
-            <ArrowUp className="h-5 w-5" />
-          </motion.button>
+            <ArrowUp className="h-4 w-4" />
+          </button>
         </motion.div>
-      </div>
+      </LandingContainer>
     </footer>
   );
 };
