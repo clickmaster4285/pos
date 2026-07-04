@@ -10,10 +10,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card    hover:from-primary hover:to-secondary-foreground transition-all duration-200',
+          'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card    hover:from-primary hover:to-secondary-foreground transition-all duration-200',
 
         header:
-          'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card    hover:from-primary hover:to-secondary-foreground transition-all duration-200',
+          'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card    hover:from-primary hover:to-secondary-foreground transition-all duration-200',
 
         destructive:
           'border bg-muted  text-destructive hover:bg-muted/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',

@@ -37,6 +37,7 @@ export const PricingSection = () => {
     }
   };
 
+
   const PlanCard = ({ plan }) => {
     const isPopular = plan.popular;
 
@@ -49,7 +50,7 @@ export const PricingSection = () => {
         className={`relative h-full ${isPopular ? "pt-4 sm:pt-0" : ""}`}
       >
         {isPopular && (
-          <Badge className="absolute -top-0 sm:-top-3 left-1/2 -translate-x-1/2 z-10 bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0 shadow-md whitespace-nowrap">
+          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-linear-to-r from-yellow-400 to-orange-500 text-white">
             <Star className="w-3 h-3 mr-1" />
             Most Popular
           </Badge>
@@ -89,9 +90,9 @@ export const PricingSection = () => {
               `Up to ${plan.limitations.maxInventoryItems} items`,
               ...plan.limitations.features,
             ].map((feat, i) => (
-              <div key={i} className="flex items-start gap-2.5 text-sm">
-                <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <span className="text-muted-foreground">{feat}</span>
+              <div key={i} className="flex items-center gap-2 text-sm">
+                <Check className="h-4 w-4 text-primary shrink-0" />
+                <span>{feat}</span>
               </div>
             ))}
           </CardContent>
@@ -128,13 +129,25 @@ export const PricingSection = () => {
   }
 
   return (
-    <section id="pricing" className="py-16 sm:py-20 lg:py-24 scroll-mt-20">
-      <LandingContainer>
-        <SectionHeader
-          badge="Pricing Plans"
-          title="Choose Your Perfect Plan"
-          description="Start free and scale as you grow. No hidden fees, cancel anytime."
-        />
+    <section id="pricing" className="py-20 bg-linear-to-b from-muted/20 to-background">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <Badge variant="outline" className="mb-4 text-primary border-primary/30">
+            Pricing Plans
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Choose Your Perfect Plan
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Start free and scale as you grow. No hidden fees, cancel anytime.
+          </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
             <span

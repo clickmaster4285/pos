@@ -27,7 +27,7 @@ export function ChurnRiskIndicators({ companies }) {
               return (
                 <div key={company._id} className={`border rounded-lg p-4 ${getSeverityColor(plan.validateDays)}`}>
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="font-medium">{company.name}</p>
                       <p className="text-sm mt-1">Expires Soon</p>

@@ -123,7 +123,7 @@ export default function DataManagementMenu({ isMobile = false }) {
       <div className="relative w-full max-w-4xl mx-auto">
         <div className="bg-card/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-border overflow-hidden">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-border bg-gradient-to-r from-primary/5 to-primary/10">
+          <div className="px-8 py-6 border-b border-border bg-linear-to-r from-primary/5 to-primary/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-primary/10 rounded-2xl">
@@ -253,7 +253,7 @@ export default function DataManagementMenu({ isMobile = false }) {
                   <p className="text-sm text-muted-foreground">Remove temporary files to free up disk space</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleCleanup}
@@ -262,9 +262,9 @@ export default function DataManagementMenu({ isMobile = false }) {
                   <FiTrash2 className="w-4 h-4" />
                   Cleanup Now
                 </button>
-                
+
                 <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-xl border border-warning/20">
-                  <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                  <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
                   <p className="text-xs text-warning-foreground">
                     This will replace all current data. Make sure you have a backup.
                   </p>
@@ -352,7 +352,7 @@ export default function DataManagementMenu({ isMobile = false }) {
       </div>
 
       <div className="flex items-start gap-2 p-3 bg-warning/10 rounded-xl border border-warning/20 mt-4">
-        <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+        <FiAlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
         <p className="text-xs text-warning-foreground">
           Import will replace all current data. Make sure you have a backup.
         </p>

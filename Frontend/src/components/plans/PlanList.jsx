@@ -57,6 +57,7 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
           <div className="col-span-3">Price</div>
           <div className="col-span-3">Type</div>
           <div className="col-span-5">Features</div>
+          <div className="col-span-2">Max Branch</div>
           <div className="col-span-2">Max Staff</div>
           <div className="col-span-2">Max Vendors</div>
           <div className="col-span-2">Max Product</div>
@@ -141,6 +142,15 @@ export function PlanList({ plans, onEdit, onDelete, onView }) {
                   No features
                 </span>
               )}
+            </div>
+
+            <div className="sm:col-span-2">
+              <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="h-3 w-3 text-secondary-foreground" />
+                <span className="text-foreground font-medium">
+                  {p.maxBranch || 0}
+                </span>
+              </div>
             </div>
 
             <div className="sm:col-span-2">

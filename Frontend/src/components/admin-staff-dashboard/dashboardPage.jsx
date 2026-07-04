@@ -233,7 +233,6 @@ export default function AdminDashboard() {
 
   const BillAcess = user?.permissions?.viewBilling;
   const PlanManangementAccess = user?.permissions?.managePlans;
-
   const isAdmin = user?.role === 'admin';
   const isRecieptionist =
     user?.subRole === 'receptionist' || user?.role === 'admin';

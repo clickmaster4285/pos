@@ -1,7 +1,7 @@
 // src/features/tableApi.js
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -72,7 +72,6 @@ export const tableApi = createApi({
     // DELETE /api/table/remove-table/:id
     removeTable: builder.mutation({
       query: (id) => {
-        console.log("id", id)
         return {
           url: `/remove-table/${id}`,
           method: 'DELETE',

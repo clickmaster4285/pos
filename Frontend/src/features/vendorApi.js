@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -54,7 +54,6 @@ export const vendorApi = createApi({
     // PUT /api/vendor/update-vendor/:id
     updateVendor: builder.mutation({
       query: ({ id, ...body }) => {
-        console.log('id', id, 'body', body);
         return {
           url: `/update-vendor/${id}`,
           method: 'PATCH',

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getToken = (getState) =>
   getState()?.auth?.token ||
@@ -41,7 +41,6 @@ export const attendanceApi = createApi({
         const isReq = input instanceof Request;
         const method = init?.method || (isReq ? input.method : 'GET');
         const url = isReq ? input.url : String(input);
-        console.log('[attendanceApi]', method, url);
       } catch {}
       return fetch(input, init);
     },
@@ -51,7 +50,6 @@ export const attendanceApi = createApi({
     getAllAttendance: builder.query({
       query: () => '/get-all-attendance',
       transformResponse: (res, meta) => {
-        // console.log('Raw Response:', res, 'Meta:', meta);
         if (res?.success && Array.isArray(res.data)) return { ...res, status: meta?.response?.status || 200 };
         if (Array.isArray(res)) return { data: res, status: meta?.response?.status || 200 };
         throw { message: res?.message || 'Failed to fetch attendance', status: meta?.response?.status || 400 };

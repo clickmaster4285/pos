@@ -33,20 +33,22 @@ export const Footer = () => {
   };
 
   return (
-    <footer className="border-t border-border/60 bg-muted/30">
-      <LandingContainer className="py-12 sm:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 lg:gap-8 mb-10 sm:mb-12">
+    <footer className="bg-linear-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-background border-t border-gray-200 dark:border-gray-800">
+      <div className="container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {/* Company Info */}
           <motion.div
-            className="space-y-4 sm:col-span-2 lg:col-span-1"
-            initial={{ opacity: 0, y: 16 }}
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
           >
-            <h3 className="text-xl sm:text-2xl font-bold text-primary">SmartPOS</h3>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-sm">
-              Revolutionizing business operations with intelligent POS solutions. Trusted by
-              thousands of businesses worldwide.
+            <h3 className="text-2xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent">
+              SmartPOS
+            </h3>
+            <p className="text-muted-foreground leading-relaxed">
+              Revolutionizing business operations with intelligent POS solutions. Trusted by thousands of businesses worldwide.
             </p>
             <div className="flex gap-2.5">
               {SOCIAL_ICONS.map((Icon, index) => (
@@ -62,6 +64,7 @@ export const Footer = () => {
             </div>
           </motion.div>
 
+          {/* Quick Links */}
           <motion.div
             className="space-y-4"
             initial={{ opacity: 0, y: 16 }}
@@ -85,6 +88,7 @@ export const Footer = () => {
             </div>
           </motion.div>
 
+          {/* Contact Info */}
           <motion.div
             className="space-y-4"
             initial={{ opacity: 0, y: 16 }}
@@ -101,17 +105,18 @@ export const Footer = () => {
                 { icon: Mail, text: "hello@smartpos.com" },
                 { icon: MapPin, text: "123 Business Ave, Suite 100, New York, NY 10001" },
               ].map((item, index) => (
-                <div key={index} className="flex items-start gap-2.5 text-muted-foreground">
-                  <item.icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                  <span className="text-sm leading-relaxed">{item.text}</span>
+                <div key={index} className="flex items-center gap-3 text-muted-foreground">
+                  <item.icon className="h-5 w-5 text-primary shrink-0" />
+                  <span className="text-sm">{item.text}</span>
                 </div>
               ))}
             </div>
           </motion.div>
 
+          {/* Newsletter */}
           <motion.div
-            className="space-y-4 sm:col-span-2 lg:col-span-1"
-            initial={{ opacity: 0, y: 16 }}
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
             viewport={{ once: true }}
@@ -122,19 +127,22 @@ export const Footer = () => {
             <p className="text-sm text-muted-foreground">
               Subscribe for updates on new features and industry insights.
             </p>
-            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5">
+            <div className="space-y-3">
               <Input
                 type="email"
                 placeholder="Enter your email"
-                className="h-11 bg-background"
+                className="bg-white border-gray-300 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:focus:border-blue-400 transition-colors duration-300 shadow-sm"
               />
-              <Button className="h-11 shrink-0 shadow-md">Subscribe</Button>
+              <Button className="w-full bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:scale-105 transition-all duration-300 text-white shadow-md">
+                Subscribe
+              </Button>
             </div>
           </motion.div>
         </div>
 
+        {/* Bottom Bar */}
         <motion.div
-          className="pt-8 border-t border-border/60 flex flex-col sm:flex-row justify-between items-center gap-4"
+          className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
@@ -144,9 +152,13 @@ export const Footer = () => {
             © {new Date().getFullYear()} SmartPOS. All rights reserved.
           </p>
 
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
-            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <a key={item} href="#" className="hover:text-primary transition-colors">
+          <div className="flex gap-6 text-sm text-muted-foreground">
+            {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((item) => (
+              <a
+                key={item}
+                href="#"
+                className="hover:text-primary transition-colors duration-300"
+              >
                 {item}
               </a>
             ))}

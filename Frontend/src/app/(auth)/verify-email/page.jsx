@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
-    
+
     const otpString = otp.join('');
     if (otpString.length !== 5) {
       setErrorMessage('Please enter the complete 6-digit OTP');
@@ -57,20 +57,19 @@ export default function VerifyEmailPage() {
     } catch (error) {
       setErrorMessage(
         error?.data?.message ||
-          error?.message ||
-          'Email verification failed. Please try again.'
+        error?.message ||
+        'Email verification failed. Please try again.'
       );
     }
   };
 
   const resendOtp = async () => {
     // Implement OTP resend logic here
-    console.log('Resending OTP to:', email);
   };
 
   if (isVerified) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-slate-50 via-emerald-50/30 to-teal-50/20 relative overflow-hidden">
         {/* Success Background */}
         <div className="absolute inset-0 overflow-hidden">
           <motion.div
@@ -82,7 +81,7 @@ export default function VerifyEmailPage() {
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-emerald-200/40 to-teal-200/40 rounded-full blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-linear-to-r from-emerald-200/40 to-teal-200/40 rounded-full blur-3xl"
           />
         </div>
 
@@ -95,17 +94,17 @@ export default function VerifyEmailPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-            className="w-32 h-32 mx-auto bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/25"
+            className="w-32 h-32 mx-auto bg-linear-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/25"
           >
             <CheckCircle2 className="w-16 h-16 text-white" />
           </motion.div>
-          
+
           <div className="space-y-4">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-emerald-800 bg-clip-text text-transparent"
+              className="text-4xl font-bold bg-linear-to-r from-gray-900 to-emerald-800 bg-clip-text text-transparent"
             >
               Email Verified!
             </motion.h1>
@@ -133,7 +132,7 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
@@ -146,7 +145,7 @@ export default function VerifyEmailPage() {
             repeat: Infinity,
             ease: "linear"
           }}
-          className="absolute top-20 left-10 w-80 h-80 bg-gradient-to-r from-blue-200/40 to-purple-200/40 rounded-full blur-3xl"
+          className="absolute top-20 left-10 w-80 h-80 bg-linear-to-r from-blue-200/40 to-purple-200/40 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -159,12 +158,12 @@ export default function VerifyEmailPage() {
             ease: "linear",
             delay: 2
           }}
-          className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-r from-amber-200/30 to-orange-200/30 rounded-full blur-3xl"
+          className="absolute bottom-20 right-10 w-96 h-96 bg-linear-to-r from-amber-200/30 to-orange-200/30 rounded-full blur-3xl"
         />
       </div>
 
       {/* Left Column - Branding */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7 }}
@@ -178,18 +177,18 @@ export default function VerifyEmailPage() {
         >
           <motion.div
             whileHover={{ scale: 1.05 }}
-            className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/25 mb-4"
+            className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-linear-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/25 mb-4"
           >
             <Shield className="w-12 h-12 text-white" />
             <Sparkles className="w-6 h-6 text-yellow-300 absolute -top-2 -right-2" />
           </motion.div>
-          
+
           <div className="space-y-4">
             <motion.h2
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-amber-700 bg-clip-text text-transparent"
+              className="text-4xl font-bold bg-linear-to-r from-gray-900 to-amber-700 bg-clip-text text-transparent"
             >
               Alpha Automotive
             </motion.h2>
@@ -205,7 +204,7 @@ export default function VerifyEmailPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.9 }}
-              className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent"
+              className="text-2xl font-bold bg-linear-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent"
             >
               Secure & Protected
             </motion.p>
@@ -228,7 +227,7 @@ export default function VerifyEmailPage() {
       </motion.div>
 
       {/* Right Column - Verification Form */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.7 }}
@@ -243,19 +242,19 @@ export default function VerifyEmailPage() {
           >
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/25"
+              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-linear-to-br from-amber-500 to-orange-600 shadow-2xl shadow-amber-500/25"
             >
               <Shield className="w-10 h-10 text-white" />
             </motion.div>
-            
+
             <div className="space-y-3">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-amber-700 bg-clip-text text-transparent">
+              <h2 className="text-3xl font-bold bg-linear-to-r from-gray-900 to-amber-700 bg-clip-text text-transparent">
                 Alpha Automotive
               </h2>
               <p className="text-lg text-gray-700 font-medium">
                 Verify your account
               </p>
-              <p className="text-xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+              <p className="text-xl font-bold bg-linear-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                 Secure & Protected
               </p>
             </div>
@@ -273,7 +272,7 @@ export default function VerifyEmailPage() {
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.5 }}
-                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25 mb-4"
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-linear-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/25 mb-4"
               >
                 <Mail className="w-8 h-8 text-white" />
               </motion.div>
@@ -281,7 +280,7 @@ export default function VerifyEmailPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}
-                className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2"
+                className="text-3xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2"
               >
                 Verify Email
               </motion.h2>
@@ -368,7 +367,7 @@ export default function VerifyEmailPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full h-12 font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden group"
+                className="w-full h-12 font-semibold bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden group"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -379,7 +378,7 @@ export default function VerifyEmailPage() {
                 ) : (
                   <>
                     Verify Email
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                   </>
                 )}
               </motion.button>
@@ -394,18 +393,18 @@ export default function VerifyEmailPage() {
             >
               <button
                 onClick={resendOtp}
-                className="text-sm bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-semibold hover:scale-105 transition-transform"
+                className="text-sm bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-semibold hover:scale-105 transition-transform"
               >
                 Didn't receive code? Resend OTP
               </button>
-              
+
               <div className="pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600">
                   Already verified?{' '}
                   <Link href="/login">
                     <motion.span
                       whileHover={{ scale: 1.05 }}
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold cursor-pointer"
+                      className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold cursor-pointer"
                     >
                       Sign In
                     </motion.span>

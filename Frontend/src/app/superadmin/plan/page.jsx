@@ -29,6 +29,7 @@ export default function PlanManagement() {
     currencyCode: 'USD',
     validateDays: 0,
     limitations: {
+      maxBranch: 0,
       maxStaff: 0,
       maxProductItems: 0,
       maxVendors: 0,
@@ -51,8 +52,9 @@ export default function PlanManagement() {
       validateDays: p.validateDays ?? '',
       price: Number(p.price ?? 0),
       currencyCode: p.currencyCode ?? 'USD',
-      maxVehicles: p.limitations?.maxProductItems ?? 0,
-      maxUsers: p.limitations?.maxStaff ?? 0,
+      maxProductItems: p.limitations?.maxProductItems ?? 0,
+      maxBranch: p.limitations?.maxBranch ?? 0,
+      maxStaff: p.limitations?.maxStaff ?? 0,
       maxVendors: p.limitations?.maxVendors ?? 0,
       features: Array.isArray(p.features)
         ? p.features
@@ -87,6 +89,7 @@ export default function PlanManagement() {
       currencyCode: 'USD',
       validateDays: 0,
       limitations: {
+        maxBranch: 0,
         maxStaff: 0,
         maxProductItems: 0,
         maxVendors: 0,
@@ -105,6 +108,7 @@ export default function PlanManagement() {
         currencyCode: formData.currencyCode,
         validateDays: Number(formData.validateDays || 0),
         limitations: {
+          maxBranch: Number(formData.limitations.maxBranch || 0),
           maxStaff: Number(formData.limitations.maxStaff || 0),
           maxProductItems: Number(
             formData.limitations.maxProductItems || 0
@@ -134,9 +138,10 @@ export default function PlanManagement() {
       currencyCode: plan.currencyCode ?? 'USD',
       validateDays: Number(plan.validateDays ?? 0),
       limitations: {
-        maxStaff: Number(plan.maxUsers ?? plan.limitations?.maxStaff ?? 0),
+        maxBranch: Number(plan.maxBranch ?? 0),
+        maxStaff: Number(plan.maxStaff ?? 0),
         maxProductItems: Number(
-          plan.maxVehicles ?? plan.limitations?.maxProductItems ?? 0
+          plan.maxProductItems ??  0
         ),
         maxVendors: Number(
           plan.maxVendors ?? plan.limitations?.maxVendors ?? 0
@@ -163,6 +168,7 @@ export default function PlanManagement() {
         currencyCode: formData.currencyCode,
         validateDays: Number(formData.validateDays || 0),
         limitations: {
+          maxBranch: Number(formData.limitations.maxBranch || 0),
           maxStaff: Number(formData.limitations.maxStaff || 0),
           maxProductItems: Number(
             formData.limitations.maxProductItems || 0

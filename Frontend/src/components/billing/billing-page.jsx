@@ -281,7 +281,6 @@ const handleCreateBill = async () => {
       }),
     };
 
-    console.log("Sending mixed bill payload:", payload);
     await createBill(payload).unwrap();
 
     onReset();
@@ -338,7 +337,6 @@ const handleCreateBill = async () => {
     try {
       setRefunding(true);
       const payload = buildRefundPayload(bill, refundData);
-      console.log('payload', payload);
       if (!payload.billId) return alert('No bill id provided');
       if (!payload.refundItems.length)
         return alert('Select at least one item to refund');

@@ -106,7 +106,6 @@ export function BillRow({
 
   const handleDownloadPDF = () => {
     try {
-      console.log('Initiating PDF download for bill:', bill.billNumber);
       const doc = new jsPDF();
 
       // Header
@@ -204,7 +203,6 @@ export function BillRow({
       }
 
       doc.save(`bill_${bill.billNumber}.pdf`);
-      console.log('PDF downloaded successfully for bill:', bill.billNumber);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       alert('Failed to generate PDF. Please check the console for details.');
@@ -216,7 +214,6 @@ export function BillRow({
   const companyName = companyRes?.data.name || null;
 
   const handleThermalPrint = () => {
-    console.log('Initiating thermal print for bill:', bill.billNumber);
     const companyName = companyRes?.data.name || null;
 
     const formattedContent = [
@@ -262,7 +259,6 @@ ${formattedContent}
 
     printWindow.document.close();
     printWindow.print();
-    console.log('Thermal print completed for bill:', bill.billNumber);
   };
 
   return (

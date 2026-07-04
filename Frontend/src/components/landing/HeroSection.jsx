@@ -37,63 +37,65 @@ const HERO_STATS = [
 
 export const HeroSection = () => {
   const router = useRouter();
-  const [videoOpen, setVideoOpen] = useState(false);
-  const { hero } = LANDING_VIDEOS;
-  const industries = Object.keys(INDUSTRY_CONFIG);
 
   return (
-    <section className="landing-hero relative overflow-hidden pt-24 pb-16 sm:pt-28 sm:pb-20 lg:pt-32 lg:pb-28">
-      <div className="landing-grid-pattern absolute inset-0 pointer-events-none opacity-40" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+    <section className="relative overflow-hidden min-h-screen flex items-center">
+      {/* Enhanced Background */}
+      <div className="absolute inset-0 bg-linear-to-br from-blue-50/30 via-background to-purple-50/20 dark:from-blue-950/10 dark:via-background dark:to-purple-950/10"></div>
+      <div className="absolute top-10 left-10 w-72 h-72 bg-blue-200/20 dark:bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-200/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
 
-      <LandingContainer className="relative z-10">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 xl:gap-16 items-center">
+      <div className="container mx-auto px-4 relative z-10">
+        <motion.div
+          className="max-w-4xl mx-auto text-center"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          {/* Enhanced Badge */}
           <motion.div
-            className="text-center lg:text-left"
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <Badge className="mb-6 bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800 backdrop-blur-sm animate-pulse">
+              <Shield className="w-3 h-3 mr-1" />
+              Trusted by 10,000+ Businesses Worldwide
+            </Badge>
+          </motion.div>
+
+          {/* Improved Text Gradients */}
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold mb-6 bg-linear-to-r from-gray-900 via-blue-700 to-gray-800 dark:from-white dark:via-blue-300 dark:to-gray-300 bg-clip-text text-transparent leading-tight"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="flex flex-wrap gap-2 justify-center lg:justify-start mb-5 sm:mb-6"
-            >
-              <Badge className="px-3 py-1 text-xs sm:text-sm font-medium bg-primary text-primary-foreground border-0 shadow-md shadow-primary/25">
-                <Cloud className="w-3 h-3 mr-1.5" />
-                Cloud SaaS Platform
-              </Badge>
-              <Badge
-                variant="outline"
-                className="px-3 py-1 text-xs sm:text-sm border-primary/30 bg-primary/5 text-primary"
-              >
-                <Sparkles className="w-3 h-3 mr-1.5" />
-                Multi-Industry POS
-              </Badge>
-            </motion.div>
+            Revolutionize Your
+            <span className="block bg-linear-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              Business Operations
+            </span>
+          </motion.h1>
 
-            <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.1]"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+          {/* Enhanced Button Colors */}
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+          >
+            <Button
+              onClick={() => router.push('/sign-up')}
+              size="lg"
+              className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-xl hover:shadow-blue-500/25 hover:scale-105 transition-all duration-300 group text-white"
             >
-              One Platform.{" "}
-              <span className="relative">
-                <span className="bg-gradient-to-r from-primary via-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Every Industry.
-                </span>
-                <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 via-blue-500/40 to-purple-500/60 rounded-full hidden sm:block" />
-              </span>
-            </motion.h1>
-
-            <motion.p
-              className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 mb-6 sm:mb-8 leading-relaxed"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
+              Start Free Trial
+              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:hover:border-blue-400 dark:hover:bg-blue-950/20 hover:scale-105 transition-all duration-300"
             >
               Industry-specific SaaS for restaurants, retail, pharmacy, electronics, and more.
               Subscribe once, configure for your vertical, and scale across unlimited locations.

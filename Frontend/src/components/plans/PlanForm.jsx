@@ -83,16 +83,16 @@ export function PlanForm({
   }, []);
 
   //currency
-const [currencyOpen, setCurrencyOpen] = useState(false);
-const currencyOptions = getCurrencyOptions();
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const currencyOptions = getCurrencyOptions();
 
-// Get current label for button
+  // Get current label for button
 
 
-const currentCurrencyLabel =
-  currencyOptions.find(
-    ([code]) => code === (formData.currencyCode || '')
-  )?.[1] || 'Select currency';
+  const currentCurrencyLabel =
+    currencyOptions.find(
+      ([code]) => code === (formData.currencyCode || '')
+    )?.[1] || 'Select currency';
 
   // Load exchange rates
   useEffect(() => {
@@ -153,38 +153,38 @@ const currentCurrencyLabel =
     setPriceValid(null);
   };
 
-const handlePriceBlur = () => {
-  if (!priceInput) {
-    // nothing typed → reset
-    setPriceValid(null);
-    setField('price', undefined);
-    return;
-  }
+  const handlePriceBlur = () => {
+    if (!priceInput) {
+      // nothing typed → reset
+      setPriceValid(null);
+      setField('price', undefined);
+      return;
+    }
 
-  const num = parseFloat(priceInput);
+    const num = parseFloat(priceInput);
 
-  if (isNaN(num) || num < 0) {
-    setField('price', undefined);
-    setPriceValid(false);
-    // keep what user typed so they can fix it
-    return;
-  }
+    if (isNaN(num) || num < 0) {
+      setField('price', undefined);
+      setPriceValid(false);
+      // keep what user typed so they can fix it
+      return;
+    }
 
-  const rate = exchangeRates[formData.currencyCode] || 1;
-  const priceInUSD = num / rate;
-  const isValid = priceInUSD === 0 || priceInUSD >= 0.5;
+    const rate = exchangeRates[formData.currencyCode] || 1;
+    const priceInUSD = num / rate;
+    const isValid = priceInUSD === 0 || priceInUSD >= 0.5;
 
-  if (isValid) {
-    setField('price', num);
-    setPriceValid(true);
-  } else {
-    setField('price', undefined);
-    setPriceValid(false);
-  }
+    if (isValid) {
+      setField('price', num);
+      setPriceValid(true);
+    } else {
+      setField('price', undefined);
+      setPriceValid(false);
+    }
 
-  // ❌ remove: setPriceInput('');
-  // we leave priceInput as-is so user still sees it
-};
+    // ❌ remove: setPriceInput('');
+    // we leave priceInput as-is so user still sees it
+  };
 
   // === CURRENCY ===
   const setCurrency = (code) => {
@@ -224,6 +224,7 @@ const handlePriceBlur = () => {
     const patch = { features: newFeatures };
 
     if (!checked) {
+      if (feat === 'Branch') patch.maxBranch = undefined;
       if (feat === 'Staff') patch.maxStaff = undefined;
       if (feat === 'Vendors') patch.maxVendors = undefined;
       if (feat === 'Category') patch.maxProductItems = undefined;
@@ -242,10 +243,11 @@ const handlePriceBlur = () => {
   };
 
   const clearAll = () => {
-    const { maxStaff, maxVendors, maxProductItems, ...rest } = limitations;
+    const { maxBranch, maxStaff, maxVendors, maxProductItems, ...rest } = limitations;
     updateLimitations({
       ...rest,
       features: [],
+      maxBranch: undefined,
       maxStaff: undefined,
       maxVendors: undefined,
       maxProductItems: undefined,
@@ -258,21 +260,21 @@ const handlePriceBlur = () => {
     priceValid === false
       ? 'border-red-500 focus:border-red-600'
       : priceValid === true
-      ? 'border-green-500 focus:border-green-600'
-      : 'border-gray-200/80 focus:border-blue-500/50';
+        ? 'border-green-500 focus:border-green-600'
+        : 'border-gray-200/80 focus:border-blue-500/50';
 
   const iconColor =
     priceValid === true
       ? 'text-green-600'
       : priceValid === false
-      ? 'text-red-600'
-      : 'text-gray-400';
+        ? 'text-red-600'
+        : 'text-gray-400';
 
   return (
     <div className="grid gap-6 py-2">
       {/* Header */}
       {isEditMode && (
-        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50/60 to-purple-50/60 rounded-2xl border border-blue-100/50">
+        <div className="flex items-center gap-3 p-4 bg-linear-to-r from-blue-50/60 to-purple-50/60 rounded-2xl border border-blue-100/50">
           <Zap className="h-5 w-5 text-blue-600" />
           <span className="font-semibold text-blue-700">
             Editing: <span className="text-gray-900">{planName}</span>
@@ -457,6 +459,24 @@ const handlePriceBlur = () => {
           />
         </div>
 
+        {currentFeatures.includes('Branch') && (
+          <div className="md:col-span-4 space-y-3">
+            <Label
+              htmlFor="maxBranch"
+              className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+            >
+              <Users className="h-4 w-4 text-blue-600" /> Max Branch
+            </Label>
+            <Input
+              id="maxBranch"
+              type="number"
+              value={readNum(limitations.maxBranch)}
+              onChange={(e) => setLimit('maxBranch', writeNum(e.target.value))}
+              className="h-12 border-2 border-gray-200/80 focus:border-blue-500/50 rounded-xl bg-white/80 font-medium"
+            />
+          </div>
+        )}
+
         {currentFeatures.includes('Staff') && (
           <div className="md:col-span-4 space-y-3">
             <Label
@@ -497,7 +517,7 @@ const handlePriceBlur = () => {
       </div>
 
       {/* Features */}
-      <div className="space-y-4 p-5 bg-gradient-to-br from-gray-50/60 to-white rounded-2xl border border-gray-100/80 mt-4">
+      <div className="space-y-4 p-5 bg-linear-to-br from-gray-50/60 to-white rounded-2xl border border-gray-100/80 mt-4">
         <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
           <Zap className="h-4 w-4 text-orange-500" /> Features
           <span className="text-xs font-normal text-gray-500 ml-2">
@@ -589,7 +609,7 @@ const handlePriceBlur = () => {
             {currentFeatures.map((feature) => (
               <span
                 key={feature}
-                className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-white px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm hover:shadow-md"
+                className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-linear-to-r from-blue-50 to-white px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm hover:shadow-md"
               >
                 {feature.replace(/_/g, ' ')}
                 <button

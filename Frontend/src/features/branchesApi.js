@@ -20,7 +20,7 @@ export const branchesApi = createApi({
          return headers;
       },
    }),
-   tagTypes: ['Branches', 'BranchDetails', 'CompanyBranches', 'ManagerBranches'],
+   tagTypes: ['Branches', 'BranchDetails'],
    endpoints: (builder) => ({
 
       // ========== BRANCH CRUD OPERATIONS ==========
@@ -32,14 +32,11 @@ export const branchesApi = createApi({
             method: 'POST',
             body: branchData,
          }),
-         invalidatesTags: [
-            { type: 'Branches', id: 'LIST' },
-            { type: 'CompanyBranches', id: 'LIST' }
-         ],
+         invalidatesTags: [{ type: 'Branches', id: 'LIST' }],
       }),
 
-      // GET /api/branches/company/:companyId - Get all branches for a company
-      getCompanyBranches: builder.query({
+      // GET /api/branches/ - Get all branches (with filters)
+      getBranches: builder.query({
          query: ({
             companyId,
             page = 1,
@@ -52,8 +49,9 @@ export const branchesApi = createApi({
             sortOrder = 'desc',
             lightweight = false
          }) => ({
-            url: `/company/${companyId}`,
+            url: '/',
             params: {
+               companyId,
                page,
                limit,
                status,
@@ -69,12 +67,12 @@ export const branchesApi = createApi({
             result?.data
                ? [
                   ...result.data.map(({ branchId }) => ({
-                     type: 'CompanyBranches',
+                     type: 'Branches',
                      id: branchId
                   })),
-                  { type: 'CompanyBranches', id: 'LIST' }
+                  { type: 'Branches', id: 'LIST' }
                ]
-               : [{ type: 'CompanyBranches', id: 'LIST' }],
+               : [{ type: 'Branches', id: 'LIST' }],
       }),
 
       // GET /api/branches/:id - Get branch by ID
@@ -96,7 +94,7 @@ export const branchesApi = createApi({
          invalidatesTags: (result, error, { id }) => [
             { type: 'BranchDetails', id },
             { type: 'Branches', id },
-            { type: 'CompanyBranches', id: 'LIST' }
+            { type: 'Branches', id: 'LIST' }
          ],
       }),
 
@@ -107,10 +105,7 @@ export const branchesApi = createApi({
             method: 'DELETE',
             body: { reason },
          }),
-         invalidatesTags: [
-            { type: 'Branches', id: 'LIST' },
-            { type: 'CompanyBranches', id: 'LIST' }
-         ],
+         invalidatesTags: [{ type: 'Branches', id: 'LIST' }],
       }),
 
       // POST /api/branches/:id/restore - Restore deleted branch
@@ -119,88 +114,7 @@ export const branchesApi = createApi({
             url: `/${id}/restore`,
             method: 'POST',
          }),
-         invalidatesTags: [
-            { type: 'Branches', id: 'LIST' },
-            { type: 'CompanyBranches', id: 'LIST' }
-         ],
-      }),
-
-      // ========== MANAGER OPERATIONS ==========
-
-      // POST /api/branches/:id/managers - Add manager
-      addManager: builder.mutation({
-         query: ({ id, userId, role }) => ({
-            url: `/${id}/managers`,
-            method: 'POST',
-            body: { userId, role },
-         }),
-         invalidatesTags: (result, error, { id }) => [
-            { type: 'BranchDetails', id },
-            { type: 'Branches', id }
-         ],
-      }),
-
-      // DELETE /api/branches/:id/managers/:userId - Remove manager
-      removeManager: builder.mutation({
-         query: ({ id, userId, reason }) => ({
-            url: `/${id}/managers/${userId}`,
-            method: 'DELETE',
-            body: { reason },
-         }),
-         invalidatesTags: (result, error, { id }) => [
-            { type: 'BranchDetails', id },
-            { type: 'Branches', id }
-         ],
-      }),
-
-      // GET /api/branches/manager/:userId - Get branches managed by user
-      getBranchesByManager: builder.query({
-         query: (userId) => `/manager/${userId}`,
-         providesTags: (result) =>
-            result?.data
-               ? [
-                  ...result.data.map(({ branchId }) => ({
-                     type: 'ManagerBranches',
-                     id: branchId
-                  })),
-                  { type: 'ManagerBranches', id: 'LIST' }
-               ]
-               : [{ type: 'ManagerBranches', id: 'LIST' }],
-      }),
-
-      // ========== LOCATION & SEARCH OPERATIONS ==========
-
-      // GET /api/branches/nearby - Find nearby branches
-      findNearbyBranches: builder.query({
-         query: ({ lat, lng, radius = 5 }) => ({
-            url: '/nearby',
-            params: { lat, lng, radius },
-         }),
-         providesTags: [{ type: 'Branches', id: 'NEARBY' }],
-      }),
-
-      // ========== DASHBOARD & STATISTICS ==========
-
-      // GET /api/branches/:id/dashboard - Get branch dashboard
-      getBranchDashboard: builder.query({
-         query: (id) => `/${id}/dashboard`,
-         providesTags: (result, error, id) => [
-            { type: 'BranchDetails', id },
-            { type: 'Branches', id }
-         ],
-      }),
-
-      // POST /api/branches/:id/stats - Update branch statistics
-      updateBranchStats: builder.mutation({
-         query: ({ id, ...stats }) => ({
-            url: `/${id}/stats`,
-            method: 'POST',
-            body: stats,
-         }),
-         invalidatesTags: (result, error, { id }) => [
-            { type: 'BranchDetails', id },
-            { type: 'Branches', id }
-         ],
+         invalidatesTags: [{ type: 'Branches', id: 'LIST' }],
       }),
 
       // ========== UTILITY ENDPOINTS ==========
@@ -208,8 +122,9 @@ export const branchesApi = createApi({
       // GET all active branches (lightweight for dropdowns)
       getActiveBranches: builder.query({
          query: (companyId) => ({
-            url: `/company/${companyId}`,
+            url: '/',
             params: {
+               companyId,
                status: 'active',
                lightweight: true,
                limit: 100
@@ -225,15 +140,16 @@ export const branchesApi = createApi({
       // Validate branch code uniqueness
       validateBranchCode: builder.query({
          query: ({ companyId, branchCode }) => ({
-            url: `/company/${companyId}`,
+            url: '/',
             params: {
+               companyId,
                search: branchCode,
                lightweight: true
             },
          }),
          transformResponse: (response) => ({
             isUnique: !response.data?.some(branch =>
-               branch.branchCode === branchCode
+               branch.branchCode === branchCode || branch.branchId === branchCode
             )
          }),
       }),
@@ -244,33 +160,19 @@ export const branchesApi = createApi({
 export const {
    // CRUD Operations
    useCreateBranchMutation,
-   useGetCompanyBranchesQuery,
+   useGetBranchesQuery, // Changed from useGetCompanyBranchesQuery
    useGetBranchByIdQuery,
    useUpdateBranchMutation,
    useDeleteBranchMutation,
    useRestoreBranchMutation,
 
-   // Manager Operations
-   useAddManagerMutation,
-   useRemoveManagerMutation,
-   useGetBranchesByManagerQuery,
-
-   // Location & Search
-   useFindNearbyBranchesQuery,
-
-   // Dashboard & Stats
-   useGetBranchDashboardQuery,
-   useUpdateBranchStatsMutation,
-
    // Utility
    useGetActiveBranchesQuery,
    useValidateBranchCodeQuery,
 
-   // Lazy queries for conditional fetching
-   useLazyGetCompanyBranchesQuery,
+   // Lazy queries
+   useLazyGetBranchesQuery,
    useLazyGetBranchByIdQuery,
-   useLazyFindNearbyBranchesQuery,
-   useLazyGetBranchesByManagerQuery,
    useLazyGetActiveBranchesQuery,
    useLazyValidateBranchCodeQuery,
 } = branchesApi;

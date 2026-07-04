@@ -15,18 +15,16 @@ export default function StepIndicator({ steps, currentStep, onStepClick }) {
             <motion.button
               whileHover={{ scale: 1.1 }}
               onClick={() => currentStep > stepItem.num && onStepClick(stepItem.num)}
-              className={`flex items-center gap-4 transition-all duration-300 ${
-                currentStep >= stepItem.num ? 'cursor-pointer' : 'cursor-not-allowed'
-              }`}
+              className={`flex items-center gap-4 transition-all duration-300 ${currentStep >= stepItem.num ? 'cursor-pointer' : 'cursor-not-allowed'
+                }`}
             >
               <motion.div
-                className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold text-lg transition-all duration-300 ${
-                  currentStep === stepItem.num
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50'
+                className={`flex items-center justify-center w-14 h-14 rounded-2xl font-bold text-lg transition-all duration-300 ${currentStep === stepItem.num
+                    ? 'bg-linear-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/50'
                     : currentStep > stepItem.num
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50'
-                    : 'bg-gray-200 text-gray-400'
-                }`}
+                      ? 'bg-linear-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50'
+                      : 'bg-gray-200 text-gray-400'
+                  }`}
               >
                 {currentStep > stepItem.num ? (
                   <Check className="w-6 h-6" />
@@ -48,11 +46,10 @@ export default function StepIndicator({ steps, currentStep, onStepClick }) {
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: currentStep > stepItem.num ? 1 : 0.3 }}
-                className={`w-16 h-1 mx-4 rounded-full ${
-                  currentStep > stepItem.num
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600'
+                className={`w-16 h-1 mx-4 rounded-full ${currentStep > stepItem.num
+                    ? 'bg-linear-to-r from-green-500 to-emerald-600'
                     : 'bg-gray-200'
-                }`}
+                  }`}
               />
             )}
           </div>

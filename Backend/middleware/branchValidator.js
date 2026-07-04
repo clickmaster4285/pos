@@ -1,3 +1,4 @@
+// backend\middleware\branchValidator.js
 import { body, param, query } from 'express-validator';
 
 const BranchValidator = {
@@ -72,10 +73,26 @@ const BranchValidator = {
       body('monthlyTarget')
          .optional()
          .isFloat({ min: 0 })
-         .withMessage('Monthly target must be a positive number')
+         .withMessage('Monthly target must be a positive number'),
+
+      // Manager validation for create
+      body('managers')
+         .optional()
+         .isArray()
+         .withMessage('Managers must be an array'),
+
+      body('managers.*.userId')
+         .optional()
+         .isString()
+         .withMessage('Manager user ID must be a string'),
+
+      body('managers.*.role')
+         .optional()
+         .isIn(['manager', 'assistant', 'supervisor'])
+         .withMessage('Invalid manager role')
    ],
 
-   // Update branch validation
+   // Update branch validation - UPDATED to include managers
    validateUpdate: [
       param('id')
          .notEmpty()
@@ -101,11 +118,32 @@ const BranchValidator = {
       body('settings.taxRate')
          .optional()
          .isFloat({ min: 0, max: 100 })
-         .withMessage('Tax rate must be between 0 and 100')
+         .withMessage('Tax rate must be between 0 and 100'),
+
+      // Manager validation for update
+      body('managers')
+         .optional()
+         .isArray()
+         .withMessage('Managers must be an array'),
+
+      body('managers.*.userId')
+         .optional()
+         .isString()
+         .withMessage('Manager user ID must be a string'),
+
+      body('managers.*.role')
+         .optional()
+         .isIn(['manager', 'assistant', 'supervisor'])
+         .withMessage('Invalid manager role')
    ],
 
    // Query validation for listing
    validateQuery: [
+      query('companyId')
+         .optional()
+         .isString()
+         .withMessage('Company ID must be a string'),
+
       query('page')
          .optional()
          .isInt({ min: 1 })
@@ -134,46 +172,13 @@ const BranchValidator = {
       query('sortOrder')
          .optional()
          .isIn(['asc', 'desc'])
-         .withMessage('Sort order must be asc or desc')
-   ],
+         .withMessage('Sort order must be asc or desc'),
 
-   // Nearby branches validation
-   validateNearby: [
-      query('lat')
-         .notEmpty()
-         .withMessage('Latitude is required')
-         .isFloat({ min: -90, max: 90 })
-         .withMessage('Latitude must be between -90 and 90'),
-
-      query('lng')
-         .notEmpty()
-         .withMessage('Longitude is required')
-         .isFloat({ min: -180, max: 180 })
-         .withMessage('Longitude must be between -180 and 180'),
-
-      query('radius')
+      query('lightweight')
          .optional()
-         .isFloat({ min: 0.1, max: 100 })
-         .withMessage('Radius must be between 0.1 and 100 km')
+         .isBoolean()
+         .withMessage('Lightweight must be a boolean')
    ],
-
-   // Add manager validation
-   validateAddManager: [
-      param('id')
-         .notEmpty()
-         .withMessage('Branch ID is required'),
-
-      body('userId')
-         .notEmpty()
-         .withMessage('User ID is required')
-         .isString()
-         .withMessage('User ID must be a string'),
-
-      body('role')
-         .optional()
-         .isIn(['manager', 'assistant', 'supervisor'])
-         .withMessage('Invalid role')
-   ]
 };
 
 export default BranchValidator;

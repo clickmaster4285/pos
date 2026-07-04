@@ -61,9 +61,13 @@ export const Navigation = () => {
   }
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${navBg}`}>
-      <LandingContainer className="h-16 flex justify-between items-center">
-        <a href="#" className="flex items-center gap-2.5 min-w-0">
+    <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled
+      ? "bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-lg"
+      : "bg-transparent"
+      }`}>
+      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        {/* Logo and Title */}
+        <div className="flex items-center gap-3">
           {data?.toolLogo ? (
             <img
               src={`${API_URL}${data.toolLogo}`}
@@ -75,7 +79,7 @@ export const Navigation = () => {
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
           )}
-          <span className="text-base sm:text-lg md:text-xl font-bold text-foreground truncate">
+          <span className="text-2xl font-bold bg-linear-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
             {data?.toolName || "SmartPOS"}
           </span>
         </a>
@@ -101,8 +105,12 @@ export const Navigation = () => {
             >
               Sign In
             </Button>
-            <Button size="sm" className="h-9 shadow-md" onClick={() => router.push("/sign-up")}>
-              Get Started
+            <Button
+              size="sm"
+              className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-blue-500/25 text-white"
+              onClick={() => router.push("/sign-up")}
+            >
+              Register
             </Button>
           </div>
         </div>
@@ -118,51 +126,44 @@ export const Navigation = () => {
         </button>
       </LandingContainer>
 
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
-            className="lg:hidden overflow-hidden border-t border-gray-200/80 dark:border-gray-800/80 bg-white/95 dark:bg-gray-950/95 backdrop-blur-lg"
-          >
-            <LandingContainer className="py-4 flex flex-col gap-1">
-              {NAV_LINKS.map(({ href, label }) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="text-base font-medium text-foreground hover:text-primary transition-colors py-3 px-2 rounded-lg hover:bg-muted/50"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {label}
-                </a>
-              ))}
-              <div className="flex flex-col gap-2.5 pt-4 mt-2 border-t border-border">
-                <Button
-                  variant="outline"
-                  className="w-full h-11"
-                  onClick={() => {
-                    router.push("/login");
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Sign In
-                </Button>
-                <Button
-                  className="w-full h-11 shadow-md"
-                  onClick={() => {
-                    router.push("/sign-up");
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Get Started Free
-                </Button>
-              </div>
-            </LandingContainer>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Navigation */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
+          <div className="container mx-auto px-4 py-4 flex flex-col gap-4">
+            {["features", "industries", "pricing"].map((item) => (
+              <a
+                key={item}
+                href={`#${item}`}
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300 py-2 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item.charAt(0).toUpperCase() + item.slice(1)}
+              </a>
+            ))}
+            <div className="flex flex-col gap-2 pt-4 border-t border-gray-200 dark:border-gray-800">
+              <Button
+                variant="outline"
+                className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                onClick={() => {
+                  router.push("/login");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Sign In
+              </Button>
+              <Button
+                className="w-full bg-linear-to-r from-blue-600 to-blue-700 text-white"
+                onClick={() => {
+                  router.push("/sign-up");
+                  setIsMenuOpen(false);
+                }}
+              >
+                Register
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

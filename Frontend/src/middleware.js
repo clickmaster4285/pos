@@ -49,7 +49,6 @@ function isAuthorizedRoute(pathname, role) {
     superadmin: "/superadmin",
     admin: "/admin",
     staff: "/staff",
-    user: "/user",
   };
   const expectedPrefix = roleRoutes[roleLower];
   if (!expectedPrefix) return false;

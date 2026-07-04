@@ -72,7 +72,6 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
 
   // ✅ Generate full PDF
   const generateFullPDF = async () => {
-    console.log('Generating full PDF');
     await generatePDF(bills, 'Billing Summary - Full Report');
     setIsDropdownOpen(false);
   };
@@ -83,7 +82,6 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
       alert('Please select at least a start date.');
       return;
     }
-    console.log('Generating date range PDF:', { startDate, endDate });
     const filteredBills = filterBillsByDate(bills, startDate, endDate);
     const title = endDate
       ? `Billing Summary - ${startDate} to ${endDate}`
@@ -191,7 +189,6 @@ const BillingSummaryPDF = ({ currencySymbol = '€' }) => {
       )}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
-      console.log('PDF generated successfully:', title);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
       alert('Failed to generate PDF. Please check the console for details.');

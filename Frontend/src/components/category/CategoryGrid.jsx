@@ -66,7 +66,7 @@ export function CategoryGrid({
             {/* Top row: icon + name + status + menu */}
             <div className="flex items-start gap-3">
               <div
-                className="h-10 w-10 rounded-xl bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card grid place-items-center shrink-0"
+                className="h-10 w-10 rounded-xl bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card grid place-items-center shrink-0"
                 onClick={() => onOpenSheet(category)}
               >
                 <Tag className="h-5 w-5" />
@@ -162,8 +162,8 @@ export function CategoryGrid({
                                 {isPending
                                   ? 'Updating…'
                                   : category.isActive
-                                  ? 'Deactivate'
-                                  : 'Activate'}
+                                    ? 'Deactivate'
+                                    : 'Activate'}
                               </Button>
                             </div>
                           </HoverCardContent>

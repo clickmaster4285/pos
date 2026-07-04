@@ -76,13 +76,25 @@ const BENTO_FEATURES = [
 
 export const FeaturesSection = () => {
   return (
-    <section id="features" className="landing-section-alt py-16 sm:py-20 lg:py-24 scroll-mt-20">
-      <LandingContainer>
-        <SectionHeader
-          badge="Platform Capabilities"
-          title="Everything Your Industry Needs — Out of the Box"
-          description="A unified SaaS toolkit that adapts to your vertical while sharing the same powerful core."
-        />
+    <section id="features" className="py-20 bg-linear-to-b from-gray-50 to-white dark:from-gray-950 dark:to-background">
+      <div className="container mx-auto px-4">
+        <motion.div
+          className="text-center mb-16"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          <Badge variant="outline" className="mb-4 text-primary border-primary/30">
+            Powerful Features
+          </Badge>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Everything You Need to Succeed
+          </h2>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Comprehensive tools designed to streamline operations, boost sales, and enhance customer experience.
+          </p>
+        </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 w-full auto-rows-fr">
           {BENTO_FEATURES.map((feature, index) => (
@@ -94,10 +106,41 @@ export const FeaturesSection = () => {
               viewport={{ once: true }}
               className={`group relative rounded-2xl border border-border/60 bg-gradient-to-br ${feature.gradient} p-5 sm:p-6 hover:border-primary/40 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden ${feature.className}`}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
-              <div className="relative">
-                <div className="inline-flex p-2.5 rounded-xl bg-background/60 border border-border/40 mb-4 group-hover:border-primary/30 transition-colors">
-                  <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <Card className="h-full border-2 hover:border-primary/50 transition-all duration-300 bg-background/50 backdrop-blur-sm group">
+                <CardHeader>
+                  <div className={`p-3 rounded-2xl ${feature.bgColor} w-fit mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className={`h-8 w-8 ${feature.color}`} />
+                  </div>
+                  <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors duration-300">
+                    {feature.title}
+                  </CardTitle>
+                  <CardDescription className="text-base leading-relaxed mt-2">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Stats Section */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          viewport={{ once: true }}
+        >
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              className="text-center p-8 rounded-2xl bg-linear-to-br from-primary/5 to-accent/5 border border-border/50 backdrop-blur-sm"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="flex justify-center mb-4">
+                <div className="p-3 rounded-2xl bg-primary/10">
+                  <stat.icon className="h-8 w-8 text-primary" />
                 </div>
                 <h3
                   className={`font-semibold mb-2 group-hover:text-primary transition-colors ${feature.large ? "text-xl sm:text-2xl" : "text-base sm:text-lg"}`}
@@ -110,6 +153,10 @@ export const FeaturesSection = () => {
                   {feature.description}
                 </p>
               </div>
+              <div className="text-4xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+                {stat.value}
+              </div>
+              <div className="text-muted-foreground font-medium">{stat.label}</div>
             </motion.div>
           ))}
         </div>

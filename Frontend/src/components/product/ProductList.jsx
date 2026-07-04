@@ -67,9 +67,8 @@ export function ProductList({
   return (
     <Card className="divide-y border-border overflow-hidden">
       <div
-        className={`grid ${
-          hasVendorsFeature(user) ? 'grid-cols-22' : 'grid-cols-20'
-        } items-center px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground `}
+        className={`grid ${hasVendorsFeature(user) ? 'grid-cols-22' : 'grid-cols-20'
+          } items-center px-6 py-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground `}
       >
         <div className="col-span-3 flex items-center gap-2">
           <span>Product</span>
@@ -79,10 +78,10 @@ export function ProductList({
           <div className="col-span-2">Vendor</div>
         )}
         {isRestaurant && <div className="col-span-3">Ingredients</div>}
-       {!isRestaurant && <div className="col-span-2">Quantity</div>}
+        {!isRestaurant && <div className="col-span-2">Quantity</div>}
         <div className="col-span-2">Price</div>
         <div className="col-span-3">Details</div>
-       
+
         <div className="col-span-2 text-center">Status</div>
         <div className="col-span-2 text-right">Actions</div>
       </div>
@@ -98,15 +97,14 @@ export function ProductList({
         return (
           <div
             key={p.id ?? p._id}
-            className={`grid ${
-              hasVendorsFeature(user) ? 'grid-cols-22' : 'grid-cols-20'
-            } items-center px-6 py-4 hover:bg-accent/20 transition-colors group`}
+            className={`grid ${hasVendorsFeature(user) ? 'grid-cols-22' : 'grid-cols-20'
+              } items-center px-6 py-4 hover:bg-accent/20 transition-colors group`}
           >
             <div
               className="col-span-3 flex items-center gap-3 min-w-0"
               onClick={() => onOpenSheet(p)}
             >
-              <div className="relative flex-shrink-0">
+              <div className="relative shrink-0">
                 {hasImages ? (
                   <ProductImageCarousel
                     imgUrls={p.imgUrl}
@@ -163,12 +161,12 @@ export function ProductList({
               </p>
             </div> */}
 
-           {! isRestaurant && <div className="col-span-2" onClick={() => onOpenSheet(p)}>
+            {!isRestaurant && <div className="col-span-2" onClick={() => onOpenSheet(p)}>
               <p className="text-sm font-mono text-foreground truncate font-medium">
                 {p.quantity || '—'}
               </p>
             </div>
-}
+            }
             <div className="col-span-2" onClick={() => onOpenSheet(p)}>
               <p className="text-sm font-semibold text-green-600 truncate">
                 ${p.sellingPrice?.toFixed(2) || '0.00'}
@@ -183,7 +181,7 @@ export function ProductList({
               </p>
             </div>
 
-      
+
 
             <div className="col-span-2 flex items-center justify-center">
               <Badge
@@ -256,8 +254,8 @@ export function ProductList({
                             {isPending
                               ? 'Updating…'
                               : p.isActive
-                              ? 'Deactivate'
-                              : 'Activate'}
+                                ? 'Deactivate'
+                                : 'Activate'}
                           </Button>
                         </div>
                       </HoverCardContent>

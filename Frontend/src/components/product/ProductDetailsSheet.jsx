@@ -95,8 +95,8 @@ export function ProductDetailsSheet({
   const isActive = !!product.isActive;
   const vendorName = hasVendorsFeature()
     ? vendors.find((v) => v._id === product.vendor)?.vendorName ||
-      product.vendor ||
-      '—'
+    product.vendor ||
+    '—'
     : null;
 
   const metaFields = product.metaData ? Object.entries(product.metaData) : [];
@@ -152,16 +152,14 @@ export function ProductDetailsSheet({
               {/* Status pill */}
               <Badge
                 variant={isActive ? 'default' : 'secondary'}
-                className={`px-3 py-1.5 text-[11px] font-medium whitespace-nowrap flex items-center ${
-                  isActive
-                    ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400'
-                }`}
+                className={`px-3 py-1.5 text-[11px] font-medium whitespace-nowrap flex items-center ${isActive
+                  ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-800'
+                  : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400'
+                  }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full mr-2 ${
-                    isActive ? 'bg-green-500' : 'bg-gray-400'
-                  }`}
+                  className={`w-2 h-2 rounded-full mr-2 ${isActive ? 'bg-green-500' : 'bg-gray-400'
+                    }`}
                 />
                 {isActive ? 'Active' : 'Inactive'}
               </Badge>
@@ -189,7 +187,7 @@ export function ProductDetailsSheet({
             <CardContent className="p-0">
               <div className="py-4 border-b">
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <div className="bg-gradient-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
+                  <div className="bg-linear-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
                     <Package className="h-4 w-4 text-card" />
                   </div>
                   Basic Information
@@ -307,7 +305,7 @@ export function ProductDetailsSheet({
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b ">
                   <h3 className="font-semibold text-foreground flex items-center gap-2 ">
-                    <div className="bg-gradient-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
+                    <div className="bg-linear-to-r from-primary/90 to-secondary-foreground/90 p-2 rounded-md">
                       <FileText className="h-4 w-4 text-card" />
                     </div>
                     Additional details
@@ -351,16 +349,15 @@ export function ProductDetailsSheet({
 
                           {isBoolean ? (
                             <span
-                              className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                                value
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-slate-50 text-slate-600 border border-slate-200'
-                              }`}
+                              className={`inline-flex mt-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${value
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-slate-50 text-slate-600 border border-slate-200'
+                                }`}
                             >
                               {displayValue}
                             </span>
                           ) : (
-                            <div className="mt-1 text-sm text-foreground break-words">
+                            <div className="mt-1 text-sm text-foreground wrap-break-word">
                               {displayValue}
                             </div>
                           )}
@@ -450,7 +447,7 @@ export function ProductDetailsSheet({
               {onToggle && (
                 <Button
                   variant={isActive ? 'outline' : 'default'}
-                  className="gap-2 flex-1 min-w-[120px]"
+                  className="gap-2 flex-1 min-w-30"
                   onClick={() => onToggle(product)}
                   disabled={pending}
                 >

@@ -44,13 +44,14 @@ const createPlan = async (req, res, next) => {
 const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
+    console.log("the id: ", id)
     if (!req.user || req.user.role !== "superAdmin") {
       res.status(403);
       throw new Error("Not authorized, admin access required");
     }
 
     const plan = await IndexModel.Plan.findOne({ _id: id, deleted: false });
-
+console.log("the plan: ", plan)
     if (!plan) {
       res.status(404);
       throw new Error("Plan not found");
@@ -64,7 +65,7 @@ const updatePlan = async (req, res, next) => {
         runValidators: true,
       }
     );
-
+console.log("the updatedPlan: ", updatedPlan)
     res.status(200).json({
       success: true,
       data: updatedPlan,

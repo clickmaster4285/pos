@@ -86,7 +86,7 @@ const StaffCard = ({
                   className="px-2.5 py-0.5 h-6 text-muted-foreground border-border"
                   title={member.department || ''}
                 >
-                  <span className="truncate max-w-[120px]">
+                  <span className="truncate max-w-30">
                     {member.department}
                   </span>
                 </Badge>

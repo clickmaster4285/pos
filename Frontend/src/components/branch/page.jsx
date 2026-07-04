@@ -1,4 +1,3 @@
-// src/app/admin/branch/page.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -26,11 +25,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import {
-   useGetCompanyBranchesQuery,
+   useGetBranchesQuery, // CHANGED from useGetCompanyBranchesQuery
    useDeleteBranchMutation,
    useUpdateBranchMutation,
-   useLazyGetCompanyBranchesQuery
-} from "@/features/branchesApi";
+   useLazyGetBranchesQuery // CHANGED from useLazyGetCompanyBranchesQuery
+} from "@/features/branchesApi"; // Make sure this is updated
 import { useSelector } from "react-redux";
 import Link from "next/link";
 import {
@@ -57,14 +56,14 @@ const BranchPage = () => {
    const [debouncedSearch, setDebouncedSearch] = useState("");
    const limit = 10;
 
-   // API Queries
+   // API Queries - UPDATED to use getBranches
    const {
       data: branchesData,
       isLoading,
       isError,
       refetch
-   } = useGetCompanyBranchesQuery({
-      companyId,
+   } = useGetBranchesQuery({
+      companyId, // Pass companyId as query param
       page,
       limit,
       status: filter !== "all" ? filter : undefined,
@@ -100,17 +99,9 @@ const BranchPage = () => {
             reason: "Deleted by admin"
          }).unwrap();
 
-         toast({
-            title: "Success",
-            description: `Branch "${branchName}" deleted successfully`,
-            variant: "default",
-         });
+         toast.success(`Branch "${branchName}" deleted successfully`);
       } catch (error) {
-         toast({
-            title: "Error",
-            description: error?.data?.message || "Failed to delete branch",
-            variant: "destructive",
-         });
+         toast.error(error?.data?.message || "Failed to delete branch");
       }
    };
 
@@ -123,20 +114,13 @@ const BranchPage = () => {
             status: newStatus
          }).unwrap();
 
-         toast({
-            title: "Success",
-            description: `Branch status updated to ${newStatus}`,
-            variant: "default",
-         });
+         toast.success(`Branch status updated to ${newStatus}`);
       } catch (error) {
-         toast({
-            title: "Error",
-            description: error?.data?.message || "Failed to update status",
-            variant: "destructive",
-         });
+         toast.error(error?.data?.message || "Failed to update status");
       }
    };
 
+   // Safely extract data
    const branches = branchesData?.data || [];
    const pagination = branchesData?.pagination || {};
    const totalBranches = pagination.total || 0;
@@ -165,7 +149,7 @@ const BranchPage = () => {
 
    if (isLoading && page === 1) {
       return (
-         <div className="w-full space-y-6">
+         <div className="container mx-auto p-6 space-y-6">
             <Skeleton className="h-10 w-64" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                {[...Array(3)].map((_, i) => (
@@ -179,19 +163,21 @@ const BranchPage = () => {
 
    if (isError) {
       return (
-         <Alert variant="destructive">
-            <AlertDescription>
-               Failed to load branches. Please try again.
-            </AlertDescription>
-            <Button onClick={refetch} className="mt-2">
-               Retry
-            </Button>
-         </Alert>
+         <div className="container mx-auto p-6">
+            <Alert variant="destructive">
+               <AlertDescription>
+                  Failed to load branches. Please try again.
+               </AlertDescription>
+               <Button onClick={refetch} className="mt-2">
+                  Retry
+               </Button>
+            </Alert>
+         </div>
       );
    }
 
    return (
-      <div className="w-full space-y-6">
+      <div className="container mx-auto p-6 space-y-6">
          {/* PAGE HEADER */}
          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -207,7 +193,7 @@ const BranchPage = () => {
                   Refresh
                </Button>
 
-               <Link href="/admin/branch/create">
+               <Link href={`/${user.role}/branch/create`}>
                   <Button className="flex items-center gap-2">
                      <Plus size={18} />
                      Add New Branch
@@ -277,7 +263,7 @@ const BranchPage = () => {
                   <div className="flex items-center gap-2 w-full md:w-auto">
                      <Filter className="text-muted-foreground h-4 w-4" />
                      <Select value={filter} onValueChange={setFilter}>
-                        <SelectTrigger className="w-full md:w-45">
+                        <SelectTrigger className="w-full md:w-48">
                            <SelectValue placeholder="Filter by status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -353,7 +339,7 @@ const BranchPage = () => {
 
                                  <TableCell>
                                     <code className="bg-muted px-2 py-1 rounded text-sm">
-                                       {branch.branchCode || 'N/A'}
+                                       {branch.branchCode || branch.branchId || 'N/A'}
                                     </code>
                                  </TableCell>
 
@@ -378,7 +364,7 @@ const BranchPage = () => {
                                  </TableCell>
 
                                  <TableCell>
-                                    {new Date(branch.createdAt).toLocaleDateString()}
+                                    {branch.createdAt ? new Date(branch.createdAt).toLocaleDateString() : 'N/A'}
                                  </TableCell>
 
                                  <TableCell className="text-right">
@@ -390,14 +376,14 @@ const BranchPage = () => {
                                        </DropdownMenuTrigger>
 
                                        <DropdownMenuContent align="end" className="w-48">
-                                          <Link href={`/admin/branch/${branch._id}`}>
+                                          <Link href={`/${user.role}/branch/${branch._id}`}>
                                              <DropdownMenuItem>
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 View Details
                                              </DropdownMenuItem>
                                           </Link>
 
-                                          <Link href={`/admin/branch/${branch._id}/edit`}>
+                                          <Link href={`/${user.role}/branch/${branch._id}/edit`}>
                                              <DropdownMenuItem>
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 Edit Branch
@@ -439,7 +425,7 @@ const BranchPage = () => {
                                           : 'Create your first branch to get started'}
                                     </p>
                                     {!search && filter === 'all' && (
-                                       <Link href="/admin/branch/create">
+                                             <Link href={`/${user.role}/branch/create`}>
                                           <Button className="mt-2">
                                              <Plus className="mr-2 h-4 w-4" />
                                              Create Branch

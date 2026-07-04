@@ -58,7 +58,7 @@ export function ToastNotification({
 
   return (
     <div className={`flex items-start p-4 rounded-lg shadow-lg ${bgColor} ${textColor} max-w-sm border border-gray-200`}>
-      {renderedIcon && <div className="mr-3 flex-shrink-0">{renderedIcon}</div>}
+      {renderedIcon && <div className="mr-3 shrink-0">{renderedIcon}</div>}
       <div className="flex-1">
         <h4 className="font-semibold text-base">{title}</h4>
         <p className="text-sm mt-1">{description}</p>

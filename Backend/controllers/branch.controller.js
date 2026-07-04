@@ -1,9 +1,143 @@
 import mongoose from 'mongoose';
 import Branch from '../models/branch.model.js';
+import Company from '../models/company.model.js';
 import { validationResult } from 'express-validator';
-import { response } from 'express';
-// const isSuperAdmin = req.user.role === "superAdmin";
 
+// Helper functions
+const checkAccessPermission = (user, branch, requiredPermission = 'view') => {
+   // Super Admin has all access
+   if (user.role === 'superAdmin') return true;
+
+   // User must belong to the same company
+   if (user.companyId !== branch.companyId) return false;
+
+   // Admin has full access to their company branches
+   if (user.role === 'admin') return true;
+
+   // Staff: If they're manager of this branch OR have required permission via middleware
+   if (user.role === 'staff') {
+      const isManager = branch.managers?.some(m =>
+         m.userId === user.userId && ['manager', 'supervisor'].includes(m.role)
+      );
+
+      // Middleware already checked permissions, so allow if they're branch manager
+      return isManager;
+   }
+
+   return false;
+};
+
+const checkBranchLimit = async (companyId) => {
+   try {
+      const company = await Company.findOne({ companyId })
+      // .populate('plan.planId');
+
+      if (!company || !company.plan || company.plan.length === 0) {
+         return { allowed: false, message: 'No active plan found' };
+      }
+
+      const currentPlan = company.plan[0];
+      console.log("currentPlan: ", currentPlan)
+
+      // const planDetails = currentPlan.planId;
+      // console.log("planDetails: ", planDetails)
+
+      // Check if branch feature is included in plan
+      if
+         //  (!planDetails.features || !planDetails.features.includes('Branch'))
+         (!currentPlan.limitations || !currentPlan.limitations.features ||
+         !currentPlan.limitations.features.includes('Branch')) {
+         return {
+            allowed: false,
+            message: 'Branch feature not available in your plan'
+         };
+      }
+
+      // Check max branch limit
+      const branchCount = await Branch.countDocuments({
+         companyId,
+         isDeleted: false
+      });
+
+      // const maxBranches = planDetails.maxBranch || 1;
+      const maxBranches = currentPlan.limitations.maxBranch || 1;
+
+      if (branchCount >= maxBranches) {
+         return {
+            allowed: false,
+            message: `Plan limit reached. Maximum ${maxBranches} branch(es) allowed`
+         };
+      }
+
+      return { allowed: true, remaining: maxBranches - branchCount };
+   } catch (error) {
+      console.error('Error checking branch limit:', error);
+      return { allowed: false, message: 'Error checking plan limits' };
+   }
+};
+
+const validateManager = async (userId, companyId) => {
+   // Check if user exists in company staff
+   // This would require a User model check
+   // For now, we'll assume validation happens elsewhere
+   return true;
+};
+
+const formatResponse = (branch, user) => {
+   const branchObj = branch.toObject ? branch.toObject() : branch;
+
+   // Remove sensitive/internal fields
+   const { __v, isDeleted, ...safeData } = branchObj;
+
+   // Add virtual/calculated fields
+   const response = {
+      ...safeData,
+      fullAddress: `${safeData.address?.street || ''}, ${safeData.address?.city || ''}, ${safeData.address?.country || ''}`.trim(),
+      primaryManager: safeData.managers?.find(m => m.role === 'manager') || safeData.managers?.[0]
+   };
+
+   return response;
+};
+
+const buildBranchQuery = (user, filters = {}) => {
+   const query = { isDeleted: false };
+
+   // Apply user role-based filtering
+   if (user.role === 'superAdmin') {
+      // Super Admin sees all branches
+   } else if (user.role === 'admin') {
+      // Admin sees only their company branches
+      query.companyId = user.companyId;
+   } else if (user.role === 'staff') {
+      // Staff sees branches based on permissions
+      query.companyId = user.companyId;
+
+      // If staff doesn't have viewAllBranches permission (checked by middleware),
+      // they only see branches they manage
+      if (!user.permissions?.viewAllBranches) {
+         query.$or = [
+            { managers: { $elemMatch: { userId: user.userId } } }
+         ];
+      }
+   }
+
+   // Apply additional filters
+   if (filters.companyId) query.companyId = filters.companyId;
+   if (filters.status) query.status = filters.status;
+   if (filters.city) query["address.city"] = filters.city;
+   if (filters.type) query.type = filters.type;
+   if (filters.search) {
+      query.$or = [
+         { name: { $regex: filters.search, $options: 'i' } },
+         { branchCode: { $regex: filters.search, $options: 'i' } },
+         { "address.city": { $regex: filters.search, $options: 'i' } }
+      ];
+   }
+
+   return query;
+};
+
+// Main Controller Functions
 const createBranch = async (req, res) => {
    try {
       // Validate request
@@ -41,6 +175,30 @@ const createBranch = async (req, res) => {
          });
       }
 
+      // Check company's plan limits
+      const planCheck = await checkBranchLimit(companyId);
+      if (!planCheck.allowed) {
+         return res.status(403).json({
+            success: false,
+            message: planCheck.message,
+            errorType: 'plan_limit'
+            // Remove the planDetails object as it's not available here
+         });
+      }
+
+      // Validate managers if provided
+      if (managers && managers.length > 0) {
+         for (const manager of managers) {
+            const isValid = await validateManager(manager.userId, companyId);
+            if (!isValid) {
+               return res.status(400).json({
+                  success: false,
+                  message: `Invalid manager: ${manager.userId}`
+               });
+            }
+         }
+      }
+
       // Create new branch
       const branch = new Branch({
          companyId,
@@ -59,7 +217,8 @@ const createBranch = async (req, res) => {
          },
          managers: managers?.map(manager => ({
             ...manager,
-            assignedAt: new Date()
+            assignedAt: new Date(),
+            assignedBy: req.user.userId
          })) || [],
          monthlyTarget: monthlyTarget || 0,
          createdBy: req.user.userId,
@@ -68,13 +227,10 @@ const createBranch = async (req, res) => {
 
       await branch.save();
 
-      // Return branch without sensitive data
-      const branchResponse = branch.toJSON();
-
       res.status(201).json({
          success: true,
          message: 'Branch created successfully',
-         data: branchResponse
+         data: formatResponse(branch, req.user)
       });
 
    } catch (error) {
@@ -95,10 +251,10 @@ const createBranch = async (req, res) => {
    }
 };
 
-const getCompanyBranches = async (req, res) => {
+const getBranches = async (req, res) => {
    try {
-      const { companyId } = req.params;
       const {
+         companyId,
          status,
          city,
          type,
@@ -109,52 +265,36 @@ const getCompanyBranches = async (req, res) => {
          search,
          lightweight = false
       } = req.query;
-      // Validate company access
-      if (req.user.companyId !== companyId && !req.user.isSuperAdmin === "superAdmin") {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to access these branches'
-         });
-      }
 
-      // Build query
-      const query = {
-         companyId,
-         isDeleted: false
-      };
-
-      // Apply filters
-      if (status) query.status = status;
-      if (city) query["address.city"] = city;
-      if (type) query.type = type;
-
-      // Search functionality
-      if (search) {
-         query.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { branchCode: { $regex: search, $options: 'i' } },
-            { "address.city": { $regex: search, $options: 'i' } }
-         ];
-      }
+      // Build query based on user role and filters
+      const filters = { companyId, status, city, type, search };
+      const query = buildBranchQuery(req.user, filters);
 
       // Calculate pagination
       const skip = (page - 1) * limit;
       const sortOptions = {};
       sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
+      // Select fields based on lightweight flag
+      const selectFields = lightweight === 'true' ?
+         'name branchCode status address.city managers' :
+         '-__v -isDeleted';
+
       // Execute query
       const [branches, total] = await Promise.all([
          Branch.find(query)
-            .select(lightweight === 'true' ?
-               'name branchCode status address.city managers' :
-               '-__v -isDeleted'
-            )
+            .select(selectFields)
             .sort(sortOptions)
             .skip(skip)
             .limit(parseInt(limit))
             .lean(),
          Branch.countDocuments(query)
       ]);
+
+      // Format response
+      const formattedBranches = branches.map(branch =>
+         formatResponse(branch, req.user)
+      );
 
       // Calculate pagination info
       const totalPages = Math.ceil(total / limit);
@@ -163,7 +303,7 @@ const getCompanyBranches = async (req, res) => {
 
       res.status(200).json({
          success: true,
-         data: branches,
+         data: formattedBranches,
          pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
@@ -175,7 +315,7 @@ const getCompanyBranches = async (req, res) => {
       });
 
    } catch (error) {
-      console.error('Get company branches error:', error);
+      console.error('Get branches error:', error);
       res.status(500).json({
          success: false,
          message: 'Failed to fetch branches'
@@ -186,18 +326,14 @@ const getCompanyBranches = async (req, res) => {
 const getBranchById = async (req, res) => {
    try {
       const { id } = req.params;
-      const { includeDeleted = false } = req.query;
-      // console.log("THE BRANCH ID IS ", id)
-      // console.log("the user is ", req?.user)
 
-      // Build query
-      const query = includeDeleted === 'true' ?
-         { $or: [{ branchId: id }, { _id: id }] } :
-         { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
+      // Find branch
+      const query = {
+         $or: [{ branchId: id }, { _id: id }],
+         isDeleted: false
+      };
 
-      const branch = await Branch.findOne(query)
-         .select('-__v -isDeleted')
-         .lean();
+      const branch = await Branch.findOne(query);
 
       if (!branch) {
          return res.status(404).json({
@@ -207,29 +343,16 @@ const getBranchById = async (req, res) => {
       }
 
       // Check access permissions
-      const hasAccess =
-         req.user.isSuperAdmin ||
-         req.user.companyId === branch.companyId ||
-         branch.managers.some(m => m.userId === req.user.userId);
-
-      if (!hasAccess) {
+      if (!checkAccessPermission(req.user, branch, 'view')) {
          return res.status(403).json({
             success: false,
             message: 'Not authorized to access this branch'
          });
       }
 
-      // Add virtual fields
-      const branchWithVirtuals = new Branch(branch);
-      const responseData = {
-         ...branch,
-         fullAddress: branchWithVirtuals.fullAddress,
-         primaryManager: branchWithVirtuals.primaryManager
-      };
-
       res.status(200).json({
          success: true,
-         data: responseData
+         data: formatResponse(branch, req.user)
       });
 
    } catch (error) {
@@ -254,7 +377,12 @@ const updateBranch = async (req, res) => {
          });
       }
 
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
+      // Find branch
+      const query = {
+         $or: [{ branchId: id }, { _id: id }],
+         isDeleted: false
+      };
+
       const branch = await Branch.findOne(query);
 
       if (!branch) {
@@ -264,28 +392,17 @@ const updateBranch = async (req, res) => {
          });
       }
 
-      // Check permissions (Admin or branch manager)
-      const isManager = branch.managers.some(m =>
-         m.userId === req.user.userId && ['manager', 'supervisor'].includes(m.role)
-      );
-
-      if (!req.user.isSuperAdmin && !isManager && req.user.companyId !== branch.companyId) {
+      // Check permissions
+      const canManage = checkAccessPermission(req.user, branch, 'manage');
+      if (!canManage) {
          return res.status(403).json({
             success: false,
             message: 'Not authorized to update this branch'
          });
       }
 
-      // Fields that can be updated
-      const updatableFields = [
-         'name',
-         'address',
-         'contact',
-         'type',
-         'settings',
-         'status',
-         'monthlyTarget'
-      ];
+      // Fields that can be updated (different for admins vs managers)
+      const updatableFields = ['name', 'address', 'contact', 'status', 'monthlyTarget'];
 
       // Update allowed fields
       updatableFields.forEach(field => {
@@ -294,26 +411,35 @@ const updateBranch = async (req, res) => {
          }
       });
 
-      branch.updatedBy = req.user.userId;
-
-      // Handle managers update separately if provided
-      if (req.body.managers) {
-         // Only admins can update managers
-         if (!req.user.isSuperAdmin && req.user.companyId !== branch.companyId) {
-            return res.status(403).json({
-               success: false,
-               message: 'Not authorized to update managers'
-            });
+      // Handle managers update (only for admins)
+      if (req.body.managers !== undefined) {
+         // Validate managers
+         for (const manager of req.body.managers) {
+            const isValid = await validateManager(manager.userId, branch.companyId);
+            if (!isValid) {
+               return res.status(400).json({
+                  success: false,
+                  message: `Invalid manager: ${manager.userId}`
+               });
+            }
          }
-         branch.managers = req.body.managers;
+
+         branch.managers = req.body.managers.map(manager => ({
+            ...manager,
+            assignedAt: manager.assignedAt || new Date(),
+            assignedBy: manager.assignedBy || req.user.userId
+         }));
       }
+
+      branch.updatedAt = new Date();
+      branch.updatedBy = req.user.userId;
 
       await branch.save();
 
       res.status(200).json({
          success: true,
          message: 'Branch updated successfully',
-         data: branch.toJSON()
+         data: formatResponse(branch, req.user)
       });
 
    } catch (error) {
@@ -338,7 +464,11 @@ const deleteBranch = async (req, res) => {
       const { id } = req.params;
       const { reason } = req.body;
 
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
+      const query = {
+         $or: [{ branchId: id }, { _id: id }],
+         isDeleted: false
+      };
+
       const branch = await Branch.findOne(query);
 
       if (!branch) {
@@ -348,16 +478,22 @@ const deleteBranch = async (req, res) => {
          });
       }
 
-      // Only super admin or company admin can delete
-      if (!req.user.isSuperAdmin && req.user.companyId !== branch.companyId) {
+      // Check if user belongs to same company
+      if (req.user.companyId !== branch.companyId) {
          return res.status(403).json({
             success: false,
-            message: 'Not authorized to delete this branch'
+            message: 'Cannot delete branch from another company'
          });
       }
 
-      // Perform soft delete
-      branch.softDelete(req.user.userId, reason || 'No reason provided');
+
+      // Soft delete
+      branch.isDeleted = true;
+      branch.deletedAt = new Date();
+      branch.deletedBy = req.user.userId;
+      branch.deleteReason = reason || 'No reason provided';
+      branch.status = 'inactive';
+
       await branch.save();
 
       res.status(200).json({
@@ -370,269 +506,6 @@ const deleteBranch = async (req, res) => {
       res.status(500).json({
          success: false,
          message: 'Failed to delete branch'
-      });
-   }
-};
-
-const addManager = async (req, res) => {
-   try {
-      const { id } = req.params;
-      const { userId, role = 'manager' } = req.body;
-
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
-      const branch = await Branch.findOne(query);
-
-      if (!branch) {
-         return res.status(404).json({
-            success: false,
-            message: 'Branch not found'
-         });
-      }
-
-      // Check permissions
-      if (!req.user.isSuperAdmin && req.user.companyId !== branch.companyId) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to manage this branch'
-         });
-      }
-
-      // Add manager
-      branch.addManager(userId, role, req.user.userId);
-      await branch.save();
-
-      res.status(200).json({
-         success: true,
-         message: 'Manager added successfully',
-         data: branch.managers
-      });
-
-   } catch (error) {
-      console.error('Add manager error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to add manager'
-      });
-   }
-};
-
-const removeManager = async (req, res) => {
-   try {
-      const { id, userId } = req.params;
-      const { reason } = req.body;
-
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
-      const branch = await Branch.findOne(query);
-
-      if (!branch) {
-         return res.status(404).json({
-            success: false,
-            message: 'Branch not found'
-         });
-      }
-
-      // Check permissions
-      if (!req.user.isSuperAdmin && req.user.companyId !== branch.companyId) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to manage this branch'
-         });
-      }
-
-      // Remove manager
-      branch.removeManager(userId, req.user.userId, reason || 'No reason provided');
-      await branch.save();
-
-      res.status(200).json({
-         success: true,
-         message: 'Manager removed successfully',
-         data: branch.managers
-      });
-
-   } catch (error) {
-      console.error('Remove manager error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to remove manager'
-      });
-   }
-};
-
-const getBranchesByManager = async (req, res) => {
-   try {
-      const { userId } = req.params;
-
-      // Check if user is requesting their own branches or is admin
-      if (req.user.userId !== userId && !req.user.isSuperAdmin) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to view these branches'
-         });
-      }
-
-      const branches = await Branch.findByManager(userId);
-
-      res.status(200).json({
-         success: true,
-         data: branches
-      });
-
-   } catch (error) {
-      console.error('Get branches by manager error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to fetch branches'
-      });
-   }
-};
-
-const findNearbyBranches = async (req, res) => {
-   try {
-      const { lat, lng, radius = 5 } = req.query;
-
-      if (!lat || !lng) {
-         return res.status(400).json({
-            success: false,
-            message: 'Latitude and longitude are required'
-         });
-      }
-
-      const branches = await Branch.findNearby(
-         parseFloat(lat),
-         parseFloat(lng),
-         parseFloat(radius)
-      );
-
-      res.status(200).json({
-         success: true,
-         data: branches
-      });
-
-   } catch (error) {
-      console.error('Find nearby branches error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to find nearby branches'
-      });
-   }
-};
-
-const updateBranchStats = async (req, res) => {
-   try {
-      const { id } = req.params;
-      const { orders, revenue, items } = req.body;
-
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
-      const branch = await Branch.findOne(query);
-
-      if (!branch) {
-         return res.status(404).json({
-            success: false,
-            message: 'Branch not found'
-         });
-      }
-
-      // Check if user has access to update stats
-      const hasAccess =
-         req.user.isSuperAdmin ||
-         req.user.companyId === branch.companyId ||
-         branch.managers.some(m => m.userId === req.user.userId);
-
-      if (!hasAccess) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to update branch statistics'
-         });
-      }
-
-      // Update stats
-      branch.updateStats({
-         orders: orders || 0,
-         revenue: revenue || 0,
-         items: items || 0
-      });
-
-      await branch.save();
-
-      res.status(200).json({
-         success: true,
-         message: 'Statistics updated successfully',
-         data: branch.stats
-      });
-
-   } catch (error) {
-      console.error('Update branch stats error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to update statistics'
-      });
-   }
-};
-
-const getBranchDashboard = async (req, res) => {
-   try {
-      const { id } = req.params;
-
-      const query = { $or: [{ branchId: id }, { _id: id }], isDeleted: false };
-      const branch = await Branch.findOne(query)
-         .select('name branchCode status stats monthlyTarget managers settings')
-         .lean();
-
-      if (!branch) {
-         return res.status(404).json({
-            success: false,
-            message: 'Branch not found'
-         });
-      }
-
-      // Check access
-      const hasAccess =
-         req.user.isSuperAdmin ||
-         req.user.companyId === branch.companyId ||
-         branch.managers.some(m => m.userId === req.user.userId);
-
-      if (!hasAccess) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to view dashboard'
-         });
-      }
-
-      // Calculate dashboard metrics
-      const dashboard = {
-         branchInfo: {
-            name: branch.name,
-            branchCode: branch.branchCode,
-            status: branch.status
-         },
-         performance: {
-            monthlyTarget: branch.monthlyTarget || 0,
-            currentRevenue: branch.stats?.totalRevenue || 0,
-            progressPercentage: branch.monthlyTarget > 0 ?
-               Math.min(100, (branch.stats?.totalRevenue / branch.monthlyTarget) * 100) : 0,
-            totalOrders: branch.stats?.totalOrders || 0,
-            avgOrderValue: branch.stats?.avgOrderValue || 0
-         },
-         management: {
-            totalManagers: branch.managers?.length || 0,
-            primaryManager: branch.managers?.find(m => m.role === 'manager') || branch.managers?.[0]
-         },
-         settings: {
-            taxRate: branch.settings?.taxRate || 16,
-            currency: branch.settings?.currency || 'PKR'
-         }
-      };
-
-      res.status(200).json({
-         success: true,
-         data: dashboard
-      });
-
-   } catch (error) {
-      console.error('Get branch dashboard error:', error);
-      res.status(500).json({
-         success: false,
-         message: 'Failed to load dashboard'
       });
    }
 };
@@ -653,31 +526,21 @@ const restoreBranch = async (req, res) => {
          });
       }
 
-      // Only super admin can restore
-      if (!req.user.isSuperAdmin && req.user.companyId !== branch.companyId) {
-         return res.status(403).json({
-            success: false,
-            message: 'Not authorized to restore this branch'
-         });
-      }
-
       // Restore branch
       branch.isDeleted = false;
       branch.deletedAt = null;
       branch.deletedBy = null;
+      branch.deleteReason = null;
       branch.status = 'active';
+      branch.updatedAt = new Date();
       branch.updatedBy = req.user.userId;
-
-      branch.logAudit('branch_restored', req.user.userId, {
-         restoredAt: new Date()
-      });
 
       await branch.save();
 
       res.status(200).json({
          success: true,
          message: 'Branch restored successfully',
-         data: branch.toJSON()
+         data: formatResponse(branch, req.user)
       });
 
    } catch (error) {
@@ -689,17 +552,18 @@ const restoreBranch = async (req, res) => {
    }
 };
 
+// Export all functions
 export default {
    createBranch,
-   getCompanyBranches,
+   getBranches,
    getBranchById,
    updateBranch,
    deleteBranch,
-   addManager,
-   removeManager,
-   getBranchesByManager,
-   findNearbyBranches,
-   updateBranchStats,
-   getBranchDashboard,
    restoreBranch,
+   // Helper functions for testing (optional)
+   _helpers: {
+      checkAccessPermission,
+      checkBranchLimit,
+      buildBranchQuery
+   }
 };

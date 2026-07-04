@@ -108,11 +108,8 @@ const isPublicRoute = useCallback(
       case "superadmin":
         return "/superadmin/dashboard";
       case "admin":
-        return "/admin/dashboard";
-        case "staff":
-          return `/staff/${subRole}/dashboard`;
-          case "user":
-            return "/user/dashboard";
+      case "staff":
+        return `/${r}/dashboard`;
             default:
         return "/";
     }

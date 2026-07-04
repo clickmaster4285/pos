@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useGetCompanyQuery } from '@/features/CompanyApi';
@@ -28,7 +28,8 @@ import {
   ListChecks,
 } from 'lucide-react';
 
-const iconMap = {
+// ============== CONSTANTS & CONFIGURATION ==============
+const ICON_MAP = {
   Dashboard: LayoutDashboard,
   Plans: FileText,
   Companies: Building,
@@ -44,7 +45,6 @@ const iconMap = {
   Orders: ShoppingCart,
   Tables: Utensils,
   Sumeries: FileText,
-  Reports: BarChart,
   'Live Store': Store,
   Attendance: ClipboardList,
   'Staff Salaries': CreditCard,
@@ -55,12 +55,203 @@ const iconMap = {
   Inventory: BarChart,
 };
 
-function SidebarFooter({ userName, userRole }) {
+const USER_ROLES = {
+  SUPER_ADMIN: 'superadmin',
+  ADMIN: 'admin',
+  STAFF: 'staff',
+  USER: 'user',
+  GUEST: 'guest',
+};
+
+const INDUSTRIES = {
+  RESTAURANT: 'Restaurant',
+  RETAIL: 'Retail',
+};
+
+const NAVIGATION_GROUPS = {
+  INVENTORY: 'inventory',
+  STAFF: 'staff',
+  COMPANY: 'company',
+  RESTAURANT: 'restaurant',
+};
+
+const GROUP_CONFIGS = {
+  [NAVIGATION_GROUPS.INVENTORY]: {
+    title: 'Inventory Management',
+    icon: BarChart,
+    labels: ['Product', 'Orders', 'Billing', 'Category', 'Vendors', 'Couriers & Shipment'],
+  },
+  [NAVIGATION_GROUPS.STAFF]: {
+    title: 'Staff Management',
+    icon: CreditCard,
+    labels: ['Staff', 'Staff Salaries', 'Permission', 'Manage Attendance', 'Attendance Devices Setting'],
+  },
+  [NAVIGATION_GROUPS.COMPANY]: {
+    title: 'Company Management',
+    icon: Building,
+    labels: ['Profile Setting', 'Company Profile', 'Branch Management', 'Branches'],
+  },
+  [NAVIGATION_GROUPS.RESTAURANT]: {
+    title: 'Restaurant Management',
+    icon: Utensils,
+    labels: ['Tables', 'Ingredient'],
+  },
+};
+
+// ============== UTILITY FUNCTIONS ==============
+const PermissionUtils = {
+  hasPerm: (user, key) => Boolean(user?.permissions?.[key]),
+  hasAny: (user, keys = []) => keys.some((k) => PermissionUtils.hasPerm(user, k)),
+  hasAll: (user, keys = []) => keys.every((k) => PermissionUtils.hasPerm(user, k)),
+};
+
+const URLUtils = {
+  getRoleBasePath: (role) => {
+    if (role === USER_ROLES.SUPER_ADMIN) return '/superadmin';
+    if (role === USER_ROLES.ADMIN) return '/admin';
+    if (role === USER_ROLES.STAFF) return '/staff';
+    return '/';
+  },
+};
+
+const IndustryUtils = {
+  isRestaurant: (industry) => industry?.toLowerCase() === INDUSTRIES.RESTAURANT.toLowerCase(),
+};
+
+// ============== NAVIGATION BUILDER ==============
+class NavigationBuilder {
+  static buildForSuperAdmin() {
+    return [
+      { href: '/superadmin/dashboard', label: 'Dashboard', icon: ICON_MAP.Dashboard },
+      { href: '/superadmin/plan', label: 'Plans', icon: ICON_MAP.Plans },
+      { href: '/superadmin/company', label: 'Companies', icon: ICON_MAP.Companies },
+      { href: '/superadmin/profile-setting', label: 'Settings', icon: ICON_MAP.Settings },
+      { href: '/superadmin/payment-gateway-config', label: 'Payment GateWay Configuration', icon: ICON_MAP.Settings },
+    ];
+  }
+
+  static buildForAdmin(user) {
+    const basePath = URLUtils.getRoleBasePath(USER_ROLES.ADMIN);
+    const isRestaurant = IndustryUtils.isRestaurant(user?.industryName);
+
+    const compulsoryLinks = [
+      { href: `${basePath}/dashboard`, label: 'Dashboard', icon: ICON_MAP.Dashboard },
+      { href: `${basePath}/product`, label: 'Product', icon: ICON_MAP.Product },
+      { href: `${basePath}/orders`, label: 'Orders', icon: ICON_MAP.Orders },
+      { href: `${basePath}/billing`, label: 'Billing', icon: ICON_MAP.Billing },
+      { href: `${basePath}/profile-setting`, label: 'Profile Setting', icon: ICON_MAP['Profile Setting'] },
+      { href: `${basePath}/setting`, label: 'Company Profile', icon: ICON_MAP.Settings },
+      { href: `${basePath}/branch`, label: 'Branch Management', icon: ICON_MAP.Settings },
+    ];
+
+    const optionalLinks = [
+      { href: `${basePath}/staff`, label: 'Staff', icon: ICON_MAP.Staff, extraFeature: 'Staff' },
+      { href: `${basePath}/permissions`, label: 'Permission', icon: ICON_MAP.Permission, extraFeature: 'Permissions' },
+      { href: `${basePath}/category`, label: 'Category', icon: ICON_MAP.Product, extraFeature: 'Category' },
+      { href: `${basePath}/vendors`, label: 'Vendors', icon: ICON_MAP.Vendors, extraFeature: 'Vendors' },
+      { href: `${basePath}/attendance-devices`, label: 'Attendance Devices Setting', icon: ICON_MAP.Attendance, extraFeature: 'Attendance Device' },
+      { href: `${basePath}/attendance`, label: 'Manage Attendance', icon: ICON_MAP.Attendance, extraFeature: 'Manage Attendance' },
+      { href: `${basePath}/staff-salaries`, label: 'Staff Salaries', icon: ICON_MAP['Staff Salaries'], extraFeature: 'Staff Salary' },
+      { href: `${basePath}/couriers`, label: 'Couriers & Shipment', icon: ICON_MAP.Couriers, extraFeature: 'Courier & Shipment' },
+    ];
+
+    const restaurantLinks = isRestaurant ? [
+      { href: `${basePath}/tables`, label: 'Tables', icon: ICON_MAP.Tables, extraFeature: 'Tables' },
+      { href: `${basePath}/ingredient`, label: 'Ingredient', icon: ICON_MAP.Ingredient },
+    ] : [];
+
+    return [...compulsoryLinks, ...optionalLinks, ...restaurantLinks];
+  }
+
+  static buildForStaff(user) {
+    const basePath = URLUtils.getRoleBasePath(USER_ROLES.STAFF);
+    const isRestaurant = IndustryUtils.isRestaurant(user?.industryName);
+
+    const alwaysShowLinks = [
+      { href: `${basePath}/dashboard`, label: 'Dashboard', icon: ICON_MAP.Dashboard, alwaysShow: true },
+      { href: `${basePath}/profile-setting`, label: 'Settings', icon: ICON_MAP.Settings, alwaysShow: true },
+      { href: `${basePath}/branch`, label: 'Branches', icon: ICON_MAP.Settings, alwaysShow: true },
+    ];
+
+    const permissionBasedLinks = [];
+
+    // Product permissions
+    if (PermissionUtils.hasAny(user, ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct'])) {
+      permissionBasedLinks.push({ href: `${basePath}/product`, label: 'Product', icon: ICON_MAP.Product });
+    }
+
+    // Billing permissions
+    if (PermissionUtils.hasAny(user, ['viewBilling', 'addBilling', 'editBilling', 'deleteBilling', 'createPayment'])) {
+      permissionBasedLinks.push({ href: `${basePath}/billing`, label: 'Billing', icon: ICON_MAP.Billing });
+    }
+
+    // Order permissions
+    if (PermissionUtils.hasAny(user, ['createOrder', 'viewOrder', 'updateOrderStatus'])) {
+      permissionBasedLinks.push({ href: `${basePath}/orders`, label: 'Orders', icon: ICON_MAP.Orders });
+    }
+
+    // Vendor permissions
+    if (PermissionUtils.hasAny(user, ['createVendors', 'updateVendors', 'deleteVendors', 'viewVendors'])) {
+      permissionBasedLinks.push({ href: `${basePath}/vendors`, label: 'Vendors', icon: ICON_MAP.Vendors });
+    }
+
+    // Category permissions
+    if (PermissionUtils.hasAny(user, ['createCategory', 'viewCategory', 'updateCategory', 'deleteCategory'])) {
+      permissionBasedLinks.push({ href: `${basePath}/category`, label: 'Category', icon: ICON_MAP.Product });
+    }
+
+    // Staff management permissions
+    if (PermissionUtils.hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])) {
+      permissionBasedLinks.push({ href: `${basePath}/staff`, label: 'Staff', icon: ICON_MAP.Staff });
+    }
+
+    // Salary/Payment permissions
+    if (PermissionUtils.hasAny(user, ['createPayment', 'viewAllStaffSalaries', 'updateSalary', 'deletePayment', 'staffSummary', 'viewActiveLog', 'viewCompanySummary'])) {
+      permissionBasedLinks.push({ href: `${basePath}/staff-salaries`, label: 'Staff Salaries', icon: ICON_MAP['Staff Salaries'] });
+    }
+
+    // Attendance permissions
+    if (PermissionUtils.hasAny(user, ['viewActiveLog'])) {
+      permissionBasedLinks.push({ href: `${basePath}/attendance`, label: 'Manage Attendance', icon: ICON_MAP.Attendance });
+    }
+
+    // Courier permissions
+    if (PermissionUtils.hasAny(user, ['createCourier', 'viewCourier', 'updateCourier', 'deleteCourier'])) {
+      permissionBasedLinks.push({ href: `${basePath}/couriers`, label: 'Couriers & Shipment', icon: ICON_MAP.Couriers });
+    }
+
+    // Restaurant-specific permissions for staff
+    if (isRestaurant) {
+      // Table permissions
+      if (PermissionUtils.hasAny(user, ['manageTables'])) {
+        permissionBasedLinks.push({ href: `${basePath}/tables`, label: 'Tables', icon: ICON_MAP.Tables });
+      }
+
+      // Ingredient permissions
+      if (PermissionUtils.hasAny(user, ['createProduct', 'updateProduct', 'deleteProduct', 'viewProduct'])) {
+        permissionBasedLinks.push({ href: `${basePath}/ingredient`, label: 'Ingredient', icon: ICON_MAP.Ingredient });
+      }
+    }
+
+    return [...alwaysShowLinks, ...permissionBasedLinks];
+  }
+
+  static buildForUser() {
+    return [
+      { href: '#', label: 'Dashboard', icon: ICON_MAP.Dashboard },
+      { href: '#', label: 'Orders', icon: ICON_MAP.Orders },
+      { href: '#', label: 'Settings', icon: ICON_MAP.Settings },
+    ];
+  }
+}
+
+// ============== COMPONENTS ==============
+const SidebarFooter = React.memo(({ userName, userRole }) => {
   return (
     <div className="border-t border-sidebar-border/50 bg-sidebar/95 px-4 py-3 backdrop-blur-lg">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl text-primary flex items-center justify-center">
-          <User className="h-5 w-5 text-secoundry" />
+          <User className="h-5 w-5 text-secondary" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-sidebar-foreground">
@@ -81,480 +272,232 @@ function SidebarFooter({ userName, userRole }) {
       </div>
     </div>
   );
-}
+});
 
-// ---- Permission helpers ----
-const hasPerm = (user, key) => Boolean(user?.permissions?.[key]);
-const hasAny = (user, keys = []) => keys.some((k) => hasPerm(user, k));
+SidebarFooter.displayName = 'SidebarFooter';
 
-function buildStaffLinks(user) {
-  const subRoleLower = user?.subRole?.toLowerCase() || '';
-  const staffBase = subRoleLower
-    ? `/staff/${encodeURIComponent(subRoleLower)}`
-    : '/staff';
+const NavigationLink = React.memo(({ href, label, icon: Icon, isActive, onHover }) => {
+  return (
+    <li>
+      <Link
+        href={href}
+        className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${isActive
+          ? 'bg-linear-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
+          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
+          }`}
+        aria-current={isActive ? 'page' : undefined}
+        onMouseEnter={() => onHover(label)}
+        onMouseLeave={() => onHover(null)}
+      >
+        <div className="relative">
+          <Icon
+            className={`transition-transform duration-200 ${onHover === label ? 'scale-110' : 'scale-100'} mr-3 h-5 w-5`}
+          />
+        </div>
+        <span className="transition-all duration-200 truncate">{label}</span>
+      </Link>
+    </li>
+  );
+});
 
-  const links = [
-    {
-      href: `${staffBase}/dashboard`,
-      label: 'Dashboard',
-      icon: iconMap['Dashboard'],
-      alwaysShow: true,
-    },
-    {
-      href: `${staffBase}/profile-setting`,
-      label: 'Settings',
-      icon: iconMap['Settings'],
-      alwaysShow: true,
-    },
-  ];
+NavigationLink.displayName = 'NavigationLink';
 
-  if (
-    hasAny(user, [
-      'createProduct',
-      'updateProduct',
-      'deleteProduct',
-      'viewProduct',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/product`,
-      label: 'Product',
-      icon: iconMap['Product'],
-    });
-  }
+const GroupHeader = React.memo(({ title, icon: Icon, isOpen, onClick }) => {
+  return (
+    <li className="sticky top-0 z-10 bg-sidebar/95 backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={onClick}
+        className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200"
+      >
+        <div className="flex items-center min-w-0">
+          <Icon className="h-5 w-5 mr-3 shrink-0" />
+          <span className="truncate">{title}</span>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4 opacity-80 shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 opacity-80 shrink-0" />
+        )}
+      </button>
+    </li>
+  );
+});
 
-  if (
-    hasAny(user, [
-      'viewBilling',
-      'addBilling',
-      'editBilling',
-      'deleteBilling',
-      'createPayment',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/billing`,
-      label: 'Billing',
-      icon: iconMap['Billing'],
-    });
-  }
+GroupHeader.displayName = 'GroupHeader';
 
-  if (hasAny(user, ['createOrder', 'viewOrder', 'updateOrderStatus'])) {
-    links.push({
-      href: `${staffBase}/orders`,
-      label: 'Orders',
-      icon: iconMap['Orders'],
-    });
-  }
+const NavigationGroup = React.memo(({
+  groupKey,
+  title,
+  icon,
+  items,
+  openGroups,
+  onToggleGroup,
+  isActive
+}) => {
+  if (items.length === 0) return null;
 
-  if (hasAny(user, ['managePlans'])) {
-    links.push({
-      href: `${staffBase}/plans`,
-      label: 'Plans',
-      icon: iconMap['Plans'],
-    });
-  }
+  return (
+    <>
+      <GroupHeader
+        title={title}
+        icon={icon}
+        isOpen={openGroups[groupKey]}
+        onClick={() => onToggleGroup(groupKey)}
+      />
+      {openGroups[groupKey] && (
+        <ul className="space-y-1 mt-1 ml-4 pl-2">
+          {items.map((item) => (
+            <NavigationLink
+              key={`${groupKey}-${item.label}`}
+              {...item}
+              isActive={isActive(item.href)}
+              onHover={() => { }}
+            />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+});
 
-  if (
-    hasAny(user, [
-      'createVendors',
-      'updateVendors',
-      'deleteVendors',
-      'viewVendors',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/vendors`,
-      label: 'Vendors',
-      icon: iconMap['Vendors'],
-    });
-  }
+NavigationGroup.displayName = 'NavigationGroup';
 
-  if (hasAny(user, ['manageTables'])) {
-    links.push({
-      href: `${staffBase}/tables`,
-      label: 'Tables',
-      icon: iconMap['Tables'],
-    });
-  }
+const LoadingSpinner = () => (
+  <div className="flex flex-1 items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+      <p className="text-sidebar-accent-foreground/70 text-sm">Loading...</p>
+    </div>
+  </div>
+);
 
-  if (hasAny(user, ['viewReports'])) {
-    links.push({
-      href: `${staffBase}/reports`,
-      label: 'Reports',
-      icon: iconMap['Reports'],
-    });
-  }
-
-  if (
-    hasAny(user, ['viewallstaff', 'staffCreate', 'staffUpdate', 'staffDelete'])
-  ) {
-    links.push({
-      href: `${staffBase}/staff`,
-      label: 'Staff',
-      icon: iconMap['Staff'],
-    });
-  }
-
-  if (
-    hasAny(user, [
-      'createPayment',
-      'viewAllStaffSalaries',
-      'updateSalary',
-      'deletePayment',
-      'staffSummary',
-      'viewActiveLog',
-      'viewCompanySummary',
-    ])
-  ) {
-    links.push({
-      href: `${staffBase}/staff-salaries`,
-      label: 'Payments',
-      icon: iconMap['Staff Salaries'],
-    });
-  }
-
-  return links;
-}
-
+// ============== MAIN SIDEBAR COMPONENT ==============
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [hoveredItem, setHoveredItem] = useState(null);
-
-  const { data: companyRes, isLoading, isError } = useGetCompanyQuery();
-  const companyName = companyRes?.data?.name || 'Your Company';
-
-  // Groups expanded by default for better UX
   const [openGroups, setOpenGroups] = useState({
-    inventory: true,
-    staff: true,
-    company: true,
+    [NAVIGATION_GROUPS.INVENTORY]: true,
+    [NAVIGATION_GROUPS.STAFF]: true,
+    [NAVIGATION_GROUPS.COMPANY]: true,
+    [NAVIGATION_GROUPS.RESTAURANT]: true,
   });
 
+  const { data: companyRes } = useGetCompanyQuery();
+  const companyName = companyRes?.data?.name || 'Your Company';
   const authUser = useSelector((state) => state.auth.user);
-  const industry = authUser?.industryName;
-
   const isSettingsMode = pathname?.startsWith('/settings');
 
-  const isActive = (href) =>
-    pathname === href || pathname.startsWith(`${href}/`);
-
-  const toggleGroup = (key) =>
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  // Get user data from Redux store on component mount
+  // Sync user from Redux to local state
   useEffect(() => {
     if (authUser) {
       setUser(authUser);
     }
-    setLoading(false);
   }, [authUser]);
 
-  const roleBasedLinks = useMemo(() => {
-    const compulsoryAdminLinks = [
-      {
-        href: '/admin/dashboard',
-        label: 'Dashboard',
-        icon: iconMap['Dashboard'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/product',
-        label: 'Product',
-        icon: iconMap['Product'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/orders',
-        label: 'Orders',
-        icon: iconMap['Orders'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/billing',
-        label: 'Billing',
-        icon: iconMap['Billing'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/profile-setting',
-        label: 'Setting',
-        icon: iconMap['Profile Setting'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/setting',
-        label: 'Company Profile',
-        icon: iconMap['Settings'],
-        compulsory: true,
-      },
-      {
-        href: '/admin/branch',
-        label: 'Branch Management',
-        icon: iconMap['Settings'],
-        compulsory: true,
-      },
-      ...(industry?.toLowerCase() === 'restaurant'
-        ? [
-            {
-              href: '/admin/ingredient',
-              label: 'Ingredient',
-              icon: iconMap['Ingredient'],
-              compulsory: true,
-            },
-          ]
-        : []),
-    ];
+  // Navigation helpers
+  const isActive = useCallback((href) =>
+    pathname === href || pathname.startsWith(`${href}/`),
+    [pathname]
+  );
 
-    const optionalAdminLinks = [
-      {
-        href: '/admin/staff',
-        label: 'Staff',
-        icon: iconMap['Staff'],
-        extraFeature: 'Staff',
-      },
-      {
-        href: '/admin/permissions',
-        label: 'Permission',
-        icon: iconMap['Permission'],
-        extraFeature: 'Permissions',
-      },
-      {
-        href: '/admin/category',
-        label: 'Category',
-        icon: iconMap['Product'],
-        extraFeature: 'Category',
-      },
-      {
-        href: '/admin/vendors',
-        label: 'Vendors',
-        icon: iconMap['Vendors'],
-        extraFeature: 'Vendors',
-      },
-      ...(industry?.toLowerCase() === 'restaurant'
-        ? [
-            {
-              href: '/admin/tables',
-              label: 'Tables',
-              icon: iconMap['Tables'],
-              compulsory: true,
-            },
-          ]
-        : []),
+  const toggleGroup = useCallback((key) =>
+    setOpenGroups(prev => ({ ...prev, [key]: !prev[key] })),
+    []
+  );
 
-      // {
-      //   href: '#',
-      //   label: 'Warehouse',
-      //   icon: iconMap['Warehouse'],
-      //   extraFeature: 'WareHouse',
-      // },
-      {
-        href: '/admin/attendance-devices',
-        label: 'Attendance Devices Setting',
-        icon: iconMap['Attendance'],
-        extraFeature: 'Attendance Device',
-      },
-      {
-        href: '/admin/attendance',
-        label: 'Manage Attendance',
-        icon: iconMap['Attendance'],
-        extraFeature: 'Manage Attendance',
-      },
-      {
-        href: '/admin/staff-salaries',
-        label: 'Staff Salaries',
-        icon: iconMap['Staff Salaries'],
-        extraFeature: 'Staff Salary',
-      },
-      {
-        href: '/admin/couriers',
-        label: 'Couriers & Shipment',
-        icon: iconMap['Couriers'],
-        extraFeature: 'Courier & Shipment',
-      },
-    ];
+  // Build navigation based on user role
+  const navigationLinks = useMemo(() => {
+    if (!user?.role) return [];
 
-    return {
-      superAdmin: [
-        {
-          href: '/superadmin/dashboard',
-          label: 'Dashboard',
-          icon: iconMap['Dashboard'],
-        },
-        { href: '/superadmin/plan', label: 'Plans', icon: iconMap['Plans'] },
-        {
-          href: '/superadmin/company',
-          label: 'Companies',
-          icon: iconMap['Companies'],
-        },
-        {
-          href: '/superadmin/profile-setting',
-          label: 'Settings',
-          icon: iconMap['Settings'],
-        },
-        {
-          href: '/superadmin/payment-gateway-config',
-          label: 'Payment GateWay Configuration',
-          icon: iconMap['Settings'],
-        },
-      ],
-      admin: [...compulsoryAdminLinks, ...optionalAdminLinks],
-      staff: buildStaffLinks(user),
-      user: [
-        { href: '#', label: 'Dashboard', icon: iconMap['Dashboard'] },
-        { href: '#', label: 'Orders', icon: iconMap['Orders'] },
-        { href: '#', label: 'Settings', icon: iconMap['Settings'] },
-      ],
-      guest: [],
-    };
-  }, [user, industry]);
+    switch (user.role.toLowerCase()) {
+      case USER_ROLES.SUPER_ADMIN:
+        return NavigationBuilder.buildForSuperAdmin();
 
-  const mainLinks = useMemo(() => {
-    if (loading || !user?.role) return roleBasedLinks.guest;
+      case USER_ROLES.ADMIN:
+        const adminLinks = NavigationBuilder.buildForAdmin(user);
+        return adminLinks.filter(link => {
+          if (link.compulsory) return true;
+          if (!link.extraFeature) return true;
+          return Array.isArray(user?.extraFeature) && user.extraFeature.includes(link.extraFeature);
+        });
 
-    let links = [];
-    if (user.role === 'superAdmin') {
-      links = roleBasedLinks.superAdmin;
-    } else if (roleBasedLinks[user.role]) {
-      links = roleBasedLinks[user.role].filter((link) => {
-        if (user.role === 'admin' && link.compulsory) {
-          return true;
-        }
+      case USER_ROLES.STAFF:
+        return NavigationBuilder.buildForStaff(user);
 
-        if (user.role === 'staff' && link.alwaysShow) {
-          return true;
-        }
-
-        if (user.role === 'admin' && link.extraFeature) {
-          return user?.extraFeature?.includes(link.extraFeature);
-        }
-
-        if (user.role === 'staff') {
-          return true;
-        }
-
-        return true;
-      });
+      default:
+        return [];
     }
+  }, [user]);
 
-    return links.length > 0 ? links : roleBasedLinks.guest;
-  }, [user, loading, roleBasedLinks]);
+  // Group navigation items
+  const groupedNavigation = useMemo(() => {
+    const groups = {};
+    const ungroupedLinks = [];
 
-  // --------- GROUPS (UI only) ---------
-  const inventoryLabels = [
-    'Product',
-    'Orders',
-    'Billing',
-    'Category',
-    // 'Warehouse',
-    'Vendors',
-    'Couriers & Shipment',
-  ];
+    // Initialize groups
+    Object.values(NAVIGATION_GROUPS).forEach(groupKey => {
+      groups[groupKey] = [];
+    });
 
-  const staffManagementLabels = [
-    'Staff',
-    'Staff Salaries',
-    'Permission',
-    'Manage Attendance',
-    'Attendance Devices Setting',
-  ];
+    // Categorize links
+    navigationLinks.forEach(link => {
+      let foundGroup = false;
 
-  const companyManagementLabels = ['Setting', 'Company Profile'];
+      Object.entries(GROUP_CONFIGS).forEach(([groupKey, config]) => {
+        if (config.labels.includes(link.label)) {
+          groups[groupKey].push(link);
+          foundGroup = true;
+        }
+      });
 
-  const groupedLabels = new Set([
-    ...inventoryLabels,
-    ...staffManagementLabels,
-    ...companyManagementLabels,
-  ]);
+      if (!foundGroup) {
+        ungroupedLinks.push(link);
+      }
+    });
 
-  // Top-level (non-grouped) links
-  const mainMenuLinks = useMemo(
-    () => mainLinks.filter((link) => !groupedLabels.has(link.label)),
-    [mainLinks]
+    return { groups, ungroupedLinks };
+  }, [navigationLinks]);
+
+  // Filter out empty groups
+  const nonEmptyGroups = useMemo(() =>
+    Object.entries(groupedNavigation.groups).filter(([_, items]) => items.length > 0),
+    [groupedNavigation.groups]
   );
 
-  const inventoryMenuItems = useMemo(
-    () => mainLinks.filter((link) => inventoryLabels.includes(link.label)),
-    [mainLinks]
-  );
+  // Handle back to main navigation
+  const handleBackToMain = useCallback(() => {
+    const mainRoute = navigationLinks[0]?.href || '/dashboard';
+    router.push(mainRoute);
+  }, [navigationLinks, router]);
 
-  const staffMenuItems = useMemo(
-    () =>
-      mainLinks.filter((link) => staffManagementLabels.includes(link.label)),
-    [mainLinks]
-  );
+  // Debug logging - MOVED BEFORE CONDITIONAL RETURN
+  useEffect(() => {
+    if (user) {
+      console.log('=== SIDEBAR DEBUG ===');
+      console.log('User Role:', user?.role);
+      console.log('User SubRole:', user?.subRole);
+      console.log('Navigation Links:', navigationLinks.map(l => l.label));
+      console.log('Grouped Items:', groupedNavigation);
+      console.log('===================');
+    }
+  }, [user, navigationLinks, groupedNavigation]);
 
-  const companyMenuItems = useMemo(
-    () =>
-      mainLinks.filter((link) => companyManagementLabels.includes(link.label)),
-    [mainLinks]
-  );
-
-  const renderLink = ({ href, label, icon: Icon, companyName }) => {
-    const active = isActive(href);
-    return (
-      <li key={label}>
-        <Link
-          href={href}
-          className={`group relative flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
-            active
-              ? 'bg-gradient-to-r from-primary/90 to-secondary-foreground/90 text-card font-bold border-l-4 border-secondary-foreground shadow-md shadow-secondary-foreground/10'
-              : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground border-l-4 border-transparent'
-          }`}
-          aria-current={active ? 'page' : undefined}
-          onMouseEnter={() => setHoveredItem(label)}
-          onMouseLeave={() => setHoveredItem(null)}
-        >
-          <div className="relative">
-            <Icon
-              className={`transition-transform duration-200 ${
-                hoveredItem === label ? 'scale-110' : 'scale-100'
-              } mr-3 h-5 w-5`}
-            />
-          </div>
-          <span className="transition-all duration-200 truncate">{label}</span>
-        </Link>
-      </li>
-    );
-  };
-
-  const renderGroupHeader = (key, title, Icon, isOpen, companyName) => {
-    return (
-      <li
-        key={`${key}-group-header`}
-        className="sticky top-0 z-10 bg-sidebar/95 backdrop-blur-sm"
-      >
-        <button
-          type="button"
-          onClick={() => toggleGroup(key)}
-          className="group flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-sidebar-foreground/90 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-all duration-200 "
-        >
-          <div className="flex items-center min-w-0">
-            <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
-            <span className="truncate">{title}</span>
-          </div>
-          {isOpen ? (
-            <ChevronUp className="h-4 w-4 opacity-80 flex-shrink-0" />
-          ) : (
-            <ChevronDown className="h-4 w-4 opacity-80 flex-shrink-0" />
-          )}
-        </button>
-      </li>
-    );
-  };
+  // Early return must be AFTER all hooks
+  if (!user) {
+    return <LoadingSpinner />;
+  }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col z-50">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-linear-to-b from-sidebar to-sidebar/95 backdrop-blur-xl shadow-xl border-r border-sidebar-border/30 flex flex-col z-50">
       {/* Header */}
       <div className="px-6 py-5 border-b border-sidebar-border/30 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold bg-primary bg-clip-text text-transparent truncate">
-              {/* {user?.toolName || 'AutoMotive'} */}
-              {companyName || 'SmartPOS'}
+              {companyName}
             </h1>
           </div>
         </div>
@@ -562,116 +505,62 @@ export default function Sidebar() {
 
       {/* Scrollable Navigation Area */}
       <div className="flex-1 flex flex-col min-h-0">
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-              <p className="text-sidebar-accent-foreground/70 text-sm">
-                Loading...
-              </p>
+        {isSettingsMode ? (
+          <div className="flex flex-1 flex-col">
+            <div className="px-3 py-4">
+              <button
+                onClick={handleBackToMain}
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-all duration-200 hover:gap-3"
+                aria-label="Back to Main"
+                title="Back to Main"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Back to Main</span>
+              </button>
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-h-0">
-            {!isSettingsMode ? (
-              <>
-                <nav className="flex-1 overflow-y-auto overflow-x-hidden">
-                  <ul className="space-y-1 p-3">
-                    {/* Non-grouped items (Dashboard, etc.) */}
-                    {mainMenuLinks.map(renderLink)}
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3">
+            <ul className="space-y-1">
+              {/* Non-grouped items */}
+              {groupedNavigation.ungroupedLinks.map((link) => (
+                <NavigationLink
+                  key={link.href}
+                  {...link}
+                  isActive={isActive(link.href)}
+                  onHover={setHoveredItem}
+                />
+              ))}
 
-                    {/* INVENTORY MANAGEMENT */}
-                    {inventoryMenuItems.length > 0 && (
-                      <>
-                        {renderGroupHeader(
-                          'inventory',
-                          'Inventory Management',
-                          BarChart,
-                          openGroups.inventory
-                        )}
-                        {openGroups.inventory && (
-                          <ul className="space-y-1 mt-1 ml-4  pl-2">
-                            {inventoryMenuItems.map((link) => renderLink(link))}
-                          </ul>
-                        )}
-                      </>
-                    )}
-
-                    {/* STAFF MANAGEMENT */}
-                    {staffMenuItems.length > 0 && (
-                      <>
-                        {renderGroupHeader(
-                          'staff',
-                          'Staff Management',
-                          CreditCard,
-                          openGroups.staff
-                        )}
-                        {openGroups.staff && (
-                          <ul className="space-y-1 mt-1 ml-4  pl-2">
-                            {staffMenuItems.map((link) => renderLink(link))}
-                          </ul>
-                        )}
-                      </>
-                    )}
-
-                    {/* COMPANY MANAGEMENT */}
-                    {companyMenuItems.length > 0 && (
-                      <>
-                        {renderGroupHeader(
-                          'company',
-                          'Company Management',
-                          Building,
-                          openGroups.company
-                        )}
-                        {openGroups.company && (
-                          <ul className="space-y-1 mt-1 ml-4 pl-2">
-                            {companyMenuItems.map((link) => renderLink(link))}
-                          </ul>
-                        )}
-                      </>
-                    )}
-                  </ul>
-                </nav>
-
-                {/* Footer - positioned at bottom */}
-                <div className="shrink-0">
-                  <SidebarFooter userName={user?.name} userRole={user?.role} />
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-1 flex-col">
-                <div className="px-3 py-4">
-                  <button
-                    onClick={() =>
-                      router.push(mainLinks[0]?.href || '/dashboard')
-                    }
-                    className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-all duration-200 hover:gap-3"
-                    aria-label="Back to Main"
-                    title="Back to Main"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
-                    <span>Back to Main</span>
-                  </button>
-                </div>
-                <div className="shrink-0 mt-auto">
-                  <SidebarFooter userName={user?.name} userRole={user?.role} />
-                </div>
-              </div>
-            )}
-          </div>
+              {/* Grouped items */}
+              {nonEmptyGroups.map(([groupKey, items]) => {
+                const config = GROUP_CONFIGS[groupKey];
+                return (
+                  <NavigationGroup
+                    key={groupKey}
+                    groupKey={groupKey}
+                    title={config.title}
+                    icon={config.icon}
+                    items={items}
+                    openGroups={openGroups}
+                    onToggleGroup={toggleGroup}
+                    isActive={isActive}
+                  />
+                );
+              })}
+            </ul>
+          </nav>
         )}
+
+        {/* Footer */}
+        <div className="shrink-0">
+          <SidebarFooter
+            userName={user?.name}
+            userRole={user?.subRole || user?.role}
+          />
+        </div>
       </div>
     </aside>
   );

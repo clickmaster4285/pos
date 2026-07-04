@@ -168,7 +168,7 @@ export default function RenderField({
             <Textarea
               {...commonProps}
               value={typeof value === 'string' ? value : ''}
-              className="min-h-[180px] rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
+              className="min-h-45 rounded-lg border border-input bg-background px-4 py-3 text-sm resize-y focus:ring-2 focus:ring-primary/30 transition-all duration-200"
             />
             <div className="absolute bottom-3 right-3 px-2 py-1 bg-muted/80 rounded text-xs text-muted-foreground">
               {typeof value === 'string' ? value.length : 0} characters
@@ -224,7 +224,7 @@ export default function RenderField({
               {/* Custom button */}
               <label
                 htmlFor={id}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary/90 to-secondary-foreground/90 px-4 py-2 text-sm font-semibold text-card hover:bg-secondary-foreground/90 transition-colors duration-200 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-primary/90 to-secondary-foreground/90 px-4 py-2 text-sm font-semibold text-card hover:bg-secondary-foreground/90 transition-colors duration-200 cursor-pointer"
               >
                 <Upload className="h-4 w-4" />
                 Upload File

@@ -5,6 +5,7 @@ import { ToastContainer } from '@/components/notify/ToastContainer';
 import StoreProvider from '@/store/provider';
 import SecureAuthProvider from '@/components/auth/SecureAuthProvider';
 import SocketProvider from '@/components/realtime/SocketProvider';
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({
@@ -23,10 +24,10 @@ export default function RootLayout({ children }) {
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased `}>
         <StoreProvider>
           <SecureAuthProvider>
-            <SocketProvider>
+            {/* <SocketProvider> */}
               <main>{children}</main>
               <ToastContainer />
-            </SocketProvider>
+            {/* </SocketProvider> */}
           </SecureAuthProvider>
         </StoreProvider>
       </body>

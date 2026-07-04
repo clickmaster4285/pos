@@ -89,7 +89,7 @@ export default function PaymentGateway({ initialPlanId = '' }) {
   const selectedPlanData = plans.find(p => p._id === selectedPlan);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12">
+    <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 py-12">
       <div className="container mx-auto px-6 max-w-5xl">
 
         {/* Full Plan Selection View */}

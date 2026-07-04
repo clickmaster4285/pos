@@ -1,8 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL
-).replace(/\/$/, '');
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const paymentGatewayApi = createApi({
   reducerPath: 'paymentGatewayApi',
@@ -43,7 +41,7 @@ export const paymentGatewayApi = createApi({
     }),
     confirmAndUpgradePlan: builder.mutation({
       query: (body) => {
-      
+
         return {
           url: '/strip/upgrade-plan',
           method: 'POST',
@@ -54,4 +52,4 @@ export const paymentGatewayApi = createApi({
   }),
 });
 
-export const { useCreatePaymentIntentMutation, useStripConfigurationMutation, useGetStripPublishKeyQuery ,useConfirmAndUpgradePlanMutation} = paymentGatewayApi;
+export const { useCreatePaymentIntentMutation, useStripConfigurationMutation, useGetStripPublishKeyQuery, useConfirmAndUpgradePlanMutation } = paymentGatewayApi;

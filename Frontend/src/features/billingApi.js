@@ -65,9 +65,6 @@ export const billsApi = createApi({
 
     updateBillStatus: builder.mutation({
       query: ({ billId, notes = '', refundItems = [] }) => {
-   
-        console.log('billId:', billId, 'refundItems:', refundItems);
-
         return {
           url: `/update-bills-status/${encodeURIComponent(String(billId))}`,
           method: 'PATCH',

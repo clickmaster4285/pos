@@ -94,7 +94,7 @@ export default function DetailsStep({
             required
             disabled={isLoading}
           />
-       
+
           <InputField
             label="Admin Email"
             type="email"
@@ -102,7 +102,7 @@ export default function DetailsStep({
             onChange={(e) => {
               if (readOnlyGoogle === false) {
                 setFormData({ ...formData, adminEmail: e.target.value });
-              }else{
+              } else {
                 undefined
               }
             }}
@@ -148,7 +148,7 @@ export default function DetailsStep({
         whileTap={{ scale: 0.98 }}
         type="submit"
         disabled={isLoading}
-        className="w-full h-14 font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden group"
+        className="w-full h-14 font-bold text-lg bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl shadow-blue-500/25 transition-all duration-200 rounded-xl text-white relative overflow-hidden group"
       >
         {isLoading ? (
           <>
@@ -158,7 +158,7 @@ export default function DetailsStep({
         ) : (
           <>
             Create Account
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -skew-x-12 translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           </>
         )}
       </motion.button>
@@ -175,9 +175,8 @@ function InputField({ label, type = "text", ...props }) {
       <motion.input
         whileFocus={{ scale: 1.02 }}
         type={type}
-        className={`w-full h-12 px-4 bg-white/50 border border-gray-200 rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50 ${
-          props.readOnly ? "bg-gray-50 text-gray-600 cursor-not-allowed" : ""
-        }`}
+        className={`w-full h-12 px-4 bg-white/50 border border-gray-200 rounded-xl transition-all duration-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50 ${props.readOnly ? "bg-gray-50 text-gray-600 cursor-not-allowed" : ""
+          }`}
         {...props}
       />
     </div>

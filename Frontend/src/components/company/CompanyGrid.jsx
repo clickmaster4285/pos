@@ -67,7 +67,7 @@ export function CompanyGrid({
     e.stopPropagation();
     try {
       const response = await exportCompanyData(companyId).unwrap();
-      
+
       const blob = new Blob([response], { type: 'application/zip' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -87,7 +87,7 @@ export function CompanyGrid({
   const handleCompanyImport = async (companyId, file) => {
     const formData = new FormData();
     formData.append('backupFile', file);
-    
+
     try {
       const result = await importCompanyData({ companyId, formData }).unwrap();
       alert(`Import successful! ${result.message}`);
@@ -108,7 +108,7 @@ export function CompanyGrid({
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     const companyId = e.target.getAttribute('data-company-id');
-    
+
     if (file && companyId) {
       if (!file.name.endsWith('.zip')) {
         alert('Please select a ZIP file');
@@ -116,7 +116,7 @@ export function CompanyGrid({
       }
       handleCompanyImport(companyId, file);
     }
-    
+
     e.target.value = '';
   };
 
@@ -130,7 +130,7 @@ export function CompanyGrid({
           No companies found
         </h3>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-          {showUnverified 
+          {showUnverified
             ? "All company applications have been processed."
             : "No companies match your current filters."
           }
@@ -148,7 +148,7 @@ export function CompanyGrid({
         onChange={handleFileSelect}
         className="hidden"
       />
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
         {items.map((company) => {
           const id = getId(company);
@@ -173,7 +173,7 @@ export function CompanyGrid({
               {/* Header */}
               <div className="p-5 pb-4 border-b border-border/50">
                 <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
+                  <div className="h-12 w-12 rounded-xl bg-linear-to-br from-primary/20 to-primary/10 text-primary grid place-items-center shrink-0">
                     <Building2 className="h-6 w-6" />
                   </div>
 
@@ -232,7 +232,7 @@ export function CompanyGrid({
                             <DropdownMenuContent align="end" className="w-56">
                               <DropdownMenuLabel>Company Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              
+
                               <HoverCard openDelay={100} closeDelay={100}>
                                 <HoverCardTrigger asChild>
                                   <DropdownMenuItem className="cursor-default">
@@ -263,8 +263,8 @@ export function CompanyGrid({
                                       {isPending
                                         ? 'Updating…'
                                         : company.isActive
-                                        ? 'Deactivate'
-                                        : 'Activate'}
+                                          ? 'Deactivate'
+                                          : 'Activate'}
                                     </Button>
                                   </div>
                                 </HoverCardContent>
@@ -289,7 +289,7 @@ export function CompanyGrid({
                               </DropdownMenuItem>
 
                               {/* ZIP Backup */}
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={(e) => handleCompanyExport(companyId, company.name, e)}
                                 disabled={isExporting}
                                 className="flex items-center gap-2"
@@ -299,7 +299,7 @@ export function CompanyGrid({
                               </DropdownMenuItem>
 
                               {/* Restore Backup */}
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={(e) => triggerFileInput(companyId, e)}
                                 disabled={isImporting}
                                 className="flex items-center gap-2"
@@ -373,7 +373,7 @@ export function CompanyGrid({
                       <span className="font-medium text-foreground">{planCount} plans</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-3 w-3" />
                     {fmtDate(company.createdAt)}

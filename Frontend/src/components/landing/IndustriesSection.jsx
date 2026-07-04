@@ -38,38 +38,71 @@ export const IndustriesSection = () => {
   };
 
   return (
-    <section id="industries" className="py-16 sm:py-20 lg:py-24 scroll-mt-20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.03] to-transparent pointer-events-none" />
+    <>
+      <section id="industries" className="py-20 bg-linear-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <Badge variant="outline" className="mb-4 text-primary border-primary/30">
+              Industry Solutions
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-linear-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Built for Your Industry
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Tailored solutions for every business type. Click any industry to explore specialized features designed for your success.
+            </p>
+          </motion.div>
 
-      <LandingContainer className="relative">
-        <SectionHeader
-          badge="Multi-Industry SaaS"
-          title="Purpose-Built for Your Vertical"
-          description="Select your industry at sign-up and get pre-configured workflows, fields, and reports — no custom development required."
-        />
-
-        {/* Industry selector — scroll on mobile */}
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap sm:justify-center mb-8 sm:mb-10 scrollbar-hide">
-          {Industries.map((name) => {
-            const cfg = INDUSTRY_CONFIG[name];
-            const TabIcon = INDUSTRY_ICONS[name];
-            const isActive = active === name;
-            return (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setActive(name)}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-300 border ${
-                  isActive
-                    ? `bg-gradient-to-r ${cfg.gradient} text-white border-transparent shadow-lg scale-[1.02]`
-                    : "bg-card/80 border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                }`}
-              >
-                <TabIcon className="h-4 w-4 shrink-0" />
-                {name}
-              </button>
-            );
-          })}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <AnimatePresence>
+              {industries.map((industry, index) => (
+                <motion.div
+                  key={industry.title}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -5, scale: 1.02 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                >
+                  <Card
+                    className="h-full cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 bg-background/50 backdrop-blur-sm overflow-hidden group"
+                    onClick={() => setSelectedIndustry(industry)}
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`p-3 rounded-2xl ${industry.bgColor} group-hover:scale-110 transition-transform duration-300`}>
+                          <industry.icon className={`h-8 w-8 ${industry.color}`} />
+                        </div>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+                      </div>
+                      <CardTitle className="text-2xl font-bold group-hover:text-primary transition-colors duration-300">
+                        {industry.title}
+                      </CardTitle>
+                      <p className="text-muted-foreground mt-2 leading-relaxed">
+                        {industry.description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {industry.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-center gap-3 text-sm">
+                            <Check className="h-4 w-4 text-primary shrink-0" />
+                            <span className="text-muted-foreground">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Featured industry panel */}
@@ -102,66 +135,24 @@ export const IndustriesSection = () => {
                   <div className="text-4xl sm:text-5xl font-bold">{config.stat.value}</div>
                   <div className="text-sm text-white/80 mt-1">{config.stat.label}</div>
                 </div>
-              </div>
+              </DialogHeader>
 
-              {/* Right content */}
-              <div className="lg:col-span-3 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+              <div className="space-y-6">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
-                    <Sparkles className="h-3 w-3" />
-                    Industry Template Included
-                  </div>
-                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8">
-                    {config.description}
-                  </p>
-
-                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                    <div>
-                      <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground mb-3">
-                        Key Features
-                      </h4>
-                      <ul className="space-y-2.5">
-                        {config.features.map((f) => (
-                          <li key={f} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                            <Check className={`h-4 w-4 shrink-0 ${config.accent}`} />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground mb-3">
-                        SaaS Modules
-                      </h4>
-                      <ul className="space-y-2.5">
-                        {config.modules.map((m) => (
-                          <li key={m} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-gradient-to-r ${config.gradient}`} />
-                            {m}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                  <h4 className="text-lg font-semibold mb-3 text-primary">Key Features</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedIndustry.detailedFeatures.map((feature, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    size="lg"
-                    className={`h-12 bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white border-0 shadow-lg w-full sm:w-auto group`}
-                    onClick={goToSignUp}
-                  >
-                    Get Started for {active}
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-12 w-full sm:w-auto"
-                    onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
-                  >
-                    View Plans
-                  </Button>
+                <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                  <h4 className="text-lg font-semibold mb-2 text-primary">Business Benefits</h4>
+                  <p className="text-muted-foreground">{selectedIndustry.benefits}</p>
                 </div>
               </div>
             </div>

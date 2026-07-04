@@ -31,8 +31,8 @@ function mapCompany(c) {
     usersCount: Array.isArray(c?.gain?.staff)
       ? c.gain.staff.length
       : typeof c.usersCount === 'number'
-      ? c.usersCount
-      : 0,
+        ? c.usersCount
+        : 0,
     createdAt: c.createdAt || new Date().toISOString(),
     ownerDetails: c.ownerDetails || {},
     invoiceSettings: c.invoiceSettings || {},
@@ -68,27 +68,26 @@ export default function CompaniesPage() {
     refetch,
   } = useGetAllCompaniesQuery();
 
-console.log("the isError: ", isError)
   const [toggleStatus, { isLoading: isToggling }] = useToggleCompanyStatusMutation();
   const [verifyCompany, { isLoading: isVerifying }] = useVerifyCompanyAdminMutation();
   const [pendingId, setPendingId] = useState(null);
 
-const { allCompanies, verifiedCompanies, unverifiedCompanies } = useMemo(() => {
-  const mapped =
-    Array.isArray(companies.data) && companies.data.length
-      ? companies.data.map(mapCompany)
-      : [];
+  const { allCompanies, verifiedCompanies, unverifiedCompanies } = useMemo(() => {
+    const mapped =
+      Array.isArray(companies.data) && companies.data.length
+        ? companies.data.map(mapCompany)
+        : [];
 
-  return {
-    allCompanies: mapped,
-    verifiedCompanies: mapped.filter((c) => c.isActive),
-    unverifiedCompanies: mapped.filter((c) => !c.isActive),
-  };
-}, [companies]);
+    return {
+      allCompanies: mapped,
+      verifiedCompanies: mapped.filter((c) => c.isActive),
+      unverifiedCompanies: mapped.filter((c) => !c.isActive),
+    };
+  }, [companies]);
 
-// 👇 default: show ALL companies (active + inactive)
-// when showUnverified = true → only unverified
-const dataToUse = showUnverified ? unverifiedCompanies : allCompanies;
+  // 👇 default: show ALL companies (active + inactive)
+  // when showUnverified = true → only unverified
+  const dataToUse = showUnverified ? unverifiedCompanies : allCompanies;
 
 
   const filtered = useMemo(() => {
@@ -401,12 +400,8 @@ const dataToUse = showUnverified ? unverifiedCompanies : allCompanies;
           open={sheetOpen}
           onOpenChange={setSheetOpen}
           company={selectedCompany}
-          onEdit={(c) => {
-            console.log('Edit company:', c);
-          }}
-          onDelete={(c) => {
-            console.log('Delete company:', c);
-          }}
+          onEdit={(c) => { }}
+          onDelete={(c) => { }}
           onToggle={handleToggle}
           pending={pendingId === selectedCompany?.id}
         />

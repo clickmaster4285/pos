@@ -260,7 +260,7 @@ const SuperAdminUpdatePage = () => {
               <Shield className="h-10 w-10 text-primary" />
             </div>
             <div>
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              <h1 className="text-5xl font-bold bg-linear-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 Admin Settings
               </h1>
               <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
@@ -268,7 +268,7 @@ const SuperAdminUpdatePage = () => {
               </p>
             </div>
           </div>
-          
+
           {lastUpdated && (
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-2xl border border-border">
               <RefreshCw className="h-4 w-4 text-primary" />
@@ -301,7 +301,7 @@ const SuperAdminUpdatePage = () => {
                 <div className="relative inline-block">
                   <Avatar className="h-28 w-28 border-4 border-card shadow-2xl mx-auto">
                     <AvatarImage src={logoPreview || null} alt={settings.name || "Super Admin"} />
-                    <AvatarFallback className="text-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold">
+                    <AvatarFallback className="text-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground font-bold">
                       {getInitials(settings.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -491,7 +491,7 @@ const SuperAdminUpdatePage = () => {
                           </Label>
 
                           <div className="flex flex-col lg:flex-row items-center gap-8 p-8 rounded-3xl border border-border bg-card">
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               <div className="relative group">
                                 <div className="h-32 w-32 rounded-3xl border-2 border-dashed border-primary/20 overflow-hidden bg-muted/30 shadow-lg">
                                   {logoPreview ? (

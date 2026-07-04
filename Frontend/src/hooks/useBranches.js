@@ -3,14 +3,9 @@ import {
    useCreateBranchMutation,
    useUpdateBranchMutation,
    useDeleteBranchMutation,
-   useAddManagerMutation,
-   useRemoveManagerMutation,
-   useUpdateBranchStatsMutation,
-   useLazyGetCompanyBranchesQuery,
+   useLazyGetBranchesQuery,
    useLazyGetBranchByIdQuery,
-   useLazyFindNearbyBranchesQuery,
    useLazyGetActiveBranchesQuery,
-   useLazyGetBranchesByManagerQuery,
    useLazyValidateBranchCodeQuery,
 } from '../features/branchesApi';
 
@@ -19,15 +14,9 @@ export const useBranchOperations = () => {
    const [updateBranch, updateBranchStatus] = useUpdateBranchMutation();
    const [deleteBranch, deleteBranchStatus] = useDeleteBranchMutation();
 
-   const [addManager, addManagerStatus] = useAddManagerMutation();
-   const [removeManager, removeManagerStatus] = useRemoveManagerMutation();
-   const [updateStats, updateStatsStatus] = useUpdateBranchStatsMutation();
-
-   const [fetchCompanyBranches] = useLazyGetCompanyBranchesQuery();
+   const [fetchBranches] = useLazyGetBranchesQuery();
    const [fetchBranchById] = useLazyGetBranchByIdQuery();
-   const [fetchNearbyBranches] = useLazyFindNearbyBranchesQuery();
    const [fetchActiveBranches] = useLazyGetActiveBranchesQuery();
-   const [fetchManagerBranches] = useLazyGetBranchesByManagerQuery();
    const [validateBranchCode] = useLazyValidateBranchCodeQuery();
 
    // Create branch with validation
@@ -36,11 +25,11 @@ export const useBranchOperations = () => {
          // Validate branch code uniqueness
          const { data: validationData } = await validateBranchCode({
             companyId: branchData.companyId,
-            branchCode: branchData.branchCode
+            branchCode: branchData.branchId // Changed from branchCode to branchId
          }).unwrap();
 
          if (!validationData?.isUnique) {
-            throw new Error('Branch code already exists');
+            throw new Error('Branch ID already exists');
          }
 
          // Create the branch
@@ -52,7 +41,7 @@ export const useBranchOperations = () => {
       }
    };
 
-   // Update branch with optimistic updates
+   // Update branch
    const updateBranchOptimistic = async ({ id, ...data }) => {
       try {
          const result = await updateBranch({ id, ...data }).unwrap();
@@ -78,86 +67,14 @@ export const useBranchOperations = () => {
       }
    };
 
-   // Add manager with validation
-   const addBranchManager = async (branchId, userId, role = 'manager') => {
+   // Fetch branches with error handling
+   const getBranches = async (filters = {}) => {
       try {
-         const result = await addManager({ id: branchId, userId, role }).unwrap();
-         return result;
-      } catch (error) {
-         console.error('Add manager error:', error);
-         throw error;
-      }
-   };
-
-   // Remove manager with confirmation
-   const removeBranchManager = async (branchId, userId, reason = '') => {
-      if (!window.confirm('Are you sure you want to remove this manager?')) {
-         return null;
-      }
-
-      try {
-         const result = await removeManager({ id: branchId, userId, reason }).unwrap();
-         return result;
-      } catch (error) {
-         console.error('Remove manager error:', error);
-         throw error;
-      }
-   };
-
-   // Fetch company branches with error handling
-   const getCompanyBranches = async (companyId, options = {}) => {
-      try {
-         const { data } = await fetchCompanyBranches({
-            companyId,
-            ...options
-         }).unwrap();
-
+         const { data } = await fetchBranches(filters).unwrap();
          return data || { data: [], pagination: {} };
       } catch (error) {
-         console.error('Fetch company branches error:', error);
+         console.error('Fetch branches error:', error);
          return { data: [], pagination: {}, error: error.message };
-      }
-   };
-
-   // Find nearby branches with location permission
-   const findNearbyBranches = async (coordinates, radius = 5) => {
-      try {
-         if (!coordinates?.lat || !coordinates?.lng) {
-            throw new Error('Coordinates are required');
-         }
-
-         const { data } = await fetchNearbyBranches({
-            lat: coordinates.lat,
-            lng: coordinates.lng,
-            radius
-         }).unwrap();
-
-         return data || [];
-      } catch (error) {
-         console.error('Find nearby branches error:', error);
-         return [];
-      }
-   };
-
-   // Get user's managed branches
-   const getManagedBranches = async (userId) => {
-      try {
-         const { data } = await fetchManagerBranches(userId).unwrap();
-         return data || [];
-      } catch (error) {
-         console.error('Get managed branches error:', error);
-         return [];
-      }
-   };
-
-   // Update branch statistics
-   const updateBranchStatistics = async (branchId, stats) => {
-      try {
-         const result = await updateStats({ id: branchId, ...stats }).unwrap();
-         return result;
-      } catch (error) {
-         console.error('Update branch statistics error:', error);
-         throw error;
       }
    };
 
@@ -176,19 +93,26 @@ export const useBranchOperations = () => {
       }
    };
 
+   // Restore branch
+   const restoreDeletedBranch = async (id) => {
+      try {
+         const result = await BranchController.restoreBranch(id);
+         return result;
+      } catch (error) {
+         console.error('Restore branch error:', error);
+         throw error;
+      }
+   };
+
    return {
-      // Mutations with status
+      // Mutations
       createBranch: createBranchWithValidation,
       updateBranch: updateBranchOptimistic,
       deleteBranch: softDeleteBranch,
-      addManager: addBranchManager,
-      removeManager: removeBranchManager,
-      updateStats: updateBranchStatistics,
+      restoreBranch: restoreDeletedBranch,
 
       // Queries
-      getCompanyBranches,
-      findNearbyBranches,
-      getManagedBranches,
+      getBranches,
       getBranchesForDropdown,
 
       // Status indicators
