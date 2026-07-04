@@ -39,17 +39,9 @@ const publicRoutes = [
   "/public/landing",
 ];
 
-// 👇 Add "/" to redirect automatically to /public/landing
 const isPublicRoute = useCallback(
   (path) => {
-    // If empty route, redirect to /public/landing
-    if (path === "/") {
-      if (typeof window !== "undefined") {
-        window.location.replace("/public/landing");
-      }
-      return true; // treat it as public
-    }
-
+    if (path === "/") return true;
     return publicRoutes.some(
       (route) => path === route || path.startsWith(route)
     );
@@ -122,7 +114,7 @@ const isPublicRoute = useCallback(
           case "user":
             return "/user/dashboard";
             default:
-        return "/public/landing";
+        return "/";
     }
   }, []);
 

@@ -284,3 +284,61 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Landing page design system */
+.landing-grid-pattern {
+  background-image:
+    linear-gradient(to right, oklch(0.5 0.1 264 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.5 0.1 264 / 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.landing-dot-pattern {
+  background-image: radial-gradient(oklch(0.5 0.1 264 / 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.landing-section-alt {
+  background: linear-gradient(
+    180deg,
+    oklch(0.97 0.01 264 / 0.5) 0%,
+    transparent 50%,
+    oklch(0.97 0.01 264 / 0.3) 100%
+  );
+}
+
+.dark .landing-section-alt {
+  background: linear-gradient(
+    180deg,
+    oklch(0.2 0.02 264 / 0.4) 0%,
+    transparent 50%,
+    oklch(0.2 0.02 264 / 0.2) 100%
+  );
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.landing-container {
+  width: 100%;
+  max-width: 100%;
+}

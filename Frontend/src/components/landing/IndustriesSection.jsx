@@ -1,218 +1,192 @@
-// components/landing/IndustriesSection.jsx
 "use client";
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Utensils, Shirt, Pill, Laptop, Store, Check, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Industries } from '@/utils/industryFields';
 
-const industryIcons = {
-  "Restaurant": Utensils,
-  "Fashion": Shirt,
-  "Pharmacy": Pill,
-  "Electronics": Laptop,
-  "General Shop": Store
-};
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { SectionHeader } from "./SectionHeader";
+import { LandingContainer } from "./LandingContainer";
+import { INDUSTRY_CONFIG } from "@/constants/landingContent";
+import { Industries } from "@/utils/industryFields";
+import {
+  Utensils,
+  Shirt,
+  Pill,
+  Laptop,
+  Store,
+  Check,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
-const industryColors = {
-  "Restaurant": { color: "text-orange-500", bgColor: "bg-orange-500/10" },
-  "Fashion": { color: "text-pink-500", bgColor: "bg-pink-500/10" },
-  "Pharmacy": { color: "text-green-500", bgColor: "bg-green-500/10" },
-  "Electronics": { color: "text-blue-500", bgColor: "bg-blue-500/10" },
-  "General Shop": { color: "text-purple-500", bgColor: "bg-purple-500/10" }
-};
-
-const industryDetails = {
-  "Restaurant": {
-    description: "Complete dining management with ingredients tracking",
-    features: ["Table Management", "Kitchen Display", "Ingredient Tracking", "Recipe Costing"],
-    detailedFeatures: [
-      "Table and order management with real-time updates",
-      "Kitchen Display System (KDS) for seamless kitchen operations",
-      "Ingredient-level inventory tracking and waste management",
-      "Recipe costing and menu engineering tools",
-      "Split bills and table transfers",
-      "Multiple payment methods and tips management"
-    ],
-    benefits: "Perfect for cafes, fine dining, fast food chains, and cloud kitchens. Reduce food waste by 30% and improve table turnover by 25%."
-  },
-  "Fashion": {
-    description: "Inventory & sales for clothing retail",
-    features: ["Size/Color Variants", "Seasonal Collections", "Style Categories", "Trend Analytics"],
-    detailedFeatures: [
-      "Multi-variant product management (size, color, style)",
-      "Seasonal collection tracking and planning",
-      "Barcode and SKU management for each variant",
-      "Style and trend analytics dashboard",
-      "Customer size preferences and purchase history"
-    ],
-    benefits: "Ideal for boutiques, fashion chains, and clothing stores. Increase sales by 40% with personalized customer insights."
-  },
-  "Pharmacy": {
-    description: "Prescription tracking & medical supplies",
-    features: ["Prescription Management", "Expiry Tracking", "Drug Interactions", "Insurance Claims"],
-    detailedFeatures: [
-      "Digital prescription management and verification",
-      "Automated expiry date tracking with alerts",
-      "Drug interaction warnings and contraindications",
-      "Insurance claim processing and verification",
-      "Controlled substance tracking and reporting"
-    ],
-    benefits: "Essential for pharmacies and medical stores. Ensure 100% regulatory compliance and reduce medication errors by 95%."
-  },
-  "Electronics": {
-    description: "Tech retail with warranty management",
-    features: ["Serial Number Tracking", "Warranty Management", "Repair Services", "Trade-in Support"],
-    detailedFeatures: [
-      "Serial number and IMEI tracking for each device",
-      "Automated warranty registration and tracking",
-      "Repair and service ticket management",
-      "Trade-in and buyback program support",
-      "Product specifications and comparison tools"
-    ],
-    benefits: "Perfect for electronics retailers and mobile shops. Increase customer satisfaction by 50%."
-  },
-  "General Shop": {
-    description: "Flexible POS for any retail business",
-    features: ["Multi-Category Support", "Barcode Scanning", "Quick Checkout", "Loyalty Programs"],
-    detailedFeatures: [
-      "Unlimited product categories and subcategories",
-      "Fast barcode scanning and product lookup",
-      "Quick checkout with keyboard shortcuts",
-      "Customer loyalty and rewards programs",
-      "Discount and promotion management"
-    ],
-    benefits: "Flexible solution for grocery stores, gift shops, convenience stores. Reduce checkout time by 60%."
-  }
+const INDUSTRY_ICONS = {
+  Restaurant: Utensils,
+  Fashion: Shirt,
+  Pharmacy: Pill,
+  Electronics: Laptop,
+  "General Shop": Store,
 };
 
 export const IndustriesSection = () => {
-  const [selectedIndustry, setSelectedIndustry] = useState(null);
-  const [industries, setIndustries] = useState([]);
+  const [active, setActive] = useState(Industries[0]);
+  const router = useRouter();
+  const config = INDUSTRY_CONFIG[active];
+  const Icon = INDUSTRY_ICONS[active];
 
-  useEffect(() => {
-    const loadedIndustries = Industries.map(industry => ({
-      ...industryDetails[industry],
-      title: industry,
-      icon: industryIcons[industry],
-      ...industryColors[industry]
-    }));
-    setIndustries(loadedIndustries);
-  }, []);
+  const goToSignUp = () => {
+    router.push(`/sign-up?step=2&industry=${encodeURIComponent(active)}`);
+  };
 
   return (
-    <>
-      <section id="industries" className="py-20 bg-gradient-to-b from-background to-muted/20">
-        <div className="container mx-auto px-4">
-          <motion.div 
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <Badge variant="outline" className="mb-4 text-primary border-primary/30">
-              Industry Solutions
-            </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Built for Your Industry
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Tailored solutions for every business type. Click any industry to explore specialized features designed for your success.
-            </p>
-          </motion.div>
+    <section id="industries" className="py-16 sm:py-20 lg:py-24 scroll-mt-20 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/[0.03] to-transparent pointer-events-none" />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <AnimatePresence>
-              {industries.map((industry, index) => (
-                <motion.div
-                  key={industry.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                >
-                  <Card 
-                    className="h-full cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 bg-background/50 backdrop-blur-sm overflow-hidden group"
-                    onClick={() => setSelectedIndustry(industry)}
-                  >
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`p-3 rounded-2xl ${industry.bgColor} group-hover:scale-110 transition-transform duration-300`}>
-                          <industry.icon className={`h-8 w-8 ${industry.color}`} />
-                        </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
-                      </div>
-                      <CardTitle className="text-2xl font-bold group-hover:text-primary transition-colors duration-300">
-                        {industry.title}
-                      </CardTitle>
-                      <p className="text-muted-foreground mt-2 leading-relaxed">
-                        {industry.description}
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {industry.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-center gap-3 text-sm">
-                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                            <span className="text-muted-foreground">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+      <LandingContainer className="relative">
+        <SectionHeader
+          badge="Multi-Industry SaaS"
+          title="Purpose-Built for Your Vertical"
+          description="Select your industry at sign-up and get pre-configured workflows, fields, and reports — no custom development required."
+        />
+
+        {/* Industry selector — scroll on mobile */}
+        <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap sm:justify-center mb-8 sm:mb-10 scrollbar-hide">
+          {Industries.map((name) => {
+            const cfg = INDUSTRY_CONFIG[name];
+            const TabIcon = INDUSTRY_ICONS[name];
+            const isActive = active === name;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setActive(name)}
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-sm font-medium whitespace-nowrap shrink-0 transition-all duration-300 border ${
+                  isActive
+                    ? `bg-gradient-to-r ${cfg.gradient} text-white border-transparent shadow-lg scale-[1.02]`
+                    : "bg-card/80 border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                }`}
+              >
+                <TabIcon className="h-4 w-4 shrink-0" />
+                {name}
+              </button>
+            );
+          })}
         </div>
-      </section>
 
-      <Dialog open={!!selectedIndustry} onOpenChange={() => setSelectedIndustry(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          {selectedIndustry && (
-            <>
-              <DialogHeader>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`p-3 rounded-2xl ${selectedIndustry.bgColor}`}>
-                    <selectedIndustry.icon className={`h-8 w-8 ${selectedIndustry.color}`} />
+        {/* Featured industry panel */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35 }}
+            className="w-full"
+          >
+            <div className="grid lg:grid-cols-5 gap-6 lg:gap-8 rounded-2xl sm:rounded-3xl border border-border/60 overflow-hidden bg-card/50 backdrop-blur-sm shadow-2xl">
+              {/* Left gradient panel */}
+              <div
+                className={`lg:col-span-2 relative p-6 sm:p-8 lg:p-10 bg-gradient-to-br ${config.gradient} text-white min-h-[280px] lg:min-h-0 flex flex-col justify-between`}
+              >
+                <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative">
+                  <div className="inline-flex p-3 rounded-2xl bg-white/20 backdrop-blur-sm mb-5">
+                    <Icon className="h-8 w-8" />
                   </div>
-                  <div>
-                    <DialogTitle className="text-3xl font-bold">
-                      {selectedIndustry.title}
-                    </DialogTitle>
-                    <DialogDescription className="text-lg mt-2">
-                      {selectedIndustry.description}
-                    </DialogDescription>
-                  </div>
+                  <h3 className="text-2xl sm:text-3xl font-bold mb-2">{active}</h3>
+                  <p className="text-white/90 text-sm sm:text-base leading-relaxed">{config.tagline}</p>
                 </div>
-              </DialogHeader>
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-lg font-semibold mb-3 text-primary">Key Features</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedIndustry.detailedFeatures.map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                        <Check className="h-4 w-4 text-primary flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
-                  <h4 className="text-lg font-semibold mb-2 text-primary">Business Benefits</h4>
-                  <p className="text-muted-foreground">{selectedIndustry.benefits}</p>
+
+                <div className="relative mt-8 pt-6 border-t border-white/20">
+                  <div className="text-4xl sm:text-5xl font-bold">{config.stat.value}</div>
+                  <div className="text-sm text-white/80 mt-1">{config.stat.label}</div>
                 </div>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+
+              {/* Right content */}
+              <div className="lg:col-span-3 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
+                    <Sparkles className="h-3 w-3" />
+                    Industry Template Included
+                  </div>
+                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 sm:mb-8">
+                    {config.description}
+                  </p>
+
+                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    <div>
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground mb-3">
+                        Key Features
+                      </h4>
+                      <ul className="space-y-2.5">
+                        {config.features.map((f) => (
+                          <li key={f} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                            <Check className={`h-4 w-4 shrink-0 ${config.accent}`} />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold uppercase tracking-wider text-foreground mb-3">
+                        SaaS Modules
+                      </h4>
+                      <ul className="space-y-2.5">
+                        {config.modules.map((m) => (
+                          <li key={m} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-gradient-to-r ${config.gradient}`} />
+                            {m}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    size="lg"
+                    className={`h-12 bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white border-0 shadow-lg w-full sm:w-auto group`}
+                    onClick={goToSignUp}
+                  >
+                    Get Started for {active}
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-12 w-full sm:w-auto"
+                    onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
+                  >
+                    View Plans
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Industry count banner */}
+        <motion.div
+          className="mt-10 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-10 text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          {[
+            { value: "5", label: "Industry Verticals" },
+            { value: "50+", label: "Pre-built Modules" },
+            { value: "1", label: "Unified Dashboard" },
+          ].map((item) => (
+            <div key={item.label}>
+              <div className="text-2xl sm:text-3xl font-bold text-primary">{item.value}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">{item.label}</div>
+            </div>
+          ))}
+        </motion.div>
+      </LandingContainer>
+    </section>
   );
 };
